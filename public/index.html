@@ -1,0 +1,5016 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Twitch Clip Reviewer</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            twitch: {
+              700: '#772ce8',
+              600: '#9147ff',
+            },
+          },
+        },
+      },
+    };
+  </script>
+  <style>
+    :root {
+      --bg: #0e0e10;
+      --surface: #18181b;
+      --surface2: #1f1f23;
+      --border: #2a2a2e;
+      --purple: #9147ff;
+      --purple-hover: #772ce8;
+      --green: #00b56a;
+      --green-hover: #009558;
+      --red: #e91916;
+      --text: #efeff1;
+      --muted: #adadb8;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Inter', 'Segoe UI', sans-serif;
+      min-height: 100vh;
+    }
+
+    /* ── Login ─────────────────────────────── */
+    #login-screen {
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      background:
+        radial-gradient(1200px 500px at 0% -10%, rgba(145, 71, 255, 0.22), transparent 60%),
+        radial-gradient(900px 500px at 100% 110%, rgba(34, 211, 238, 0.14), transparent 60%),
+        linear-gradient(180deg, #0a0a0c 0%, #0e0e10 100%);
+      overflow: hidden;
+    }
+
+    .login-card {
+      background: rgba(24, 24, 27, 0.86);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: 16px;
+      padding: 34px 30px;
+      width: min(420px, 92vw);
+      text-align: center;
+      backdrop-filter: blur(12px);
+      box-shadow:
+        0 30px 70px rgba(0, 0, 0, 0.5),
+        0 0 0 1px rgba(145, 71, 255, 0.12) inset;
+    }
+
+    .login-card .logo {
+      font-size: 2rem;
+      margin-bottom: 8px;
+    }
+
+    .login-card h1 {
+      font-size: 1.4rem;
+      margin-bottom: 6px;
+    }
+
+    .login-card p {
+      color: #b9b9c4;
+      font-size: 0.92rem;
+      margin-bottom: 18px;
+    }
+
+    .login-card input {
+      width: 100%;
+      padding: 11px 14px;
+      background: rgba(39, 39, 42, 0.75);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 10px;
+      color: #f3f3f5;
+      font-size: 0.98rem;
+      margin-bottom: 12px;
+      outline: none;
+      transition: border-color 0.2s, box-shadow 0.2s, background 0.2s;
+    }
+
+    .login-card input:focus {
+      border-color: rgba(145, 71, 255, 0.75);
+      box-shadow: 0 0 0 3px rgba(145, 71, 255, 0.2);
+      background: rgba(39, 39, 42, 0.95);
+    }
+
+    .login-card button {
+      width: 100%;
+      padding: 11px;
+      background: linear-gradient(135deg, #9147ff, #7c3aed);
+      color: #fff;
+      border: none;
+      border-radius: 10px;
+      font-size: 0.98rem;
+      font-weight: 700;
+      cursor: pointer;
+      transition: transform 0.15s ease, filter 0.2s ease;
+      box-shadow: 0 10px 24px rgba(145, 71, 255, 0.35);
+    }
+
+    .login-card button:hover {
+      filter: brightness(1.07);
+      transform: translateY(-1px);
+    }
+
+    #login-error {
+      color: #f87171;
+      font-size: 0.84rem;
+      margin-top: 12px;
+      display: none;
+    }
+
+    /* ── Main app ──────────────────────────── */
+    #app-screen {
+      display: none;
+      background:
+        radial-gradient(900px 420px at 0% -5%, rgba(145, 71, 255, 0.14), transparent 60%),
+        radial-gradient(720px 420px at 100% 105%, rgba(217, 70, 239, 0.08), transparent 65%),
+        linear-gradient(180deg, #0a0a0c 0%, #0e0e10 100%);
+      min-height: 100vh;
+    }
+
+    header {
+      background: rgba(24, 24, 27, 0.7);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+      backdrop-filter: blur(10px);
+      padding: 0 24px;
+      height: 60px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+
+    header .brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 1.1rem;
+      font-weight: 700;
+    }
+
+    header .brand span { color: var(--purple); font-size: 1.4rem; }
+
+    header .right {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+
+    .approved-count {
+      background: linear-gradient(135deg, #10b981, #059669);
+      color: #fff;
+      font-size: 0.78rem;
+      font-weight: 700;
+      padding: 3px 10px;
+      border-radius: 20px;
+    }
+
+    .btn-logout {
+      padding: 6px 16px;
+      background: rgba(39, 39, 42, 0.72);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      color: #d4d4d8;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 0.85rem;
+      transition: all 0.2s;
+    }
+
+    .btn-logout:hover {
+      border-color: rgba(145, 71, 255, 0.75);
+      color: #f3e8ff;
+      background: rgba(124, 58, 237, 0.22);
+    }
+
+    .btn-header-upload {
+      padding: 6px 16px;
+      background: linear-gradient(135deg, rgba(145, 71, 255, 0.24), rgba(217, 70, 239, 0.24));
+      border: 1px solid rgba(196, 181, 253, 0.65);
+      color: #ddd6fe;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 0.85rem;
+      transition: all 0.2s;
+    }
+
+    .btn-header-upload:hover {
+      border-color: #c4b5fd;
+      color: #faf5ff;
+    }
+
+    .btn-header-control {
+      padding: 6px 12px;
+      background: rgba(39, 39, 42, 0.6);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      color: #d4d4d8;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 0.8rem;
+      transition: all 0.2s;
+    }
+
+    .btn-header-control:hover {
+      border-color: rgba(145, 71, 255, 0.75);
+      color: #e9d5ff;
+    }
+
+    .btn-header-control:disabled,
+    .btn-header-upload:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    .upload-status-chip {
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: 999px;
+      padding: 3px 10px;
+      font-size: 0.75rem;
+      color: #d4d4d8;
+      background: rgba(39, 39, 42, 0.62);
+      max-width: 380px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    /* ── Controls ──────────────────────────── */
+    .controls {
+      padding: 20px 24px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+      background: rgba(24, 24, 27, 0.55);
+      backdrop-filter: blur(8px);
+    }
+
+    .controls label { color: var(--muted); font-size: 0.9rem; }
+
+    .period-btns { display: flex; gap: 8px; transition: opacity 0.2s; }
+    .period-btns.disabled { opacity: 0.35; pointer-events: none; }
+
+    .period-btn {
+      padding: 6px 18px;
+      border-radius: 20px;
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      background: rgba(39, 39, 42, 0.6);
+      color: #f4f4f5;
+      cursor: pointer;
+      font-size: 0.88rem;
+      transition: all 0.2s;
+    }
+
+    .period-btn:hover { border-color: #a78bfa; color: #e9d5ff; }
+
+    .period-btn.active {
+      background: linear-gradient(135deg, #9147ff, #7c3aed);
+      border-color: #a78bfa;
+      color: #fff;
+      font-weight: 600;
+    }
+
+    .filter-btns { display: flex; gap: 8px; margin-left: auto; }
+
+    .filter-btn {
+      padding: 6px 16px;
+      border-radius: 20px;
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      background: rgba(39, 39, 42, 0.6);
+      color: #d4d4d8;
+      cursor: pointer;
+      font-size: 0.85rem;
+      transition: all 0.2s;
+    }
+
+    .filter-btn.active { border-color: #10b981; color: #34d399; }
+
+    .filter-btn.active[data-filter="sorted-out"] { border-color: #f59e0b; color: #fbbf24; }
+
+    .btn-refresh {
+      padding: 6px 12px;
+      border-radius: 20px;
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      background: rgba(39, 39, 42, 0.72);
+      color: #f4f4f5;
+      cursor: pointer;
+      font-size: 0.82rem;
+      transition: all 0.2s;
+    }
+
+    .btn-refresh:hover {
+      border-color: #a78bfa;
+      color: #e9d5ff;
+    }
+
+    /* ── Toast ─────────────────────────────── */
+    #toast {
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      padding: 12px 20px;
+      border-radius: 8px;
+      font-size: 0.9rem;
+      font-weight: 600;
+      color: #fff;
+      z-index: 5001;
+      opacity: 0;
+      transform: translateY(12px);
+      transition: opacity 0.25s, transform 0.25s;
+      pointer-events: none;
+    }
+    #toast.show { opacity: 1; transform: translateY(0); }
+    #toast.success { background: var(--green); }
+    #toast.error   { background: var(--red); }
+
+    #build-lock-overlay {
+      position: fixed;
+      inset: 0;
+      display: none;
+      z-index: 5000;
+      background: rgba(5, 5, 8, 0.22);
+      cursor: not-allowed;
+      pointer-events: all;
+    }
+
+    #build-lock-overlay.show {
+      display: block;
+    }
+
+    /* ── Stats bar ─────────────────────────── */
+    .stats-bar {
+      padding: 12px 24px;
+      font-size: 0.85rem;
+      color: #c4c4ce;
+      display: flex;
+      gap: 20px;
+      background: rgba(24, 24, 27, 0.42);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+    }
+
+    .stats-bar strong { color: var(--text); }
+
+    /* ── Grid ──────────────────────────────── */
+    #clips-container {
+      padding: 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 18px;
+    }
+
+    .streamer-section {
+      background: rgba(24, 24, 27, 0.7);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 14px;
+      box-shadow: 0 14px 36px rgba(0, 0, 0, 0.28);
+      overflow: hidden;
+    }
+
+    .streamer-header {
+      width: 100%;
+      background: linear-gradient(90deg, rgba(39, 39, 42, 0.82), rgba(63, 63, 70, 0.72));
+      color: var(--text);
+      border: none;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+      padding: 12px 14px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      cursor: pointer;
+      font-size: 0.9rem;
+      font-weight: 700;
+    }
+
+    .streamer-header:hover {
+      background: linear-gradient(90deg, rgba(61, 28, 112, 0.7), rgba(63, 63, 70, 0.8));
+    }
+
+    .streamer-header .meta {
+      color: var(--muted);
+      font-size: 0.82rem;
+      font-weight: 500;
+    }
+
+    .streamer-header .chevron {
+      transition: transform 0.2s;
+      color: var(--muted);
+    }
+
+    .streamer-section.collapsed .streamer-header .chevron {
+      transform: rotate(-90deg);
+    }
+
+    .streamer-clips {
+      padding: 14px;
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+      gap: 16px;
+    }
+
+    .streamer-section.collapsed .streamer-clips {
+      display: none;
+    }
+
+    /* ── Clip card ─────────────────────────── */
+    .clip-card {
+      background: rgba(24, 24, 27, 0.78);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 14px;
+      overflow: hidden;
+      transition: transform 0.18s, box-shadow 0.18s;
+      position: relative;
+    }
+
+    .clip-card:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+    }
+
+    .clip-card.approved-card {
+      border-color: var(--green);
+    }
+
+    .approved-badge {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      background: var(--green);
+      color: #fff;
+      font-size: 0.72rem;
+      font-weight: 700;
+      padding: 3px 9px;
+      border-radius: 20px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      z-index: 2;
+    }
+
+    .thumbnail-wrap {
+      position: relative;
+      width: 100%;
+      padding-top: 56.25%;
+      background: #000;
+      overflow: hidden;
+    }
+
+    .thumbnail-wrap img {
+      position: absolute;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      object-fit: cover;
+      transition: opacity 0.2s;
+    }
+
+    .thumbnail-wrap:hover img { opacity: 0.85; }
+
+    .play-overlay {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      opacity: 0;
+      transition: opacity 0.2s;
+    }
+
+    .thumbnail-wrap:hover .play-overlay { opacity: 1; }
+
+    .play-overlay svg { width: 52px; height: 52px; filter: drop-shadow(0 2px 8px rgba(0,0,0,0.7)); }
+
+    .thumbnail-trigger {
+      display: block;
+      width: 100%;
+      border: 0;
+      padding: 0;
+      margin: 0;
+      background: transparent;
+      cursor: pointer;
+      text-align: left;
+    }
+
+    .clip-info {
+      padding: 14px 14px 12px;
+    }
+
+    .clip-title {
+      font-size: 0.95rem;
+      font-weight: 600;
+      margin-bottom: 8px;
+      line-height: 1.35;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+
+    .clip-meta {
+      display: flex;
+      gap: 14px;
+      font-size: 0.8rem;
+      color: var(--muted);
+      margin-bottom: 12px;
+      flex-wrap: wrap;
+    }
+
+    .clip-meta span { display: flex; align-items: center; gap: 4px; }
+
+    .clip-actions {
+      display: flex;
+      gap: 8px;
+    }
+
+    .btn-approve {
+      flex: 1;
+      padding: 8px 12px;
+      border: none;
+      border-radius: 6px;
+      font-size: 0.88rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.2s, transform 0.1s;
+    }
+
+    .btn-approve:active { transform: scale(0.97); }
+
+    .btn-approve.unapproved {
+      background: var(--green);
+      color: #fff;
+    }
+
+    .btn-approve.unapproved:hover { background: var(--green-hover); }
+
+    .btn-approve.approved {
+      background: var(--surface2);
+      color: var(--muted);
+      border: 1px solid var(--border);
+    }
+
+    .btn-approve.approved:hover { border-color: var(--red); color: var(--red); }
+
+    .btn-sortout {
+      flex: 1;
+      padding: 8px 12px;
+      border: none;
+      border-radius: 6px;
+      font-size: 0.88rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.2s, transform 0.1s;
+      background: transparent;
+      color: var(--muted);
+      border: 1px solid var(--border);
+    }
+
+    .btn-sortout:hover { border-color: #ffa500; color: #ffa500; }
+    .btn-sortout.sorted { background: #2a2410; border-color: #ffa500; color: #ffa500; }
+    .btn-sortout.sorted:hover { border-color: var(--red); color: var(--red); }
+    .btn-sortout:active { transform: scale(0.97); }
+
+    .btn-upload {
+      padding: 8px 14px;
+      background: #2a2410;
+      color: #ffa500;
+      border: 1px solid #ffa500;
+      border-radius: 6px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .btn-upload:hover {
+      border-color: #ffc14d;
+      color: #ffc14d;
+    }
+
+    .btn-download {
+      padding: 8px 14px;
+      background: var(--surface2);
+      color: var(--text);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .btn-download:hover {
+      border-color: var(--purple);
+      color: var(--purple);
+    }
+
+
+    /* ── Loading / empty states ────────────── */
+    #loading {
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 80px 24px;
+      gap: 16px;
+      color: var(--muted);
+    }
+
+    .spinner {
+      width: 44px; height: 44px;
+      border: 4px solid var(--border);
+      border-top-color: var(--purple);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    #empty {
+      display: none;
+      text-align: center;
+      padding: 80px 24px;
+      color: var(--muted);
+    }
+
+    #empty .icon { font-size: 3rem; margin-bottom: 12px; }
+
+    /* ── Admin Modal ────────────────────────────── */
+    #admin-modal {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0, 0, 0, 0.7);
+      z-index: 1000;
+      align-items: center;
+      justify-content: center;
+    }
+
+    #admin-modal.show {
+      display: flex;
+    }
+
+    .admin-modal-content {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 24px;
+      max-width: 90vw;
+      max-height: 85vh;
+      overflow-y: auto;
+      position: relative;
+    }
+
+    .admin-modal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 16px;
+    }
+
+    .admin-modal-header h2 {
+      margin: 0;
+      font-size: 1.4rem;
+    }
+
+    .admin-close-btn {
+      background: transparent;
+      border: none;
+      color: var(--muted);
+      font-size: 1.5rem;
+      cursor: pointer;
+      transition: color 0.2s;
+    }
+
+    .admin-close-btn:hover {
+      color: var(--text);
+    }
+
+    .admin-stats {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+      gap: 12px;
+      margin-bottom: 24px;
+    }
+
+    .admin-stat-box {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 16px;
+      text-align: center;
+    }
+
+    .admin-stat-box .stat-label {
+      color: var(--muted);
+      font-size: 0.85rem;
+      margin-bottom: 8px;
+    }
+
+    .admin-stat-box .stat-value {
+      font-size: 1.8rem;
+      font-weight: 700;
+      color: var(--text);
+    }
+
+    .admin-stat-box.approved .stat-value {
+      color: var(--green);
+    }
+
+    .admin-stat-box.sorted .stat-value {
+      color: #ffa500;
+    }
+
+    .admin-table-wrapper {
+      overflow-x: auto;
+    }
+
+    .admin-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.85rem;
+    }
+
+    .admin-table thead {
+      background: var(--surface2);
+      border-bottom: 2px solid var(--border);
+    }
+
+    .admin-table th {
+      padding: 10px;
+      text-align: left;
+      font-weight: 600;
+      color: var(--text);
+    }
+
+    .admin-table th.sortable {
+      cursor: pointer;
+      user-select: none;
+    }
+
+    .admin-table th.sortable:hover {
+      color: var(--purple);
+    }
+
+    .admin-table td {
+      padding: 10px;
+      border-bottom: 1px solid var(--border);
+      color: var(--muted);
+    }
+
+    .admin-table tbody tr:hover {
+      background: var(--surface2);
+    }
+
+    .admin-table .badge {
+      display: inline-block;
+      padding: 3px 8px;
+      border-radius: 4px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      text-transform: uppercase;
+    }
+
+    .admin-table .badge.approved {
+      background: rgba(0, 181, 106, 0.2);
+      color: var(--green);
+    }
+
+    .admin-table .badge.sorted {
+      background: rgba(255, 165, 0, 0.2);
+      color: #ffa500;
+    }
+
+    .admin-tools {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-bottom: 14px;
+    }
+
+    .admin-search {
+      width: min(100%, 320px);
+      padding: 7px 10px;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      color: var(--text);
+      font-size: 0.85rem;
+      outline: none;
+    }
+
+    .admin-search-wrap {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+    }
+
+    .admin-search-btn {
+      border: 1px solid var(--border);
+      background: var(--surface2);
+      color: var(--text);
+      border-radius: 6px;
+      padding: 7px 10px;
+      font-size: 0.82rem;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+
+    .admin-search-btn:hover {
+      border-color: var(--purple);
+      color: var(--purple);
+    }
+
+    .admin-empty-note {
+      color: var(--muted);
+      font-size: 0.85rem;
+      padding: 16px 0;
+      text-align: center;
+    }
+
+    /* ── Clip Player Modal ────────────────────────────── */
+    #clip-player-modal {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: radial-gradient(circle at top, rgba(60, 22, 110, 0.28), rgba(0, 0, 0, 0.8));
+      backdrop-filter: blur(3px);
+      z-index: 1150;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+
+    #clip-player-modal.show {
+      display: flex;
+    }
+
+    .clip-player-modal-content {
+      width: min(860px, 94vw);
+      max-height: 92vh;
+      overflow: auto;
+      background: linear-gradient(160deg, rgba(27, 27, 34, 0.98), rgba(18, 18, 24, 0.98));
+      border: 1px solid rgba(145, 71, 255, 0.32);
+      border-radius: 16px;
+      box-shadow: 0 24px 70px rgba(0, 0, 0, 0.55), 0 0 0 1px rgba(255, 255, 255, 0.03) inset;
+      padding: 18px;
+    }
+
+    .clip-player-meta {
+      margin-top: -8px;
+      margin-bottom: 12px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      color: var(--muted);
+      font-size: 0.82rem;
+      border-bottom: 1px solid rgba(145, 71, 255, 0.18);
+      padding-bottom: 10px;
+    }
+
+    .clip-player-video-wrap {
+      position: relative;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      overflow: hidden;
+      background: #000;
+      margin-bottom: 12px;
+      aspect-ratio: 16 / 9;
+      box-shadow: 0 8px 26px rgba(0, 0, 0, 0.45);
+    }
+
+    #clip-player-video {
+      width: 100%;
+      height: 100%;
+      background: #000;
+      object-fit: contain;
+    }
+
+    .clip-player-status {
+      position: absolute;
+      inset: 0;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      flex-direction: column;
+      gap: 10px;
+      color: #e4e4e7;
+      background: linear-gradient(180deg, rgba(10, 10, 14, 0.62), rgba(10, 10, 14, 0.78));
+      text-align: center;
+      padding: 14px;
+      z-index: 2;
+    }
+
+    .clip-player-status.show {
+      display: flex;
+    }
+
+    .clip-player-status-msg {
+      max-width: 500px;
+      font-size: 0.84rem;
+      color: #d4d4d8;
+    }
+
+    .clip-player-retry-btn {
+      border: 1px solid rgba(145, 71, 255, 0.78);
+      border-radius: 999px;
+      background: rgba(145, 71, 255, 0.15);
+      color: #ede9fe;
+      padding: 7px 16px;
+      font-size: 0.78rem;
+      font-weight: 700;
+      cursor: pointer;
+      transition: background 0.2s, border-color 0.2s;
+    }
+
+    .clip-player-retry-btn:hover {
+      background: rgba(145, 71, 255, 0.28);
+      border-color: #c4b5fd;
+    }
+
+    .clip-player-actions {
+      display: block;
+      padding-top: 4px;
+      border-top: 1px solid rgba(145, 71, 255, 0.18);
+    }
+
+    .clip-modal-actions-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 8px;
+    }
+
+    .clip-player-open-link {
+      color: var(--purple);
+      text-decoration: none;
+      border-bottom: 1px dotted rgba(145, 71, 255, 0.65);
+    }
+
+    .clip-player-open-link:hover {
+      color: #c4b5fd;
+      border-bottom-color: #c4b5fd;
+    }
+
+    .clip-player-title-row {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      min-width: 0;
+    }
+
+    .clip-player-title-dot {
+      width: 9px;
+      height: 9px;
+      border-radius: 999px;
+      background: linear-gradient(180deg, #b794ff, #7c3aed);
+      box-shadow: 0 0 12px rgba(145, 71, 255, 0.8);
+      flex: 0 0 auto;
+    }
+
+    .clip-player-title-text {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    /* ── Crop Modal ────────────────────────────── */
+    #crop-modal {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.75);
+      z-index: 1200;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+
+    #crop-modal.show {
+      display: flex;
+    }
+
+    .crop-modal-content {
+      width: min(1500px, 98vw);
+      max-height: 96vh;
+      overflow: auto;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 18px;
+    }
+
+    .crop-layout {
+      display: grid;
+      grid-template-columns: 2fr 1fr;
+      gap: 18px;
+      align-items: start;
+    }
+
+    .crop-main {
+      display: grid;
+      gap: 12px;
+      align-content: start;
+    }
+
+    .crop-preview-wrap {
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      overflow: hidden;
+      background: #000;
+      min-height: 560px;
+    }
+
+    .crop-preview {
+      position: relative;
+      width: 100%;
+      aspect-ratio: 16 / 9;
+      background: #000;
+      min-height: 560px;
+    }
+
+    #crop-preview-media {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      background: #000;
+    }
+
+    .crop-box {
+      position: absolute;
+      border: 2px solid;
+      box-shadow: 0 0 0 1px rgba(0,0,0,0.55) inset;
+      pointer-events: auto;
+      cursor: move;
+      user-select: none;
+    }
+
+    .crop-box.dragging {
+      box-shadow: 0 0 0 2px rgba(255,255,255,0.3) inset;
+    }
+
+    .crop-box .label {
+      position: absolute;
+      top: 0;
+      left: 0;
+      transform: translateY(-100%);
+      font-size: 0.72rem;
+      font-weight: 700;
+      padding: 2px 6px;
+      border-radius: 4px 4px 0 0;
+      color: #000;
+      pointer-events: none;
+    }
+
+    .crop-handle {
+      position: absolute;
+      background: rgba(255, 255, 255, 0.9);
+      border: 1px solid rgba(0, 0, 0, 0.6);
+      border-radius: 3px;
+      width: 12px;
+      height: 12px;
+    }
+
+    .crop-handle.n,
+    .crop-handle.s {
+      left: 50%;
+      transform: translateX(-50%);
+      cursor: ns-resize;
+    }
+
+    .crop-handle.e,
+    .crop-handle.w {
+      top: 50%;
+      transform: translateY(-50%);
+      cursor: ew-resize;
+    }
+
+    .crop-handle.n { top: -7px; }
+    .crop-handle.s { bottom: -7px; }
+    .crop-handle.e { right: -7px; }
+    .crop-handle.w { left: -7px; }
+
+    .crop-handle.nw,
+    .crop-handle.ne,
+    .crop-handle.sw,
+    .crop-handle.se {
+      width: 14px;
+      height: 14px;
+    }
+
+    .crop-handle.nw { top: -8px; left: -8px; cursor: nwse-resize; }
+    .crop-handle.ne { top: -8px; right: -8px; cursor: nesw-resize; }
+    .crop-handle.sw { bottom: -8px; left: -8px; cursor: nesw-resize; }
+    .crop-handle.se { bottom: -8px; right: -8px; cursor: nwse-resize; }
+
+    #cam-box {
+      border-color: #00d4ff;
+      background: rgba(0, 212, 255, 0.12);
+    }
+
+    #cam-box .label {
+      background: #00d4ff;
+    }
+
+    #game-box {
+      border-color: #ffa500;
+      background: rgba(255, 165, 0, 0.12);
+    }
+
+    #game-box .label {
+      background: #ffa500;
+    }
+
+    .crop-side {
+      display: grid;
+      gap: 14px;
+    }
+
+    .crop-group {
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 12px;
+      background: var(--surface2);
+    }
+
+    .crop-group h4 {
+      margin-bottom: 8px;
+      font-size: 0.9rem;
+    }
+
+    .crop-help {
+      color: var(--muted);
+      font-size: 0.84rem;
+      line-height: 1.5;
+    }
+
+    .output-preview-wrap {
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      overflow: hidden;
+      background: #000;
+      max-width: 360px;
+      margin: 0 auto;
+      position: relative;
+    }
+
+    #output-preview {
+      width: 100%;
+      aspect-ratio: 9 / 16;
+      height: auto;
+      display: block;
+      background: #000;
+    }
+
+    .output-cam-area,
+    .output-game-area {
+      position: absolute;
+      left: 0;
+      width: 100%;
+      z-index: 10;
+      border: 2px solid rgba(255, 255, 255, 0.86);
+      pointer-events: auto;
+      cursor: grab;
+    }
+
+    .output-cam-area.dragging,
+    .output-game-area.dragging {
+      cursor: grabbing;
+    }
+
+    .output-cam-area {
+      z-index: 12;
+      background: rgba(145, 71, 255, 0.14);
+      box-shadow:
+        inset 0 0 0 1px rgba(221, 214, 254, 0.58),
+        0 0 0 1px rgba(0, 0, 0, 0.34);
+    }
+
+    .output-game-area {
+      z-index: 11;
+      background: rgba(59, 130, 246, 0.14);
+      box-shadow:
+        inset 0 0 0 1px rgba(191, 219, 254, 0.6),
+        0 0 0 1px rgba(0, 0, 0, 0.34);
+    }
+
+    .output-cam-area.dragging {
+      z-index: 16;
+    }
+
+    .output-game-area.dragging {
+      z-index: 15;
+    }
+
+    .output-cam-area .output-cam-label,
+    .output-game-area .output-cam-label {
+      position: absolute;
+      left: 8px;
+      top: 8px;
+      font-size: 0.72rem;
+      font-weight: 700;
+      color: #fff;
+      background: rgba(0, 0, 0, 0.45);
+      border-radius: 999px;
+      padding: 2px 8px;
+      pointer-events: none;
+    }
+
+    .output-game-area .output-cam-label {
+      top: auto;
+      bottom: 8px;
+    }
+
+    .output-cam-area .output-cam-resize,
+    .output-game-area .output-cam-resize {
+      position: absolute;
+      left: 0;
+      width: 100%;
+      height: 14px;
+      cursor: ns-resize;
+      pointer-events: none;
+      display: none;
+    }
+
+    .output-cam-area .output-cam-resize {
+      bottom: -2px;
+      background: linear-gradient(to bottom, rgba(167, 139, 250, 0.86), rgba(145, 71, 255, 0.22));
+      border-top: 1px solid rgba(233, 213, 255, 0.96);
+      box-shadow:
+        0 1px 0 rgba(0, 0, 0, 0.55),
+        inset 0 1px 0 rgba(255, 255, 255, 0.18);
+    }
+
+    .output-game-area .output-cam-resize {
+      top: -2px;
+      background: linear-gradient(to top, rgba(96, 165, 250, 0.84), rgba(59, 130, 246, 0.22));
+      border-bottom: 1px solid rgba(219, 234, 254, 0.95);
+      box-shadow:
+        0 -1px 0 rgba(0, 0, 0, 0.55),
+        inset 0 -1px 0 rgba(255, 255, 255, 0.16);
+    }
+
+    .output-move-handle {
+      position: absolute;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      z-index: 30;
+      border: 1px solid rgba(255, 255, 255, 0.34);
+      border-radius: 999px;
+      padding: 2px 10px;
+      font-size: 0.68rem;
+      font-weight: 700;
+      color: #fff;
+      background: rgba(0, 0, 0, 0.62);
+      backdrop-filter: blur(2px);
+      cursor: grab;
+      user-select: none;
+      box-shadow: 0 3px 10px rgba(0, 0, 0, 0.42);
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 120ms ease;
+    }
+
+    .output-preview-wrap:hover .output-move-handle,
+    .output-move-handle.dragging {
+      opacity: 0.92;
+      pointer-events: auto;
+    }
+
+    .output-move-handle.dragging {
+      cursor: grabbing;
+    }
+
+    .output-cam-move-handle {
+      border-color: rgba(196, 181, 253, 0.72);
+      background: rgba(76, 29, 149, 0.76);
+    }
+
+    .output-game-move-handle {
+      border-color: rgba(191, 219, 254, 0.78);
+      background: rgba(30, 64, 175, 0.78);
+    }
+
+    .output-resize-handle {
+      position: absolute;
+      left: 0;
+      width: 100%;
+      height: 20px;
+      transform: translateY(-50%);
+      z-index: 31;
+      border: 0;
+      background: transparent;
+      cursor: ns-resize;
+      outline: none;
+    }
+
+    .output-resize-handle::before {
+      content: '';
+      position: absolute;
+      left: 0;
+      right: 0;
+      top: 50%;
+      height: 4px;
+      transform: translateY(-50%);
+      border-radius: 999px;
+      transition: height 120ms ease, opacity 120ms ease, filter 120ms ease;
+      opacity: 0.82;
+    }
+
+    .output-resize-handle::after {
+      content: '';
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      width: 36px;
+      height: 2px;
+      transform: translate(-50%, -50%);
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.85);
+      box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.25);
+      opacity: 0.82;
+      transition: width 120ms ease, height 120ms ease, opacity 120ms ease;
+    }
+
+    .output-cam-resize-handle::before {
+      background: linear-gradient(to bottom, rgba(167, 139, 250, 0.88), rgba(145, 71, 255, 0.3));
+      border-top: 1px solid rgba(233, 213, 255, 0.95);
+      box-shadow:
+        0 1px 0 rgba(0, 0, 0, 0.55),
+        inset 0 1px 0 rgba(255, 255, 255, 0.2);
+    }
+
+    .output-game-resize-handle::before {
+      background: linear-gradient(to top, rgba(96, 165, 250, 0.88), rgba(59, 130, 246, 0.3));
+      border-bottom: 1px solid rgba(219, 234, 254, 0.95);
+      box-shadow:
+        0 -1px 0 rgba(0, 0, 0, 0.55),
+        inset 0 -1px 0 rgba(255, 255, 255, 0.18);
+    }
+
+    .output-resize-handle:hover::before,
+    .output-resize-handle:focus-visible::before,
+    .output-resize-handle.dragging::before {
+      height: 6px;
+      opacity: 1;
+      filter: saturate(1.08) brightness(1.04);
+    }
+
+    .output-resize-handle:hover::after,
+    .output-resize-handle:focus-visible::after,
+    .output-resize-handle.dragging::after {
+      width: 48px;
+      height: 3px;
+      opacity: 1;
+    }
+
+    .output-name-badge {
+      position: absolute;
+      left: 0;
+      top: 0;
+      z-index: 20;
+      display: none;
+      align-items: center;
+      pointer-events: auto;
+      user-select: none;
+      cursor: grab;
+      background: linear-gradient(135deg, rgba(14, 14, 18, 0.78), rgba(23, 23, 31, 0.74));
+      border: 1px solid rgba(145, 71, 255, 0.62);
+      color: #fff;
+      font-weight: 700;
+      border-radius: 999px;
+      box-shadow:
+        0 6px 18px rgba(0, 0, 0, 0.38),
+        0 0 12px rgba(145, 71, 255, 0.24);
+      text-shadow: 0 1px 2px rgba(0, 0, 0, 0.45);
+      white-space: nowrap;
+      box-sizing: border-box;
+    }
+
+    .output-name-badge.dragging {
+      cursor: grabbing;
+    }
+
+    .output-name-badge img {
+      display: block;
+      object-fit: contain;
+      flex: 0 0 auto;
+    }
+
+    .output-name-badge span {
+      display: block;
+      line-height: 1;
+    }
+
+    .output-center-guide {
+      position: absolute;
+      pointer-events: none;
+      display: none;
+      z-index: 15;
+      background: linear-gradient(180deg, rgba(196, 181, 253, 0.0), rgba(196, 181, 253, 0.8), rgba(196, 181, 253, 0.0));
+      box-shadow: 0 0 10px rgba(145, 71, 255, 0.42);
+    }
+
+    .output-center-guide-x {
+      top: 0;
+      bottom: 0;
+      width: 2px;
+      left: 50%;
+      transform: translateX(-50%);
+    }
+
+    .output-center-guide-y {
+      left: 0;
+      right: 0;
+      height: 2px;
+      top: 50%;
+      transform: translateY(-50%);
+    }
+
+    .preview-note {
+      margin-top: 8px;
+      color: var(--muted);
+      font-size: 0.8rem;
+      text-align: center;
+    }
+
+    .crop-actions {
+      display: flex;
+      justify-content: flex-end;
+      gap: 10px;
+      margin-top: 2px;
+    }
+
+    .crop-actions .btn-secondary,
+    .crop-actions .btn-primary {
+      width: 100%;
+    }
+
+    .crop-actions {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+    }
+
+    .crop-toggle-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-top: 8px;
+      color: var(--muted);
+      font-size: 0.85rem;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 8px 10px;
+    }
+
+    .split-header-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      margin-bottom: 8px;
+    }
+
+    .split-header-row h4 {
+      margin-bottom: 0;
+    }
+
+    .split-current-time {
+      margin: 0;
+      font-size: 0.76rem;
+      color: #c4b5fd;
+      font-weight: 700;
+      white-space: nowrap;
+    }
+
+    .split-current-time .dim {
+      color: #a1a1aa;
+      font-weight: 600;
+    }
+
+    .split-editor-left {
+      min-height: 240px;
+    }
+
+    .split-tools {
+      margin-top: 4px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 6px;
+      padding: 4px 6px;
+      border: 1px solid rgba(145, 71, 255, 0.22);
+      border-radius: 999px;
+      background: rgba(17, 17, 24, 0.42);
+    }
+
+    .split-tools-main {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      min-width: 0;
+    }
+
+    .split-tools-meta {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      min-width: 0;
+    }
+
+    .split-btn {
+      border: 1px solid rgba(145, 71, 255, 0.34);
+      border-radius: 999px;
+      background: rgba(145, 71, 255, 0.12);
+      color: #ede9fe;
+      font-size: 0.69rem;
+      font-weight: 700;
+      letter-spacing: 0.01em;
+      padding: 3px 9px;
+      cursor: pointer;
+      transition: all 0.18s;
+      line-height: 1.1;
+      min-height: 24px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 4px;
+    }
+
+    .split-btn:hover {
+      background: rgba(145, 71, 255, 0.22);
+      border-color: rgba(196, 181, 253, 0.76);
+      transform: translateY(-1px);
+    }
+
+    .split-btn.icon-only {
+      width: 26px;
+      min-width: 26px;
+      height: 24px;
+      padding: 0;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.86rem;
+    }
+
+    .split-btn .glyph {
+      font-size: 0.86rem;
+      line-height: 1;
+    }
+
+    .split-btn .txt {
+      font-size: 0.66rem;
+      line-height: 1;
+      opacity: 0.96;
+    }
+
+    .split-overflow {
+      position: relative;
+      display: inline-flex;
+    }
+
+    .split-overflow-menu {
+      position: absolute;
+      right: 0;
+      top: calc(100% + 6px);
+      z-index: 25;
+      min-width: 130px;
+      display: none;
+      flex-direction: column;
+      gap: 4px;
+      padding: 6px;
+      border-radius: 10px;
+      border: 1px solid rgba(145, 71, 255, 0.35);
+      background: rgba(17, 17, 24, 0.96);
+      box-shadow: 0 8px 22px rgba(0, 0, 0, 0.45);
+    }
+
+    .split-overflow-menu.show {
+      display: flex;
+    }
+
+    .split-overflow-menu .split-btn {
+      width: 100%;
+      justify-content: flex-start;
+    }
+
+    .split-timeline-wrap {
+      margin-top: 10px;
+      border: 1px solid rgba(145, 71, 255, 0.35);
+      border-radius: 10px;
+      background: linear-gradient(180deg, rgba(17, 17, 24, 0.95), rgba(14, 14, 20, 0.95));
+      overflow: hidden;
+    }
+
+    .split-ruler {
+      position: relative;
+      height: 34px;
+      border-bottom: 1px solid rgba(145, 71, 255, 0.25);
+      background: linear-gradient(180deg, rgba(255, 255, 255, 0.03), rgba(0, 0, 0, 0.08));
+    }
+
+    .split-ruler-tick {
+      position: absolute;
+      top: 4px;
+      bottom: 8px;
+      width: 1px;
+      background: rgba(255, 255, 255, 0.2);
+    }
+
+    .split-ruler-tick.major {
+      background: rgba(196, 181, 253, 0.45);
+      width: 2px;
+    }
+
+    .split-ruler-label {
+      position: absolute;
+      bottom: 2px;
+      transform: translateX(-50%);
+      font-size: 0.65rem;
+      color: #a1a1aa;
+      white-space: nowrap;
+    }
+
+    .split-track-wrap {
+      position: relative;
+      padding: 12px 10px 14px;
+    }
+
+    .split-track {
+      position: relative;
+      height: 38px;
+      border-radius: 10px;
+      background: rgba(10, 10, 14, 0.9);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      overflow: visible;
+    }
+
+    .split-segment-block {
+      position: absolute;
+      top: 0;
+      bottom: 0;
+      border-right: 1px solid rgba(255, 255, 255, 0.15);
+      background: linear-gradient(180deg, rgba(59, 130, 246, 0.85), rgba(30, 64, 175, 0.92));
+      cursor: pointer;
+      transition: filter 0.15s, opacity 0.15s;
+    }
+
+    .split-segment-block:hover {
+      filter: brightness(1.1);
+    }
+
+    .split-segment-block.deleted {
+      background: linear-gradient(180deg, rgba(244, 63, 94, 0.8), rgba(159, 18, 57, 0.92));
+      opacity: 0.95;
+    }
+
+    .split-segment-block.zoomed {
+      background: linear-gradient(180deg, rgba(250, 204, 21, 0.92), rgba(180, 83, 9, 0.95));
+      opacity: 0.98;
+    }
+
+    .split-segment-block.selected {
+      box-shadow: inset 0 0 0 2px rgba(245, 245, 245, 0.96), 0 0 14px rgba(167, 139, 250, 0.82);
+      z-index: 2;
+    }
+
+    .split-segment-actions-pop {
+      position: absolute;
+      top: -31px;
+      left: 0;
+      transform: translateX(0);
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 3px 4px;
+      width: 186px;
+      border-radius: 999px;
+      border: 1px solid rgba(196, 181, 253, 0.72);
+      background: rgba(7, 7, 10, 0.97);
+      box-shadow: 0 10px 24px rgba(0, 0, 0, 0.52);
+      z-index: 9;
+      box-sizing: border-box;
+    }
+
+    .split-segment-actions-pop .split-pill-btn {
+      padding: 2px 5px;
+      font-size: 0.63rem;
+      line-height: 1;
+      min-width: 0;
+      min-height: 22px;
+      text-align: center;
+      text-shadow: 0 1px 0 rgba(0, 0, 0, 0.35);
+      flex: 1;
+      white-space: nowrap;
+    }
+
+    .split-segment-label {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      font-size: 0.65rem;
+      font-weight: 700;
+      color: #f4f4f5;
+      pointer-events: none;
+      text-shadow: 0 1px 2px rgba(0, 0, 0, 0.45);
+    }
+
+    .split-playhead {
+      position: absolute;
+      top: -2px;
+      bottom: -2px;
+      width: 2px;
+      background: #a78bfa;
+      box-shadow: 0 0 10px rgba(167, 139, 250, 0.8);
+      pointer-events: none;
+      z-index: 3;
+      transform: translateX(-1px);
+    }
+
+    .split-marker {
+      position: absolute;
+      top: -4px;
+      bottom: -4px;
+      width: 2px;
+      background: rgba(245, 158, 11, 0.95);
+      box-shadow: 0 0 8px rgba(245, 158, 11, 0.55);
+      transform: translateX(-1px);
+      z-index: 2;
+    }
+
+    .split-marker-btn {
+      position: absolute;
+      top: -22px;
+      left: 50%;
+      transform: translateX(-50%);
+      border: 1px solid rgba(245, 158, 11, 0.65);
+      border-radius: 999px;
+      background: rgba(120, 53, 15, 0.92);
+      color: #fde68a;
+      font-size: 0.62rem;
+      font-weight: 700;
+      padding: 2px 7px;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+
+    .split-pill-btn {
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      border-radius: 999px;
+      background: rgba(24, 24, 27, 0.85);
+      color: #e4e4e7;
+      font-size: 0.7rem;
+      font-weight: 700;
+      padding: 4px 9px;
+      cursor: pointer;
+    }
+
+    .split-pill-btn.delete {
+      border-color: rgba(251, 113, 133, 0.5);
+      color: #fecdd3;
+      background: rgba(159, 18, 57, 0.35);
+    }
+
+    .split-pill-btn.keep {
+      border-color: rgba(52, 211, 153, 0.5);
+      color: #bbf7d0;
+      background: rgba(6, 95, 70, 0.35);
+    }
+
+    .split-pill-btn.zoom {
+      border-color: rgba(250, 204, 21, 0.55);
+      color: #fde68a;
+      background: rgba(120, 53, 15, 0.34);
+    }
+
+    .split-pill-btn.zoom.active {
+      border-color: rgba(250, 204, 21, 0.85);
+      background: rgba(161, 98, 7, 0.64);
+      color: #fff7cc;
+      box-shadow: 0 0 0 1px rgba(250, 204, 21, 0.45) inset;
+    }
+
+    /* Remove old dedicated toolbar color variants now replaced by contextual actions + overflow menu */
+    .split-btn.warn,
+    .split-btn.ok {
+      border-color: rgba(145, 71, 255, 0.30);
+      background: rgba(145, 71, 255, 0.10);
+      color: #ddd6fe;
+    }
+
+    .split-empty-note {
+      margin-top: 4px;
+      min-height: 0;
+      font-size: 0.74rem;
+      color: #a1a1aa;
+      line-height: 1.3;
+    }
+
+    .cam-toggle-switch {
+      position: relative;
+      width: 90px;
+      min-width: 90px;
+      height: 30px;
+      border-radius: 999px;
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      background: rgba(24, 24, 27, 0.85);
+      overflow: hidden;
+      cursor: pointer;
+      user-select: none;
+    }
+
+    .cam-toggle-slider {
+      position: absolute;
+      top: 2px;
+      left: 2px;
+      width: calc(50% - 2px);
+      height: calc(100% - 4px);
+      border-radius: 999px;
+      background: linear-gradient(135deg, #9147ff, #7c3aed);
+      transition: transform 0.2s ease-out;
+      box-shadow: 0 6px 16px rgba(145, 71, 255, 0.4);
+    }
+
+    .cam-toggle-labels {
+      position: relative;
+      z-index: 1;
+      height: 100%;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      align-items: center;
+      font-size: 0.7rem;
+      font-weight: 700;
+    }
+
+    .cam-toggle-labels span {
+      text-align: center;
+      color: #a1a1aa;
+      transition: color 0.2s;
+    }
+
+    #cam-enabled-label {
+      min-width: 34px;
+      text-align: center;
+      color: var(--text);
+    }
+
+    .btn-secondary {
+      border: 1px solid var(--border);
+      background: transparent;
+      color: var(--muted);
+      border-radius: 6px;
+      padding: 8px 12px;
+      cursor: pointer;
+    }
+
+    .btn-primary {
+      border: 1px solid var(--green);
+      background: var(--green);
+      color: #fff;
+      border-radius: 6px;
+      padding: 8px 12px;
+      cursor: pointer;
+      font-weight: 700;
+    }
+
+    .btn-primary:hover { background: var(--green-hover); }
+
+    @media (max-width: 980px) {
+      .crop-layout { grid-template-columns: 1fr; }
+      .crop-preview,
+      .crop-preview-wrap {
+        min-height: 360px;
+      }
+    }
+
+    .legal-footer {
+      border-top: 1px solid var(--border);
+      color: var(--muted);
+      font-size: 0.82rem;
+      text-align: center;
+      padding: 14px 12px 20px;
+    }
+
+    .legal-footer a {
+      color: var(--muted);
+      text-decoration: none;
+      margin: 0 8px;
+    }
+
+    .legal-footer a:hover {
+      color: var(--text);
+      text-decoration: underline;
+    }
+  </style>
+</head>
+<body class="bg-zinc-950 text-zinc-100 antialiased">
+
+<!-- ══════════════════ LOGIN SCREEN ══════════════════ -->
+<div id="login-screen" class="min-h-screen flex items-center justify-center px-4">
+  <div class="login-card shadow-2xl shadow-black/40">
+    <div class="logo">
+      <svg class="mx-auto h-9 w-9 text-violet-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M4 7.5A2.5 2.5 0 016.5 5h11A2.5 2.5 0 0120 7.5v9A2.5 2.5 0 0117.5 19h-11A2.5 2.5 0 014 16.5v-9z"/>
+        <path stroke-linecap="round" stroke-linejoin="round" d="M8 5v14M16 5v14M4 9.5h16M4 14.5h16"/>
+      </svg>
+    </div>
+    <h1>Clip Reviewer</h1>
+    <p>Enter your credentials to access the dashboard</p>
+    <div id="auth-mode-switch" tabindex="0" role="group" aria-label="Authentication mode" class="relative mb-3 rounded-full border border-zinc-700/80 overflow-hidden text-sm bg-zinc-950/70 p-1 shadow-inner shadow-black/50 cursor-pointer select-none">
+      <div id="auth-mode-slider" class="absolute inset-y-1 left-1 w-[calc(50%-0.25rem)] rounded-full bg-gradient-to-r from-violet-600 to-fuchsia-600 transition-transform duration-200 ease-out shadow-lg shadow-violet-700/40"></div>
+      <div class="relative z-10 grid grid-cols-2">
+        <div id="auth-mode-login" class="px-3 py-2 text-center text-white font-semibold">Sign In</div>
+        <div id="auth-mode-register" class="px-3 py-2 text-center text-zinc-400">Register</div>
+      </div>
+    </div>
+    <input type="text" id="username-input" placeholder="Username" autofocus />
+    <input type="password" id="password-input" placeholder="Password" autofocus />
+    <button id="login-btn">Sign In</button>
+    <p id="auth-mode-hint" class="mt-3 text-xs text-zinc-400">New here? Switch to Register to create an account.</p>
+    <div id="login-error">Incorrect username or password. Try again.</div>
+  </div>
+</div>
+
+<!-- ══════════════════ MAIN APP ══════════════════ -->
+<div id="app-screen" class="min-h-screen">
+  <header class="backdrop-blur supports-[backdrop-filter]:bg-zinc-900/80">
+    <div class="brand">
+      <span>
+        <svg class="h-6 w-6 text-violet-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M4 7.5A2.5 2.5 0 016.5 5h11A2.5 2.5 0 0120 7.5v9A2.5 2.5 0 0117.5 19h-11A2.5 2.5 0 014 16.5v-9z"/>
+          <path stroke-linecap="round" stroke-linejoin="round" d="M8 5v14M16 5v14M4 9.5h16M4 14.5h16"/>
+        </svg>
+      </span>
+      Clip Reviewer
+    </div>
+    <div class="right">
+      <div id="navbar-username" class="inline-flex items-center gap-1.5 rounded-full border border-zinc-700 bg-zinc-900/70 px-3 py-1 text-xs text-zinc-300">@-</div>
+      <div class="approved-count" id="approved-count">0 approved</div>
+      <div id="upload-status-chip" class="upload-status-chip">Upload queue idle</div>
+      <button class="btn-header-upload" id="bulk-upload-btn">Start Upload</button>
+      <button class="btn-header-control" id="upload-pause-btn" disabled>Pause</button>
+      <button class="btn-header-control" id="upload-resume-btn" disabled>Resume</button>
+      <button class="btn-header-control" id="upload-cancel-btn" disabled>Cancel</button>
+      <button class="btn-logout inline-flex items-center gap-1.5" id="admin-btn">
+        <svg class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+          <path d="M3 3.75A.75.75 0 013.75 3h12.5a.75.75 0 01.75.75V5a.75.75 0 01-.75.75H3.75A.75.75 0 013 5V3.75zM3 8.75A.75.75 0 013.75 8h5.5a.75.75 0 01.75.75v7.5a.75.75 0 01-.75.75h-5.5a.75.75 0 01-.75-.75v-7.5zM11 8.75A.75.75 0 0111.75 8h4.5a.75.75 0 01.75.75v2.5a.75.75 0 01-.75.75h-4.5a.75.75 0 01-.75-.75v-2.5zM11 14.75a.75.75 0 01.75-.75h4.5a.75.75 0 01.75.75v1.5a.75.75 0 01-.75.75h-4.5a.75.75 0 01-.75-.75v-1.5z"/>
+        </svg>
+        Admin
+      </button>
+      <button class="btn-logout inline-flex items-center gap-1.5" id="manage-streamers-btn">
+        <svg class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+          <path d="M10 2a.75.75 0 01.75.75v6.5h6.5a.75.75 0 010 1.5h-6.5v6.5a.75.75 0 01-1.5 0v-6.5h-6.5a.75.75 0 010-1.5h6.5v-6.5A.75.75 0 0110 2z"/>
+        </svg>
+        Add Streamer
+      </button>
+      <button class="btn-logout" id="logout-btn">Logout</button>
+    </div>
+  </header>
+
+  <div class="controls">
+    <label>Time range:</label>
+    <div class="period-btns">
+      <button class="period-btn active" data-days="30">30 Days</button>
+      <button class="period-btn" data-days="60">60 Days</button>
+      <button class="period-btn" data-days="365">1 Year</button>
+    </div>
+    <button class="btn-refresh" id="refresh-clips-btn">Refresh from Twitch</button>
+    <div class="filter-btns">
+      <button class="filter-btn active" data-filter="all">All</button>
+      <button class="filter-btn" data-filter="approved">Approved</button>
+      <button class="filter-btn" data-filter="pending">Pending</button>
+      <button class="filter-btn" data-filter="sorted-out">Sorted Out</button>
+    </div>
+  </div>
+
+  <div class="stats-bar" id="stats-bar">
+    Fetching clips…
+  </div>
+
+  <div id="loading">
+    <div class="spinner"></div>
+    <span>Fetching clips…</span>
+  </div>
+
+  <div id="empty">
+    <div class="icon">
+      <svg class="mx-auto h-12 w-12 text-zinc-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 7.5A2.25 2.25 0 016 5.25h12a2.25 2.25 0 012.25 2.25v9A2.25 2.25 0 0118 18.75H6a2.25 2.25 0 01-2.25-2.25v-9z"/>
+        <path stroke-linecap="round" stroke-linejoin="round" d="M4 8l8 6 8-6"/>
+      </svg>
+    </div>
+    <p>No clips found for this period.</p>
+  </div>
+
+  <div id="clips-container" class="max-w-[1400px] mx-auto px-4 md:px-6 pb-10"></div>
+</div>
+
+<!-- ══════════════════ CLIP PLAYER MODAL ══════════════════ -->
+<div id="clip-player-modal">
+  <div class="clip-player-modal-content">
+    <div class="admin-modal-header" style="margin-bottom: 12px;">
+      <h2 id="clip-player-title" class="clip-player-title-row">
+        <span class="clip-player-title-dot"></span>
+        <span id="clip-player-title-text" class="clip-player-title-text">Clip Preview</span>
+      </h2>
+      <button class="admin-close-btn" id="clip-player-close-btn">✕</button>
+    </div>
+    <div id="clip-player-meta" class="clip-player-meta"></div>
+    <div class="clip-player-video-wrap">
+      <video id="clip-player-video" controls playsinline preload="metadata"></video>
+      <div id="clip-player-status" class="clip-player-status">
+        <div class="spinner"></div>
+        <div id="clip-player-status-msg" class="clip-player-status-msg">Loading clip...</div>
+        <button id="clip-player-retry-btn" class="clip-player-retry-btn" type="button" style="display:none;">Retry</button>
+      </div>
+    </div>
+    <div id="clip-player-actions" class="clip-player-actions"></div>
+  </div>
+</div>
+
+<!-- ══════════════════ ADMIN MODAL ══════════════════ -->
+<div id="admin-modal">
+  <div class="admin-modal-content">
+    <div class="admin-modal-header">
+      <h2 class="inline-flex items-center gap-2">
+        <svg class="h-5 w-5 text-violet-400" viewBox="0 0 20 20" fill="currentColor" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+          <path d="M3 3.75A.75.75 0 013.75 3h12.5a.75.75 0 01.75.75V5a.75.75 0 01-.75.75H3.75A.75.75 0 013 5V3.75zM3 8.75A.75.75 0 013.75 8h5.5a.75.75 0 01.75.75v7.5a.75.75 0 01-.75.75h-5.5a.75.75 0 01-.75-.75v-7.5zM11 8.75A.75.75 0 0111.75 8h4.5a.75.75 0 01.75.75v2.5a.75.75 0 01-.75.75h-4.5a.75.75 0 01-.75-.75v-2.5zM11 14.75a.75.75 0 01.75-.75h4.5a.75.75 0 01.75.75v1.5a.75.75 0 01-.75.75h-4.5a.75.75 0 01-.75-.75v-1.5z"/>
+        </svg>
+        Database Admin
+      </h2>
+      <button class="admin-close-btn" id="admin-close-btn">✕</button>
+    </div>
+    <div id="admin-body">Loading...</div>
+  </div>
+</div>
+
+<!-- ══════════════════ CROP MODAL ══════════════════ -->
+<div id="crop-modal">
+  <div class="crop-modal-content">
+    <div class="admin-modal-header" style="margin-bottom: 14px;">
+      <h2 id="crop-title" class="inline-flex items-center gap-2">
+        <svg class="h-5 w-5 text-violet-400" viewBox="0 0 20 20" fill="currentColor" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+          <path d="M4.25 4.25A.75.75 0 015 3.5h1.5a.75.75 0 010 1.5H5.75v.75a.75.75 0 01-1.5 0v-1.5zM13.5 3.5a.75.75 0 000 1.5h.75v.75a.75.75 0 001.5 0v-1.5a.75.75 0 00-.75-.75H13.5zM4.25 13.5a.75.75 0 011.5 0v.75h.75a.75.75 0 010 1.5H5a.75.75 0 01-.75-.75V13.5zM15 14.25h-1.5a.75.75 0 000 1.5H15a.75.75 0 00.75-.75v-1.5a.75.75 0 00-1.5 0v.75zM7.5 9a1.5 1.5 0 113 0v2.25a.75.75 0 001.5 0V9a3 3 0 10-6 0v2.25a.75.75 0 001.5 0V9z"/>
+        </svg>
+        Edit for Upload
+      </h2>
+      <button class="admin-close-btn" id="crop-close-btn">✕</button>
+    </div>
+
+    <div class="crop-layout">
+      <div class="crop-main">
+        <div class="crop-preview-wrap">
+          <div class="crop-preview">
+            <video id="crop-preview-media" controls playsinline preload="auto"></video>
+            <div id="cam-box" class="crop-box">
+              <span class="label">Cam (Top)</span>
+              <span class="crop-handle n" data-handle="n"></span>
+              <span class="crop-handle e" data-handle="e"></span>
+              <span class="crop-handle s" data-handle="s"></span>
+              <span class="crop-handle w" data-handle="w"></span>
+              <span class="crop-handle nw" data-handle="nw"></span>
+              <span class="crop-handle ne" data-handle="ne"></span>
+              <span class="crop-handle sw" data-handle="sw"></span>
+              <span class="crop-handle se" data-handle="se"></span>
+            </div>
+            <div id="game-box" class="crop-box">
+              <span class="label">Gameplay (Bottom)</span>
+              <span class="crop-handle n" data-handle="n"></span>
+              <span class="crop-handle e" data-handle="e"></span>
+              <span class="crop-handle s" data-handle="s"></span>
+              <span class="crop-handle w" data-handle="w"></span>
+              <span class="crop-handle nw" data-handle="nw"></span>
+              <span class="crop-handle ne" data-handle="ne"></span>
+              <span class="crop-handle sw" data-handle="sw"></span>
+              <span class="crop-handle se" data-handle="se"></span>
+            </div>
+          </div>
+        </div>
+
+        <div class="crop-group split-editor-left" id="split-editor-panel">
+          <div class="split-header-row">
+            <h4>Split Timeline</h4>
+            <div id="split-current-time" class="split-current-time">▶️ 00:00.00 <span class="dim">|</span> ⏱️ --:--.--</div>
+          </div>
+          <div class="split-tools">
+            <div class="split-tools-main">
+              <button type="button" class="split-btn" id="split-add-btn" title="Split at current time (S)">
+                <span class="glyph">✂</span><span class="txt">Split</span>
+              </button>
+            </div>
+            <div class="split-tools-meta">
+              <div class="split-overflow">
+                <button type="button" class="split-btn icon-only" id="split-more-btn" aria-label="More split options" title="More options">⋯</button>
+                <div id="split-more-menu" class="split-overflow-menu" role="menu" aria-label="Split options">
+                  <button type="button" class="split-btn" id="split-restore-all-btn"><span class="glyph">↺</span><span class="txt">Restore all</span></button>
+                  <button type="button" class="split-btn" id="split-clear-btn"><span class="glyph">⊘</span><span class="txt">Clear cuts</span></button>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="split-timeline-wrap">
+            <div id="split-ruler" class="split-ruler"></div>
+            <div class="split-track-wrap">
+              <div id="split-track" class="split-track"></div>
+              <div id="split-playhead" class="split-playhead"></div>
+            </div>
+          </div>
+          <div id="split-empty-note" class="split-empty-note"></div>
+        </div>
+      </div>
+
+      <div class="crop-side">
+        <div class="crop-group">
+          <h4>Edit Instructions</h4>
+          <p class="crop-help">Drag inside a box to move it. Drag an edge or corner handle to resize it. Blue box is the top (cam), orange box is the bottom (gameplay).</p>
+          <div class="crop-toggle-row" id="cam-toggle-row">
+            <span>Camera</span>
+            <div id="cam-enabled-slider" class="cam-toggle-switch" tabindex="0" role="switch" aria-checked="true" aria-label="Camera toggle">
+              <div id="cam-enabled-slider-fill" class="cam-toggle-slider"></div>
+              <div class="cam-toggle-labels">
+                <span id="cam-enabled-on">On</span>
+                <span id="cam-enabled-off">Off</span>
+              </div>
+            </div>
+            <strong id="cam-enabled-label">On</strong>
+          </div>
+          <div class="crop-toggle-row" id="twitch-name-toggle-row">
+            <span>Twitch name</span>
+            <div id="twitch-name-enabled-slider" class="cam-toggle-switch" tabindex="0" role="switch" aria-checked="false" aria-label="Twitch name toggle">
+              <div id="twitch-name-enabled-slider-fill" class="cam-toggle-slider"></div>
+              <div class="cam-toggle-labels">
+                <span id="twitch-name-enabled-on">On</span>
+                <span id="twitch-name-enabled-off">Off</span>
+              </div>
+            </div>
+            <strong id="twitch-name-enabled-label">Off</strong>
+          </div>
+          <div class="crop-toggle-row" id="preview-borders-toggle-row">
+            <span>Preview borders</span>
+            <div id="preview-borders-enabled-slider" class="cam-toggle-switch" tabindex="0" role="switch" aria-checked="true" aria-label="Preview borders toggle">
+              <div id="preview-borders-enabled-slider-fill" class="cam-toggle-slider"></div>
+              <div class="cam-toggle-labels">
+                <span id="preview-borders-enabled-on">On</span>
+                <span id="preview-borders-enabled-off">Off</span>
+              </div>
+            </div>
+            <strong id="preview-borders-enabled-label">On</strong>
+          </div>
+        </div>
+        <div class="crop-group">
+          <h4>TikTok Output Preview</h4>
+          <div class="output-preview-wrap">
+            <canvas id="output-preview" width="540" height="960"></canvas>
+            <div id="output-cam-area" class="output-cam-area" style="display:none; top:0; height:30%;">
+              <span class="output-cam-label">Camera Area</span>
+              <span id="output-cam-resize" class="output-cam-resize"></span>
+            </div>
+            <div id="output-game-area" class="output-game-area" style="display:none; top:30%; height:70%;">
+              <span id="output-game-resize" class="output-cam-resize"></span>
+              <span class="output-cam-label">Gameplay Area</span>
+            </div>
+            <button id="output-cam-move-handle" type="button" class="output-move-handle output-cam-move-handle" style="display:none;">Move Camera</button>
+            <button id="output-game-move-handle" type="button" class="output-move-handle output-game-move-handle" style="display:none;">Move Gameplay</button>
+            <button id="output-cam-resize-handle" type="button" class="output-resize-handle output-cam-resize-handle" style="display:none;" aria-label="Resize camera area"></button>
+            <button id="output-game-resize-handle" type="button" class="output-resize-handle output-game-resize-handle" style="display:none;" aria-label="Resize gameplay area"></button>
+            <div id="output-name-badge" class="output-name-badge">
+              <img id="output-name-badge-logo" src="/pictures/twitchLogo.png" alt="Twitch" draggable="false" />
+              <span id="output-name-badge-text"></span>
+            </div>
+            <div id="output-center-guide-x" class="output-center-guide output-center-guide-x"></div>
+            <div id="output-center-guide-y" class="output-center-guide output-center-guide-y"></div>
+          </div>
+          <p class="preview-note">Drag camera or gameplay area to move. Drag each resize edge to change area height.</p>
+        </div>
+        <div class="crop-actions">
+          <button class="btn-secondary" id="crop-reset-btn">Reset</button>
+          <button class="btn-secondary" id="crop-cancel-btn">Cancel</button>
+          <button class="btn-primary" id="crop-save-btn">Save Edit</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════ STREAMER SETUP MODAL ══════════════════ -->
+<div id="streamer-setup-modal" class="fixed inset-0 z-[1200] hidden items-center justify-center bg-black/75 backdrop-blur-sm px-4">
+  <div class="w-full max-w-xl rounded-2xl border border-white/15 bg-zinc-900/90 p-5 shadow-2xl shadow-black/60 ring-1 ring-violet-400/20">
+    <h3 class="text-lg font-semibold mb-1 text-zinc-100">Set Your Streamers</h3>
+    <p class="text-sm text-zinc-300 mb-3">Add Twitch logins or broadcaster IDs (comma, space, or one per line).</p>
+    <textarea id="streamer-setup-input" class="w-full min-h-[130px] rounded-xl border border-white/10 bg-zinc-800/70 px-3 py-2 text-sm text-zinc-100 placeholder:text-zinc-400 focus:outline-none focus:ring-2 focus:ring-violet-500/60 focus:border-violet-400/70" placeholder="treelover&#10;shroud&#10;123456789"></textarea>
+    <div class="mt-3 flex gap-2 justify-end">
+      <button id="streamer-setup-save" class="rounded-xl border border-violet-400/60 bg-gradient-to-r from-violet-600 to-fuchsia-600 px-4 py-2 text-sm font-semibold text-white shadow-lg shadow-violet-900/40 hover:brightness-110">Save Streamers</button>
+    </div>
+    <div id="streamer-setup-error" class="mt-2 text-sm text-rose-400 hidden"></div>
+  </div>
+</div>
+
+<!-- ══════════════════ ADD STREAMER MODAL ══════════════════ -->
+<div id="add-streamer-modal" class="fixed inset-0 z-[1200] hidden items-center justify-center bg-black/70 px-4">
+  <div class="w-full max-w-md rounded-2xl border border-zinc-700 bg-zinc-900 p-5 shadow-2xl shadow-black/50">
+    <h3 class="text-lg font-semibold mb-1">Add Streamer</h3>
+    <p class="text-sm text-zinc-400 mb-3">Enter Twitch login or broadcaster ID.</p>
+    <input id="add-streamer-input" class="w-full rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm" placeholder="treelover" />
+    <div class="mt-3 flex gap-2 justify-end">
+      <button id="add-streamer-cancel" class="rounded-lg border border-zinc-700 px-3 py-2 text-sm text-zinc-300">Cancel</button>
+      <button id="add-streamer-save" class="rounded-lg border border-violet-500 bg-violet-600 px-4 py-2 text-sm font-semibold text-white hover:bg-violet-500">Add</button>
+    </div>
+    <div id="add-streamer-error" class="mt-2 text-sm text-red-400 hidden"></div>
+    <div class="mt-4 border-t border-zinc-700 pt-3">
+      <p class="text-xs uppercase tracking-wide text-zinc-400 mb-2">Current Streamers</p>
+      <div id="managed-streamers-list" class="max-h-48 overflow-y-auto space-y-2 text-sm text-zinc-200"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+  // ── State ───────────────────────────────────────────────────────────────
+  let allClips = [];
+  let currentPeriod = 30;
+  let currentFilter = 'all';
+  const collapsedStreamers = new Set();
+  let activeCropClip = null;
+  let cropState = null;
+    let dragState = null;
+    let outputCamDragState = null;
+    let outputGameplayDragState = null;
+    let outputNameBadgeDragState = null;
+    let outputNameBadgeSnapState = { x: false, y: false };
+    let outputNameBadgeLayout = null;
+    let selectedSplitSegmentIndex = null;
+    let splitOverflowMenuOpen = false;
+  let cropPreviewRaf = null;
+  let cropFallbackImage = null;
+  const TWITCH_LOGO_PATH = '/pictures/twitchLogo.png';
+  const twitchLogoImage = new Image();
+  twitchLogoImage.src = TWITCH_LOGO_PATH;
+  let adminData = null;
+  let adminSearchQuery = '';
+  let adminSearchDraft = '';
+  let adminSort = { key: 'created_at', dir: 'desc' };
+  let currentUsername = '';
+  let authMode = 'login';
+  let needsStreamerSetup = false;
+  let activeUploadJobId = null;
+  let activePlaybackClipId = null;
+  let activePlaybackRequestToken = '';
+  let uploadPollTimer = null;
+  const downloadInProgressIds = new Set();
+
+  const DASHBOARD_PREFS_KEY = 'clipReviewer.dashboardPrefs.v1';
+  const ADMIN_PREFS_KEY = 'clipReviewer.adminPrefs.v1';
+  const BADGE_CENTER_SNAP_THRESHOLD = 0.015;
+
+  const DEFAULT_CROP = {
+    camEnabled: true,
+    twitchNameEnabled: false,
+    previewBordersEnabled: true,
+    twitchNamePos: { x: 0.04, y: 0.04 },
+    cam: { x: 0.62, y: 0.02, w: 0.35, h: 0.32 },
+    gameplay: { x: 0, y: 0.2, w: 1, h: 0.8 },
+    camOutput: { y: 0, h: 0.30 },
+    gameplayOutput: { y: 0.30, h: 0.70 },
+    splitPoints: [],
+    splitDeletedSegments: [],
+    splitZoomSegments: [],
+  };
+
+  // ── Helpers ─────────────────────────────────────────────────────────────
+  function formatDate(iso) {
+    return new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+  }
+
+  function formatViews(n) {
+    if (n >= 1000) return (n / 1000).toFixed(1) + 'k';
+    return n.toString();
+  }
+
+  const uiIcons = {
+    user: '<svg class="h-3.5 w-3.5 text-zinc-400" viewBox="0 0 20 20" fill="currentColor" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><path d="M10 10a3.5 3.5 0 100-7 3.5 3.5 0 000 7z"/><path d="M2.5 16.5A4.5 4.5 0 017 12h6a4.5 4.5 0 014.5 4.5.5.5 0 01-.5.5H3a.5.5 0 01-.5-.5z"/></svg>',
+    eye: '<svg class="h-3.5 w-3.5 text-zinc-400" viewBox="0 0 20 20" fill="currentColor" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><path d="M10 4c4.2 0 7.1 2.7 8.5 5.3a1.6 1.6 0 010 1.4C17.1 13.3 14.2 16 10 16S2.9 13.3 1.5 10.7a1.6 1.6 0 010-1.4C2.9 6.7 5.8 4 10 4zm0 2.5a3.5 3.5 0 100 7 3.5 3.5 0 000-7z"/></svg>',
+    calendar: '<svg class="h-3.5 w-3.5 text-zinc-400" viewBox="0 0 20 20" fill="currentColor" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><path d="M6 2.75a.75.75 0 011.5 0V4h5V2.75a.75.75 0 011.5 0V4h1.25A2.75 2.75 0 0118 6.75v8.5A2.75 2.75 0 0115.25 18h-10.5A2.75 2.75 0 012 15.25v-8.5A2.75 2.75 0 014.75 4H6V2.75zM3.5 8.5v6.75c0 .69.56 1.25 1.25 1.25h10.5c.69 0 1.25-.56 1.25-1.25V8.5h-13z"/></svg>'
+  };
+
+  function readPrefs(key, fallback) {
+    try {
+      const raw = localStorage.getItem(key);
+      if (!raw) return fallback;
+      return { ...fallback, ...JSON.parse(raw) };
+    } catch {
+      return fallback;
+    }
+  }
+
+  function saveDashboardPrefs() {
+    localStorage.setItem(DASHBOARD_PREFS_KEY, JSON.stringify({
+      currentPeriod,
+      currentFilter,
+    }));
+  }
+
+  function saveAdminPrefs() {
+    localStorage.setItem(ADMIN_PREFS_KEY, JSON.stringify({
+      adminSearchQuery,
+      adminSearchDraft,
+      adminSort,
+    }));
+  }
+
+  function applyStoredPrefs() {
+    const dashPrefs = readPrefs(DASHBOARD_PREFS_KEY, { currentPeriod: 30, currentFilter: 'all' });
+    const periodOptions = new Set([30, 60, 365]);
+    if (periodOptions.has(Number(dashPrefs.currentPeriod))) {
+      currentPeriod = Number(dashPrefs.currentPeriod);
+    }
+    const filterOptions = new Set(['all', 'approved', 'pending', 'sorted-out']);
+    if (filterOptions.has(dashPrefs.currentFilter)) {
+      currentFilter = dashPrefs.currentFilter;
+    }
+
+    const adminPrefs = readPrefs(ADMIN_PREFS_KEY, {
+      adminSearchQuery: '',
+      adminSearchDraft: '',
+      adminSort: { key: 'created_at', dir: 'desc' },
+    });
+    adminSearchQuery = adminPrefs.adminSearchQuery || '';
+    adminSearchDraft = adminPrefs.adminSearchDraft || adminSearchQuery;
+    if (adminPrefs.adminSort?.key && adminPrefs.adminSort?.dir) {
+      adminSort = adminPrefs.adminSort;
+    }
+
+    document.querySelectorAll('.period-btn').forEach(btn => {
+      btn.classList.toggle('active', Number(btn.dataset.days) === currentPeriod);
+    });
+    document.querySelectorAll('.filter-btn').forEach(btn => {
+      btn.classList.toggle('active', btn.dataset.filter === currentFilter);
+    });
+    document.querySelector('.period-btns').classList.toggle('disabled', currentFilter === 'approved' || currentFilter === 'sorted-out');
+  }
+
+  function thumbnailSrc(url) {
+    return url.replace('%{width}', '480').replace('%{height}', '270');
+  }
+
+  function clipVideoSrc(clip) {
+    return `/api/clips/${encodeURIComponent(clip.id)}/video`;
+  }
+
+  function sortClipsPerStreamer(a, b) {
+    const streamerOrder = a.broadcaster_name.localeCompare(b.broadcaster_name, undefined, { sensitivity: 'base' });
+    if (streamerOrder !== 0) return streamerOrder;
+    if (b.view_count !== a.view_count) return b.view_count - a.view_count;
+    return new Date(b.created_at) - new Date(a.created_at);
+  }
+
+  function setNavbarUsername(username) {
+    const el = document.getElementById('navbar-username');
+    const safe = String(username || '').trim();
+    el.textContent = safe ? `@${safe}` : '@-';
+  }
+
+  // ── Login ────────────────────────────────────────────────────────────────
+  function setAuthMode(mode) {
+    authMode = mode === 'register' ? 'register' : 'login';
+    const loginModeBtn = document.getElementById('auth-mode-login');
+    const registerModeBtn = document.getElementById('auth-mode-register');
+    const slider = document.getElementById('auth-mode-slider');
+    const loginBtn = document.getElementById('login-btn');
+    const hint = document.getElementById('auth-mode-hint');
+
+    const loginActive = authMode === 'login';
+    slider.style.transform = loginActive ? 'translateX(0%)' : 'translateX(100%)';
+    loginModeBtn.classList.toggle('text-white', loginActive);
+    loginModeBtn.classList.toggle('text-zinc-400', !loginActive);
+    loginModeBtn.classList.toggle('font-semibold', loginActive);
+    registerModeBtn.classList.toggle('text-white', !loginActive);
+    registerModeBtn.classList.toggle('text-zinc-400', loginActive);
+    registerModeBtn.classList.toggle('font-semibold', !loginActive);
+    loginBtn.textContent = loginActive ? 'Sign In' : 'Register';
+    hint.textContent = loginActive
+      ? 'New here? Switch to Register to create an account.'
+      : 'Create your account, then add your streamer list.';
+  }
+
+  async function submitAuth() {
+    if (authMode === 'register') {
+      await register();
+      return;
+    }
+    await login();
+  }
+
+  async function checkAuth() {
+    const r = await fetch('/api/auth');
+    const data = await r.json();
+    if (data.authenticated) {
+      currentUsername = String(data.username || '');
+      setNavbarUsername(currentUsername);
+      needsStreamerSetup = !!data.needsStreamerSetup;
+      showApp();
+    }
+  }
+
+  document.getElementById('login-btn').addEventListener('click', submitAuth);
+  document.getElementById('auth-mode-switch').addEventListener('click', (e) => {
+    const rect = e.currentTarget.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    setAuthMode(x < rect.width / 2 ? 'login' : 'register');
+  });
+  document.getElementById('auth-mode-switch').addEventListener('keydown', (e) => {
+    if (e.key === 'ArrowLeft') setAuthMode('login');
+    if (e.key === 'ArrowRight') setAuthMode('register');
+  });
+  document.getElementById('username-input').addEventListener('keydown', e => {
+    if (e.key === 'Enter') submitAuth();
+  });
+  document.getElementById('password-input').addEventListener('keydown', e => {
+    if (e.key === 'Enter') submitAuth();
+  });
+
+  async function login() {
+    const username = document.getElementById('username-input').value;
+    const pw = document.getElementById('password-input').value;
+    const errEl = document.getElementById('login-error');
+    errEl.style.display = 'none';
+
+    const r = await fetch('/api/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username, password: pw }),
+    });
+
+    if (r.ok) {
+      const data = await r.json().catch(() => ({}));
+      currentUsername = String(data.username || username || '');
+      setNavbarUsername(currentUsername);
+      needsStreamerSetup = !!data.needsStreamerSetup;
+      showApp();
+    } else {
+      errEl.style.display = 'block';
+      document.getElementById('username-input').value = '';
+      document.getElementById('password-input').value = '';
+    }
+  }
+
+  async function register() {
+    const username = document.getElementById('username-input').value;
+    const pw = document.getElementById('password-input').value;
+    const errEl = document.getElementById('login-error');
+    errEl.style.display = 'none';
+
+    const r = await fetch('/api/register', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username, password: pw }),
+    });
+
+    if (r.ok) {
+      const data = await r.json().catch(() => ({}));
+      currentUsername = String(data.username || username || '');
+      setNavbarUsername(currentUsername);
+      needsStreamerSetup = !!data.needsStreamerSetup;
+      showApp();
+      return;
+    }
+
+    const err = await r.json().catch(() => ({}));
+    errEl.textContent = err.error || 'Registration failed';
+    errEl.style.display = 'block';
+  }
+
+  // ── Logout ───────────────────────────────────────────────────────────────
+  document.getElementById('logout-btn').addEventListener('click', async () => {
+    await fetch('/api/logout', { method: 'POST' });
+    document.getElementById('app-screen').style.display = 'none';
+    document.getElementById('login-screen').style.display = 'flex';
+    document.getElementById('username-input').value = '';
+    document.getElementById('password-input').value = '';
+    document.getElementById('streamer-setup-modal').classList.add('hidden');
+    document.getElementById('streamer-setup-modal').classList.remove('flex');
+    document.getElementById('add-streamer-modal').classList.add('hidden');
+    document.getElementById('add-streamer-modal').classList.remove('flex');
+    currentUsername = '';
+    setNavbarUsername('');
+    setAuthMode('login');
+  });
+
+  // ── Show app ─────────────────────────────────────────────────────────────
+  function showApp() {
+    document.getElementById('login-screen').style.display = 'none';
+    document.getElementById('app-screen').style.display = 'block';
+    restoreActiveUploadJob();
+    if (needsStreamerSetup) {
+      openStreamerSetupModal();
+    }
+    loadClips();
+  }
+
+  function openStreamerSetupModal() {
+    const modal = document.getElementById('streamer-setup-modal');
+    const err = document.getElementById('streamer-setup-error');
+    err.textContent = '';
+    err.classList.add('hidden');
+    modal.classList.remove('hidden');
+    modal.classList.add('flex');
+  }
+
+  function closeStreamerSetupModal() {
+    const modal = document.getElementById('streamer-setup-modal');
+    modal.classList.add('hidden');
+    modal.classList.remove('flex');
+  }
+
+  function openAddStreamerModal() {
+    const modal = document.getElementById('add-streamer-modal');
+    const err = document.getElementById('add-streamer-error');
+    err.textContent = '';
+    err.classList.add('hidden');
+    modal.classList.remove('hidden');
+    modal.classList.add('flex');
+    void loadManagedStreamers();
+    document.getElementById('add-streamer-input').focus();
+  }
+
+  function closeAddStreamerModal() {
+    const modal = document.getElementById('add-streamer-modal');
+    modal.classList.add('hidden');
+    modal.classList.remove('flex');
+    document.getElementById('add-streamer-input').value = '';
+  }
+
+  document.getElementById('manage-streamers-btn').addEventListener('click', openAddStreamerModal);
+  document.getElementById('add-streamer-cancel').addEventListener('click', closeAddStreamerModal);
+  document.getElementById('add-streamer-modal').addEventListener('click', (e) => {
+    if (e.target.id === 'add-streamer-modal') closeAddStreamerModal();
+  });
+
+  document.getElementById('streamer-setup-save').addEventListener('click', async () => {
+    const input = document.getElementById('streamer-setup-input').value;
+    const err = document.getElementById('streamer-setup-error');
+    err.textContent = '';
+    err.classList.add('hidden');
+
+    const res = await fetch('/api/me/streamers', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ streamers: input }),
+    });
+
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      err.textContent = data.error || 'Could not save streamers';
+      err.classList.remove('hidden');
+      return;
+    }
+
+    const data = await res.json().catch(() => ({}));
+    needsStreamerSetup = false;
+    closeStreamerSetupModal();
+    if (Array.isArray(data.unresolved) && data.unresolved.length) {
+      showToast(`Saved streamers. Could not resolve: ${data.unresolved.join(', ')}`, 'error');
+    } else {
+      showToast('Streamers saved.');
+    }
+    await refreshClipsFromTwitch();
+  });
+
+  function renderManagedStreamers(streamers) {
+    const listEl = document.getElementById('managed-streamers-list');
+    if (!Array.isArray(streamers) || streamers.length === 0) {
+      listEl.innerHTML = '<div class="rounded-lg border border-zinc-700 bg-zinc-950/70 px-3 py-2 text-zinc-400">No streamers added yet.</div>';
+      return;
+    }
+
+    listEl.innerHTML = streamers.map(s => {
+      const displayName = String(s.display_name || s.twitch_login || `Streamer ${s.twitch_broadcaster_id}`);
+      const name = escHtml(displayName);
+      const sub = escHtml(s.twitch_login ? `@${s.twitch_login}` : 'Name pending from Twitch');
+      const rowId = Number(s.id || 0);
+      return `
+        <div class="flex items-center justify-between gap-2 rounded-lg border border-zinc-700 bg-zinc-950/60 px-3 py-2">
+          <div class="min-w-0">
+            <div class="truncate text-zinc-100">${name}</div>
+            <div class="truncate text-xs text-zinc-400">${sub}</div>
+          </div>
+          <button type="button" class="shrink-0 rounded-md border border-red-500/50 px-2 py-1 text-xs font-semibold text-red-300 hover:bg-red-500/20" data-remove-streamer-row-id="${rowId}" title="Delete ${name}">Delete</button>
+        </div>
+      `;
+    }).join('');
+
+    listEl.querySelectorAll('[data-remove-streamer-row-id]').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const raw = btn.getAttribute('data-remove-streamer-row-id');
+        const rowId = Number(raw);
+        if (!Number.isInteger(rowId) || rowId <= 0) return;
+        await removeStreamerFromManagedList(rowId);
+      });
+    });
+  }
+
+  async function loadManagedStreamers() {
+    const listEl = document.getElementById('managed-streamers-list');
+    listEl.innerHTML = '<div class="rounded-lg border border-zinc-700 bg-zinc-950/70 px-3 py-2 text-zinc-400">Loading...</div>';
+    try {
+      const res = await fetch('/api/me/streamers');
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || 'Failed to load streamers');
+      renderManagedStreamers(data.streamers || []);
+    } catch (err) {
+      listEl.innerHTML = `<div class="rounded-lg border border-red-500/40 bg-red-950/20 px-3 py-2 text-red-300">${escHtml(err.message || 'Failed to load streamers')}</div>`;
+    }
+  }
+
+  async function removeStreamerFromManagedList(rowId) {
+    const err = document.getElementById('add-streamer-error');
+    err.textContent = '';
+    err.classList.add('hidden');
+
+    const res = await fetch(`/api/me/streamers/by-row/${encodeURIComponent(String(rowId))}`, {
+      method: 'DELETE',
+    });
+    const data = await res.json().catch(() => ({}));
+
+    if (!res.ok) {
+      err.textContent = data.error || 'Failed to remove streamer';
+      err.classList.remove('hidden');
+      return;
+    }
+
+    renderManagedStreamers(data.streamers || []);
+    showToast(data.removedClips > 0 ? `Streamer removed. ${data.removedClips} clips removed.` : 'Streamer removed.');
+    await loadClips();
+  }
+
+  async function addSingleStreamer() {
+    const input = document.getElementById('add-streamer-input').value.trim();
+    const err = document.getElementById('add-streamer-error');
+    err.textContent = '';
+    err.classList.add('hidden');
+    if (!input) {
+      err.textContent = 'Please enter a streamer login or ID.';
+      err.classList.remove('hidden');
+      return;
+    }
+
+    const res = await fetch('/api/me/streamers/add', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ streamer: input }),
+    });
+
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      err.textContent = data.error || 'Failed to add streamer';
+      err.classList.remove('hidden');
+      return;
+    }
+
+    document.getElementById('add-streamer-input').value = '';
+    await loadManagedStreamers();
+    showToast('Streamer added. Refreshing clips...');
+    await refreshClipsFromTwitch();
+  }
+
+  document.getElementById('add-streamer-save').addEventListener('click', addSingleStreamer);
+  document.getElementById('add-streamer-input').addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') addSingleStreamer();
+  });
+
+  // ── Period buttons ───────────────────────────────────────────────────────
+  document.querySelectorAll('.period-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.period-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      currentPeriod = parseInt(btn.dataset.days);
+      saveDashboardPrefs();
+      loadClips();
+    });
+  });
+
+  // ── Filter buttons ───────────────────────────────────────────────────────
+  document.querySelectorAll('.filter-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      currentFilter = btn.dataset.filter;
+      document.querySelector('.period-btns').classList.toggle('disabled', currentFilter === 'approved' || currentFilter === 'sorted-out');
+      saveDashboardPrefs();
+      renderClips();
+    });
+  });
+
+  document.getElementById('refresh-clips-btn').addEventListener('click', refreshClipsFromTwitch);
+
+  // ── Load clips ───────────────────────────────────────────────────────────
+  async function loadClips() {
+    document.getElementById('loading').style.display = 'flex';
+    document.getElementById('clips-container').innerHTML = '';
+    document.getElementById('empty').style.display = 'none';
+    document.getElementById('stats-bar').textContent = 'Loading clips from database…';
+
+    try {
+      const r = await fetch(`/api/clips`);
+      if (!r.ok) throw new Error('Failed');
+      allClips = await r.json();
+    } catch {
+      allClips = [];
+    }
+
+    document.getElementById('loading').style.display = 'none';
+    renderClips();
+  }
+
+  async function refreshClipsFromTwitch() {
+    const btn = document.getElementById('refresh-clips-btn');
+    const oldText = btn.textContent;
+    btn.disabled = true;
+    btn.textContent = 'Refreshing...';
+
+    try {
+      const r = await fetch('/api/clips/refresh', { method: 'POST' });
+      const data = await r.json().catch(() => ({}));
+      if (!r.ok) throw new Error(data.error || 'Refresh failed');
+      showToast(`Refresh done: ${data.fetched || 0} clips fetched.`);
+      await loadClips();
+    } catch (err) {
+      showToast(`Refresh failed: ${err.message || 'Unknown error'}`, 'error');
+    } finally {
+      btn.disabled = false;
+      btn.textContent = oldText;
+    }
+  }
+
+  function updateUploadControls(job) {
+    const statusEl = document.getElementById('upload-status-chip');
+    const startBtn = document.getElementById('bulk-upload-btn');
+    const pauseBtn = document.getElementById('upload-pause-btn');
+    const resumeBtn = document.getElementById('upload-resume-btn');
+    const cancelBtn = document.getElementById('upload-cancel-btn');
+
+    if (!job) {
+      statusEl.textContent = 'Upload queue idle';
+      startBtn.disabled = false;
+      startBtn.textContent = 'Start Upload';
+      pauseBtn.disabled = true;
+      resumeBtn.disabled = true;
+      cancelBtn.disabled = true;
+      return;
+    }
+
+    const progress = `${job.processed}/${job.total}`;
+    const clipSuffix = job.currentTitle ? ` - ${job.currentTitle}` : '';
+    statusEl.textContent = `${job.status.toUpperCase()} ${progress}${clipSuffix}`;
+
+    const active = job.status === 'running' || job.status === 'paused';
+    startBtn.disabled = active;
+    startBtn.textContent = active ? 'Upload Running' : 'Start Upload';
+    pauseBtn.disabled = job.status !== 'running';
+    resumeBtn.disabled = job.status !== 'paused';
+    cancelBtn.disabled = !active;
+  }
+
+  function stopUploadPolling() {
+    if (uploadPollTimer) {
+      clearInterval(uploadPollTimer);
+      uploadPollTimer = null;
+    }
+  }
+
+  async function pollUploadJobStatus() {
+    if (!activeUploadJobId) {
+      updateUploadControls(null);
+      stopUploadPolling();
+      return;
+    }
+
+    try {
+      const res = await fetch(`/api/tiktok/upload-jobs/${encodeURIComponent(activeUploadJobId)}`);
+      if (res.status === 404) {
+        activeUploadJobId = null;
+        updateUploadControls(null);
+        stopUploadPolling();
+        return;
+      }
+
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !data.job) throw new Error(data.error || 'Failed to read upload job');
+
+      updateUploadControls(data.job);
+      if (data.job.status === 'completed' || data.job.status === 'failed' || data.job.status === 'cancelled') {
+        activeUploadJobId = null;
+        stopUploadPolling();
+        if (data.job.failed > 0) {
+          showToast(`Upload finished: ${data.job.uploaded} uploaded, ${data.job.failed} failed.`, 'error');
+        } else {
+          showToast(`Upload finished: ${data.job.uploaded}/${data.job.total} uploaded.`);
+        }
+        updateUploadControls(null);
+      }
+    } catch {
+      // Keep polling so transient failures do not hide active jobs.
+    }
+  }
+
+  function startUploadPolling() {
+    stopUploadPolling();
+    uploadPollTimer = setInterval(pollUploadJobStatus, 1500);
+    void pollUploadJobStatus();
+  }
+
+  async function restoreActiveUploadJob() {
+    try {
+      const res = await fetch('/api/tiktok/upload-jobs/active');
+      const data = await res.json().catch(() => ({}));
+      const active = data.active || null;
+      activeUploadJobId = active?.jobId || null;
+      updateUploadControls(active);
+      if (activeUploadJobId) startUploadPolling();
+    } catch {
+      updateUploadControls(null);
+    }
+  }
+
+  // ── Render ───────────────────────────────────────────────────────────────
+  function renderClips() {
+    const container = document.getElementById('clips-container');
+    container.innerHTML = '';
+
+    const activeClips = [...allClips];
+
+    const cutoff = new Date();
+    cutoff.setDate(cutoff.getDate() - currentPeriod);
+
+    const periodFiltered = activeClips
+      .filter(c => new Date(c.created_at) >= cutoff && !c.sorted_out)
+      .sort(sortClipsPerStreamer);
+
+    const allApproved = activeClips
+      .filter(c => c.approved && !c.sorted_out)
+      .sort(sortClipsPerStreamer);
+
+    const allSortedOut = activeClips
+      .filter(c => c.sorted_out)
+      .sort(sortClipsPerStreamer);
+
+    document.getElementById('approved-count').textContent = `${allApproved.length} approved`;
+
+    let filtered;
+    let statsHtml;
+
+    if (currentFilter === 'sorted-out') {
+      filtered = allSortedOut;
+      statsHtml = `<strong>${filtered.length}</strong> sorted out clip${filtered.length !== 1 ? 's' : ''} &nbsp;·&nbsp; all time`;
+    } else if (currentFilter === 'approved') {
+      filtered = allApproved;
+      statsHtml = `<strong>${filtered.length}</strong> approved clip${filtered.length !== 1 ? 's' : ''} &nbsp;·&nbsp; all time`;
+    } else if (currentFilter === 'pending') {
+      filtered = periodFiltered.filter(c => !c.approved);
+      statsHtml = `Showing <strong>${filtered.length}</strong> pending &nbsp;·&nbsp; <strong>${periodFiltered.filter(c => c.approved).length}</strong> approved in period`;
+    } else {
+      filtered = periodFiltered;
+      statsHtml = `Showing <strong>${filtered.length}</strong> clips &nbsp;·&nbsp; <strong>${periodFiltered.filter(c => c.approved).length}</strong> approved &nbsp;·&nbsp; <strong>${periodFiltered.filter(c => !c.approved).length}</strong> pending`;
+    }
+
+    document.getElementById('stats-bar').innerHTML = statsHtml;
+
+    if (filtered.length === 0) {
+      document.getElementById('empty').style.display = 'block';
+      return;
+    }
+    document.getElementById('empty').style.display = 'none';
+
+    const grouped = new Map();
+    for (const clip of filtered) {
+      const key = clip.broadcaster_name || 'Unknown streamer';
+      if (!grouped.has(key)) grouped.set(key, []);
+      grouped.get(key).push(clip);
+    }
+
+    grouped.forEach((clips, streamerName) => {
+      container.appendChild(buildStreamerSection(streamerName, clips));
+    });
+  }
+
+  function buildStreamerSection(streamerName, clips) {
+    const section = document.createElement('section');
+    section.className = 'streamer-section rounded-2xl border border-zinc-800/80 bg-zinc-900/70 shadow-lg shadow-black/20 mb-5 overflow-hidden';
+
+    if (collapsedStreamers.has(streamerName)) {
+      section.classList.add('collapsed');
+    }
+
+    const header = document.createElement('button');
+    header.type = 'button';
+    header.className = 'streamer-header w-full px-4 py-3 text-left flex items-center justify-between bg-zinc-800/60 hover:bg-zinc-800 transition';
+    header.innerHTML = `
+      <span>${escHtml(streamerName)}</span>
+      <span class="meta">${clips.length} clip${clips.length !== 1 ? 's' : ''} <span class="chevron">▾</span></span>
+    `;
+
+    header.addEventListener('click', () => {
+      if (collapsedStreamers.has(streamerName)) {
+        collapsedStreamers.delete(streamerName);
+        section.classList.remove('collapsed');
+      } else {
+        collapsedStreamers.add(streamerName);
+        section.classList.add('collapsed');
+      }
+    });
+
+    const clipsWrap = document.createElement('div');
+    clipsWrap.className = 'streamer-clips grid gap-4 p-4 sm:grid-cols-2 xl:grid-cols-3';
+    clips.forEach(clip => clipsWrap.appendChild(buildCard(clip)));
+
+    section.appendChild(header);
+    section.appendChild(clipsWrap);
+    return section;
+  }
+
+  // ── Toast ─────────────────────────────────────────────────────────────────
+  let toastTimer;
+  let lastBuildBlockedToastAt = 0;
+  function showToast(msg, type = 'success') {
+    const el = document.getElementById('toast');
+    el.textContent = msg;
+    el.className = `show ${type}`;
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => { el.className = ''; }, 3500);
+  }
+
+  function setGlobalBuildLock(enabled) {
+    const overlay = document.getElementById('build-lock-overlay');
+    if (!overlay) return;
+    overlay.classList.toggle('show', !!enabled);
+    overlay.setAttribute('aria-hidden', enabled ? 'false' : 'true');
+  }
+
+  function maybeShowBuildInProgressToast() {
+    const now = Date.now();
+    if ((now - lastBuildBlockedToastAt) < 1200) return;
+    lastBuildBlockedToastAt = now;
+    showToast('Build in progress. Please wait until the download finishes.');
+  }
+
+  function buildCard(clip) {
+    const card = document.createElement('div');
+    card.className = `clip-card relative rounded-2xl border border-zinc-800 bg-zinc-950/85 overflow-hidden shadow-md shadow-black/30 hover:-translate-y-0.5 hover:shadow-lg hover:shadow-black/40 transition ${clip.approved ? 'ring-1 ring-emerald-500/40' : ''}`;
+    card.id = `card-${clip.id}`;
+
+    const thumb = thumbnailSrc(clip.thumbnail_url);
+
+    card.innerHTML = `
+      ${clip.approved ? '<div class="approved-badge absolute top-3 right-3 z-10 rounded-full bg-emerald-500/90 text-white text-xs font-semibold px-3 py-1">Approved</div>' : ''}
+      <button type="button" class="thumbnail-trigger" onclick="openClipPlayerModal('${clip.id}')">
+        <div class="thumbnail-wrap relative aspect-video bg-zinc-900">
+          <img class="h-full w-full object-cover" src="${thumb}" alt="${escHtml(clip.title)}" loading="lazy" />
+          <div class="play-overlay absolute inset-0 flex items-center justify-center opacity-0 hover:opacity-100 transition bg-black/25">
+            <svg viewBox="0 0 24 24" fill="white" xmlns="http://www.w3.org/2000/svg">
+              <circle cx="12" cy="12" r="12" fill="rgba(0,0,0,0.55)"/>
+              <polygon points="9.5,7 18,12 9.5,17" fill="white"/>
+            </svg>
+          </div>
+        </div>
+      </button>
+      <div class="clip-info p-4">
+        <div class="clip-title text-sm font-semibold leading-6 mb-2" title="${escHtml(clip.title)}">${escHtml(clip.title)}</div>
+        <div class="clip-meta flex flex-wrap gap-3 text-xs text-zinc-400 mb-3">
+          <span class="inline-flex items-center gap-1.5">${uiIcons.user}${escHtml(clip.broadcaster_name)}</span>
+          <span class="inline-flex items-center gap-1.5">${uiIcons.eye}${formatViews(clip.view_count)} views</span>
+          <span class="inline-flex items-center gap-1.5">${uiIcons.calendar}${formatDate(clip.created_at)}</span>
+        </div>
+        ${buildClipActionsHtml(clip, 'card')}
+      </div>
+    `;
+    return card;
+  }
+
+  function buildClipActionsHtml(clip, mode = 'card') {
+    const wrapperClass = mode === 'modal'
+      ? 'clip-modal-actions-grid'
+      : 'clip-actions grid grid-cols-2 gap-2';
+    const downloadBusy = downloadInProgressIds.has(clip.id);
+    const downloadBtnClass = `btn-download rounded-lg px-3 py-2 text-xs font-semibold border transition ${downloadBusy ? 'border-zinc-700 text-zinc-400 opacity-60 cursor-not-allowed' : 'border-zinc-700 text-zinc-200 hover:border-violet-500 hover:text-violet-300'}`;
+    const downloadBtnText = downloadBusy ? 'Preparing...' : 'Download';
+    const downloadBtnDisabled = downloadBusy ? 'disabled' : '';
+
+    return `
+      <div class="${wrapperClass}">
+        <button class="btn-approve ${clip.approved ? 'approved bg-zinc-800 text-zinc-200 border border-zinc-700 hover:border-red-500 hover:text-red-400' : 'unapproved bg-emerald-600 text-white hover:bg-emerald-500'} rounded-lg px-3 py-2 text-xs font-semibold transition"
+                onclick="toggleApprove('${clip.id}', ${clip.approved})">
+          ${clip.approved ? 'Approved - Undo' : 'Approve'}
+        </button>
+        ${!clip.approved ? `<button class="btn-sortout ${clip.sorted_out ? 'sorted bg-amber-950 border-amber-500 text-amber-400 hover:text-red-400 hover:border-red-500' : 'bg-transparent border-zinc-700 text-zinc-300 hover:border-amber-500 hover:text-amber-400'} border rounded-lg px-3 py-2 text-xs font-semibold transition"
+                onclick="toggleSortOut('${clip.id}', ${clip.sorted_out})">
+          ${clip.sorted_out ? 'Sorted - Undo' : 'Sort Out'}
+        </button>` : ''}
+        ${clip.approved ? `<button class="btn-upload rounded-lg px-3 py-2 text-xs font-semibold border border-amber-500 text-amber-400 bg-amber-950/40 hover:text-amber-300 hover:border-amber-300 transition" onclick="openCropModal('${clip.id}')">Edit</button>` : ''}
+        ${clip.approved ? `<button class="${downloadBtnClass}" data-download-clip-id="${clip.id}" ${downloadBtnDisabled} onclick="downloadCroppedVideo('${clip.id}', this)">${downloadBtnText}</button>` : ''}
+      </div>
+    `;
+  }
+
+  function openClipPlayerModal(clipId) {
+    activePlaybackClipId = String(clipId || '');
+    activePlaybackRequestToken = '';
+    const modal = document.getElementById('clip-player-modal');
+    modal.classList.add('show');
+    renderClipPlayerModal();
+  }
+
+  function setClipPlayerStatus(state, message = '') {
+    const statusEl = document.getElementById('clip-player-status');
+    const msgEl = document.getElementById('clip-player-status-msg');
+    const retryBtn = document.getElementById('clip-player-retry-btn');
+    if (!statusEl || !msgEl || !retryBtn) return;
+
+    if (state === 'hidden') {
+      statusEl.classList.remove('show');
+      retryBtn.style.display = 'none';
+      return;
+    }
+
+    statusEl.classList.add('show');
+    msgEl.textContent = message || (state === 'error' ? 'Could not load video.' : 'Loading clip...');
+    retryBtn.style.display = state === 'error' ? 'inline-flex' : 'none';
+  }
+
+  function retryClipPlayerVideo() {
+    if (!activePlaybackClipId) return;
+    const clip = allClips.find(c => c.id === activePlaybackClipId);
+    if (!clip) return;
+    const videoEl = document.getElementById('clip-player-video');
+    activePlaybackRequestToken = `${Date.now()}`;
+    setClipPlayerStatus('loading', 'Retrying clip load...');
+    videoEl.src = `${clipVideoSrc(clip)}?t=${encodeURIComponent(activePlaybackRequestToken)}`;
+    videoEl.dataset.clipId = clip.id;
+    videoEl.load();
+    const playPromise = videoEl.play();
+    if (playPromise && typeof playPromise.catch === 'function') playPromise.catch(() => {});
+  }
+
+  function closeClipPlayerModal() {
+    const modal = document.getElementById('clip-player-modal');
+    const video = document.getElementById('clip-player-video');
+    activePlaybackClipId = null;
+    activePlaybackRequestToken = '';
+    modal.classList.remove('show');
+    setClipPlayerStatus('hidden');
+    try {
+      video.pause();
+      video.removeAttribute('src');
+      video.dataset.clipId = '';
+      video.load();
+    } catch {
+      // Keep close flow resilient if browser blocks media operations.
+    }
+  }
+
+  function renderClipPlayerModal() {
+    const modal = document.getElementById('clip-player-modal');
+    if (!modal.classList.contains('show') || !activePlaybackClipId) return;
+
+    const clip = allClips.find(c => c.id === activePlaybackClipId);
+    if (!clip) {
+      closeClipPlayerModal();
+      return;
+    }
+
+    const titleEl = document.getElementById('clip-player-title-text');
+    const metaEl = document.getElementById('clip-player-meta');
+    const actionsEl = document.getElementById('clip-player-actions');
+    const videoEl = document.getElementById('clip-player-video');
+
+    titleEl.textContent = clip.title || 'Clip Preview';
+    metaEl.innerHTML = `
+      <span class="inline-flex items-center gap-1.5">${uiIcons.user}${escHtml(clip.broadcaster_name || 'Unknown')}</span>
+      <span class="inline-flex items-center gap-1.5">${uiIcons.eye}${formatViews(clip.view_count)} views</span>
+      <span class="inline-flex items-center gap-1.5">${uiIcons.calendar}${formatDate(clip.created_at)}</span>
+      <a class="clip-player-open-link" href="${clip.url}" target="_blank" rel="noopener">Open on Twitch</a>
+    `;
+    actionsEl.innerHTML = buildClipActionsHtml(clip, 'modal');
+
+    if (videoEl.dataset.clipId !== clip.id) {
+      activePlaybackRequestToken = `${Date.now()}`;
+      setClipPlayerStatus('loading', 'Loading clip...');
+      videoEl.src = `${clipVideoSrc(clip)}?t=${encodeURIComponent(activePlaybackRequestToken)}`;
+      videoEl.dataset.clipId = clip.id;
+      videoEl.load();
+      const playPromise = videoEl.play();
+      if (playPromise && typeof playPromise.catch === 'function') {
+        playPromise.catch(() => {});
+      }
+    } else if (videoEl.readyState >= 2) {
+      setClipPlayerStatus('hidden');
+    }
+  }
+
+  function escHtml(str) {
+    const safe = String(str ?? '');
+    return safe.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+
+  function setDownloadButtonState(buttonEl, isLoading) {
+    if (!buttonEl) return;
+    buttonEl.disabled = isLoading;
+    buttonEl.classList.toggle('opacity-60', isLoading);
+    buttonEl.classList.toggle('cursor-not-allowed', isLoading);
+    buttonEl.textContent = isLoading ? 'Preparing...' : 'Download';
+  }
+
+  function syncDownloadButtonsForClip(clipId) {
+    const id = String(clipId || '');
+    const isLoading = downloadInProgressIds.has(id);
+    document.querySelectorAll('button[data-download-clip-id]').forEach((btn) => {
+      if (!(btn instanceof HTMLButtonElement)) return;
+      if (btn.dataset.downloadClipId !== id) return;
+      setDownloadButtonState(btn, isLoading);
+    });
+  }
+
+  async function downloadCroppedVideo(clipId, buttonEl = null) {
+    const clipKey = String(clipId || '');
+    const clip = allClips.find(c => c.id === clipKey);
+    if (!clip) {
+      showToast('Clip not found', 'error');
+      return;
+    }
+
+    if (downloadInProgressIds.has(clipKey)) {
+      syncDownloadButtonsForClip(clipKey);
+      setGlobalBuildLock(true);
+      maybeShowBuildInProgressToast();
+      showToast('This clip is already being prepared.');
+      return;
+    }
+
+    downloadInProgressIds.add(clipKey);
+    setDownloadButtonState(buttonEl, true);
+    syncDownloadButtonsForClip(clipKey);
+    setGlobalBuildLock(true);
+
+    try {
+      showToast('Preparing cropped download...');
+      const res = await fetch(`/api/clips/${encodeURIComponent(clipKey)}/download-cropped`);
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        if (res.status === 409) {
+          showToast(data.error || 'This clip download is already in progress.');
+          return;
+        }
+        throw new Error(data.error || 'Download failed');
+      }
+
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      const safeTitle = (clip.title || clip.id).replace(/[^a-zA-Z0-9._ -]+/g, '').trim().slice(0, 80) || clip.id;
+      a.href = url;
+      a.download = `${safeTitle}.mp4`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+      showToast('Download started.');
+    } catch (err) {
+      showToast(`Download failed: ${err.message || 'Unknown error'}`, 'error');
+    } finally {
+      downloadInProgressIds.delete(clipKey);
+      setDownloadButtonState(buttonEl, false);
+      syncDownloadButtonsForClip(clipKey);
+      setGlobalBuildLock(downloadInProgressIds.size > 0);
+    }
+  }
+
+  document.addEventListener('click', (e) => {
+    if (downloadInProgressIds.size === 0) return;
+    const target = e.target;
+    if (target instanceof HTMLElement && target.id === 'build-lock-overlay') {
+      maybeShowBuildInProgressToast();
+    }
+  });
+
+  document.addEventListener('keydown', (e) => {
+    if (downloadInProgressIds.size === 0) return;
+    if (e.key !== 'Enter' && e.key !== ' ') return;
+    const target = e.target;
+    if (!(target instanceof HTMLElement)) return;
+    const isInteractive = target.tagName === 'BUTTON' || target.tagName === 'A' || target.closest('button, a, [role="button"]');
+    if (!isInteractive) return;
+    e.preventDefault();
+    e.stopPropagation();
+    maybeShowBuildInProgressToast();
+  }, true);
+
+  // ── Approve toggle ───────────────────────────────────────────────────────
+  async function toggleApprove(clipId, currentlyApproved) {
+    const method = currentlyApproved ? 'DELETE' : 'POST';
+    await fetch(`/api/approve/${clipId}`, { method });
+
+    // Update local state
+    const clip = allClips.find(c => c.id === clipId);
+    if (clip) clip.approved = !currentlyApproved;
+
+    // Replace card in place
+    const oldCard = document.getElementById(`card-${clipId}`);
+    if (oldCard) {
+      const newCard = buildCard(clip);
+      oldCard.replaceWith(newCard);
+    }
+
+    // Update counts
+    const activeClips = [...allClips];
+    const cutoff = new Date();
+    cutoff.setDate(cutoff.getDate() - currentPeriod);
+    const periodFiltered = activeClips.filter(c => new Date(c.created_at) >= cutoff);
+    const allApproved = activeClips.filter(c => c.approved);
+    document.getElementById('approved-count').textContent = `${allApproved.length} approved`;
+
+    const stats = document.getElementById('stats-bar');
+    if (currentFilter === 'approved') {
+      stats.innerHTML = `<strong>${allApproved.length}</strong> approved clip${allApproved.length !== 1 ? 's' : ''} &nbsp;·&nbsp; all time`;
+    } else if (currentFilter === 'pending') {
+      const pending = periodFiltered.filter(c => !c.approved);
+      stats.innerHTML = `Showing <strong>${pending.length}</strong> pending &nbsp;·&nbsp; <strong>${periodFiltered.filter(c => c.approved).length}</strong> approved in period`;
+    } else {
+      stats.innerHTML = `Showing <strong>${periodFiltered.length}</strong> clips &nbsp;·&nbsp; <strong>${periodFiltered.filter(c => c.approved).length}</strong> approved &nbsp;·&nbsp; <strong>${periodFiltered.filter(c => !c.approved).length}</strong> pending`;
+    }
+
+    // If filter is active and card no longer belongs, re-render
+    if (currentFilter !== 'all') renderClips();
+    renderClipPlayerModal();
+  }
+
+  // ── Sort out toggle ──────────────────────────────────────────────────────
+  async function toggleSortOut(clipId, currentlySortedOut) {
+    const method = currentlySortedOut ? 'DELETE' : 'POST';
+    await fetch(`/api/sortout/${clipId}`, { method });
+
+    // Update local state
+    const clip = allClips.find(c => c.id === clipId);
+    if (clip) clip.sorted_out = !currentlySortedOut;
+
+    // Replace card in place
+    const oldCard = document.getElementById(`card-${clipId}`);
+    if (oldCard) {
+      const newCard = buildCard(clip);
+      oldCard.replaceWith(newCard);
+    }
+
+    // Re-render based on current filter
+    renderClips();
+    renderClipPlayerModal();
+  }
+
+  // ── Crop modal ──────────────────────────────────────────────────────────
+  document.getElementById('crop-close-btn').addEventListener('click', closeCropModal);
+  document.getElementById('crop-cancel-btn').addEventListener('click', closeCropModal);
+  document.getElementById('crop-reset-btn').addEventListener('click', () => {
+    if (!cropState) return;
+    cropState = JSON.parse(JSON.stringify(DEFAULT_CROP));
+    updateCropBoxes();
+  });
+  document.getElementById('crop-save-btn').addEventListener('click', saveCropSettings);
+  const camToggleRow = document.getElementById('cam-toggle-row');
+  const camEnabledSlider = document.getElementById('cam-enabled-slider');
+  const twitchNameToggleRow = document.getElementById('twitch-name-toggle-row');
+  const twitchNameEnabledSlider = document.getElementById('twitch-name-enabled-slider');
+  const previewBordersToggleRow = document.getElementById('preview-borders-toggle-row');
+  const previewBordersEnabledSlider = document.getElementById('preview-borders-enabled-slider');
+  const setCamEnabled = (enabled) => {
+    if (!cropState) return;
+    cropState.camEnabled = !!enabled;
+    updateCropBoxes();
+  };
+  const setTwitchNameEnabled = (enabled) => {
+    if (!cropState) return;
+    cropState.twitchNameEnabled = !!enabled;
+    updateCropBoxes();
+  };
+  const setPreviewBordersEnabled = (enabled) => {
+    if (!cropState) return;
+    cropState.previewBordersEnabled = !!enabled;
+    updateCropBoxes();
+  };
+
+  const toggleCamEnabled = () => {
+    if (!cropState) return;
+    setCamEnabled(!cropState.camEnabled);
+  };
+  const toggleTwitchNameEnabled = () => {
+    if (!cropState) return;
+    setTwitchNameEnabled(!cropState.twitchNameEnabled);
+  };
+  const togglePreviewBordersEnabled = () => {
+    if (!cropState) return;
+    setPreviewBordersEnabled(!cropState.previewBordersEnabled);
+  };
+
+  camToggleRow.addEventListener('pointerdown', (e) => {
+    if (!cropState) return;
+    if (e.target === camEnabledSlider) return;
+    if (camEnabledSlider.contains(e.target)) return;
+    e.preventDefault();
+    toggleCamEnabled();
+  });
+
+  camEnabledSlider.addEventListener('click', (e) => {
+    if (!cropState) return;
+    e.preventDefault();
+    toggleCamEnabled();
+  });
+
+  camEnabledSlider.addEventListener('keydown', (e) => {
+    if (!cropState) return;
+    if (e.key === 'ArrowLeft') {
+      e.preventDefault();
+      setCamEnabled(true);
+    }
+    if (e.key === 'ArrowRight') {
+      e.preventDefault();
+      setCamEnabled(false);
+    }
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      toggleCamEnabled();
+    }
+  });
+  twitchNameToggleRow.addEventListener('pointerdown', (e) => {
+    if (!cropState) return;
+    if (e.target === twitchNameEnabledSlider) return;
+    if (twitchNameEnabledSlider.contains(e.target)) return;
+    e.preventDefault();
+    toggleTwitchNameEnabled();
+  });
+
+  twitchNameEnabledSlider.addEventListener('click', (e) => {
+    if (!cropState) return;
+    e.preventDefault();
+    toggleTwitchNameEnabled();
+  });
+
+  twitchNameEnabledSlider.addEventListener('keydown', (e) => {
+    if (!cropState) return;
+    if (e.key === 'ArrowLeft') {
+      e.preventDefault();
+      setTwitchNameEnabled(true);
+    }
+    if (e.key === 'ArrowRight') {
+      e.preventDefault();
+      setTwitchNameEnabled(false);
+    }
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      toggleTwitchNameEnabled();
+    }
+  });
+  previewBordersToggleRow.addEventListener('pointerdown', (e) => {
+    if (!cropState) return;
+    if (e.target === previewBordersEnabledSlider) return;
+    if (previewBordersEnabledSlider.contains(e.target)) return;
+    e.preventDefault();
+    togglePreviewBordersEnabled();
+  });
+
+  previewBordersEnabledSlider.addEventListener('click', (e) => {
+    if (!cropState) return;
+    e.preventDefault();
+    togglePreviewBordersEnabled();
+  });
+
+  previewBordersEnabledSlider.addEventListener('keydown', (e) => {
+    if (!cropState) return;
+    if (e.key === 'ArrowLeft') {
+      e.preventDefault();
+      setPreviewBordersEnabled(true);
+    }
+    if (e.key === 'ArrowRight') {
+      e.preventDefault();
+      setPreviewBordersEnabled(false);
+    }
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      togglePreviewBordersEnabled();
+    }
+  });
+  document.getElementById('crop-modal').addEventListener('click', (e) => {
+    if (e.target.id === 'crop-modal') closeCropModal();
+  });
+
+    document.getElementById('split-add-btn').addEventListener('click', () => addSplitPointAtCurrentTime());
+    document.getElementById('split-more-btn').addEventListener('click', (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    splitOverflowMenuOpen = !splitOverflowMenuOpen;
+    updateSplitOverflowMenuUI();
+    });
+    document.getElementById('split-restore-all-btn').addEventListener('click', () => {
+    if (!cropState) return;
+    cropState.splitDeletedSegments = [];
+    selectedSplitSegmentIndex = null;
+    splitOverflowMenuOpen = false;
+    updateSplitOverflowMenuUI();
+    renderSplitEditor();
+    });
+    document.getElementById('split-clear-btn').addEventListener('click', () => {
+    if (!cropState) return;
+    cropState.splitPoints = [];
+    cropState.splitDeletedSegments = [];
+    cropState.splitZoomSegments = [];
+    selectedSplitSegmentIndex = null;
+    splitOverflowMenuOpen = false;
+    updateSplitOverflowMenuUI();
+    renderSplitEditor();
+    });
+    document.addEventListener('click', (e) => {
+    const wrap = document.querySelector('.split-overflow');
+    if (!splitOverflowMenuOpen || !wrap) return;
+    if (wrap.contains(e.target)) return;
+    splitOverflowMenuOpen = false;
+    updateSplitOverflowMenuUI();
+    });
+  document.getElementById('split-track').addEventListener('click', (e) => {
+    const target = e.target;
+    if (target instanceof HTMLElement && target.classList.contains('split-marker-btn')) return;
+    if (target instanceof HTMLElement && target.closest('.split-segment-actions-pop')) return;
+    if (target instanceof HTMLElement && target.closest('.split-segment-block')) return;
+    const video = document.getElementById('crop-preview-media');
+    const duration = getCropPreviewDuration();
+    if (!duration || !video) return;
+    const rect = e.currentTarget.getBoundingClientRect();
+    const x = Math.max(0, Math.min(rect.width, e.clientX - rect.left));
+    const nextTime = (x / Math.max(1, rect.width)) * duration;
+    video.currentTime = nextTime;
+    renderSplitEditor();
+  });
+
+  document.getElementById('bulk-upload-btn').addEventListener('click', async () => {
+    const approvedCount = allClips.filter(c => c.approved && !c.sorted_out).length;
+    if (approvedCount === 0) {
+      showToast('No approved clips to upload yet.', 'error');
+      return;
+    }
+
+    try {
+      const res = await fetch('/api/tiktok/upload-jobs', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ limit: approvedCount, dryRun: false }),
+      });
+
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        throw new Error(data.error || 'Upload job request failed');
+      }
+
+      activeUploadJobId = data.job?.jobId || null;
+      updateUploadControls(data.job || null);
+      startUploadPolling();
+      showToast(`Upload job started for ${data.job?.total || approvedCount} clip(s).`);
+    } catch (err) {
+      showToast(`Upload failed: ${err.message || 'Unknown error'}`, 'error');
+    }
+  });
+
+  document.getElementById('upload-pause-btn').addEventListener('click', async () => {
+    if (!activeUploadJobId) return;
+    await fetch(`/api/tiktok/upload-jobs/${encodeURIComponent(activeUploadJobId)}/pause`, { method: 'POST' });
+    await pollUploadJobStatus();
+  });
+
+  document.getElementById('upload-resume-btn').addEventListener('click', async () => {
+    if (!activeUploadJobId) return;
+    await fetch(`/api/tiktok/upload-jobs/${encodeURIComponent(activeUploadJobId)}/resume`, { method: 'POST' });
+    await pollUploadJobStatus();
+  });
+
+  document.getElementById('upload-cancel-btn').addEventListener('click', async () => {
+    if (!activeUploadJobId) return;
+    await fetch(`/api/tiktok/upload-jobs/${encodeURIComponent(activeUploadJobId)}/cancel`, { method: 'POST' });
+    await pollUploadJobStatus();
+  });
+
+    function closeCropModal() {
+    document.getElementById('crop-modal').classList.remove('show');
+    const video = document.getElementById('crop-preview-media');
+    video.pause();
+    const badgeEl = document.getElementById('output-name-badge');
+    if (badgeEl) badgeEl.style.display = 'none';
+    stopOutputNameBadgeDrag();
+    stopCropDrag();
+    stopOutputCamDrag();
+    stopOutputGameplayDrag();
+    stopCropPreviewLoop();
+    cropFallbackImage = null;
+    activeCropClip = null;
+    cropState = null;
+    selectedSplitSegmentIndex = null;
+    splitOverflowMenuOpen = false;
+    }
+
+    function updateSplitOverflowMenuUI() {
+    const menu = document.getElementById('split-more-menu');
+    if (!menu) return;
+    menu.classList.toggle('show', !!splitOverflowMenuOpen);
+    }
+
+  function normalizeSplitPoints(rawPoints, duration = null) {
+    let source = rawPoints;
+    if (typeof rawPoints === 'string') {
+      try {
+        source = JSON.parse(rawPoints);
+      } catch {
+        source = [];
+      }
+    }
+    const maxDuration = Number.isFinite(duration) && duration > 0 ? Number(duration) : Number.POSITIVE_INFINITY;
+    const set = new Set();
+    for (const raw of Array.isArray(source) ? source : []) {
+      const n = Number(raw);
+      if (!Number.isFinite(n)) continue;
+      if (n <= 0.05) continue;
+      if (n >= maxDuration - 0.05) continue;
+      set.add(Math.round(n * 1000) / 1000);
+    }
+    return [...set].sort((a, b) => a - b);
+  }
+
+  function normalizeSplitDeletedSegments(rawDeleted, segmentCount) {
+    let source = rawDeleted;
+    if (typeof rawDeleted === 'string') {
+      try {
+        source = JSON.parse(rawDeleted);
+      } catch {
+        source = [];
+      }
+    }
+    const hasBound = Number.isFinite(segmentCount) && segmentCount > 0;
+    const maxIndex = hasBound ? Math.max(0, segmentCount - 1) : Number.POSITIVE_INFINITY;
+    const out = new Set();
+    for (const raw of Array.isArray(source) ? source : []) {
+      const idx = Number(raw);
+      if (!Number.isInteger(idx) || idx < 0 || idx > maxIndex) continue;
+      out.add(idx);
+    }
+    return [...out].sort((a, b) => a - b);
+  }
+
+  function normalizeSplitZoomSegments(rawZoom, segmentCount) {
+    return normalizeSplitDeletedSegments(rawZoom, segmentCount);
+  }
+
+  function remapSplitSegmentIndicesForInsertedPoint(indices, insertSegmentIndex) {
+    const inSet = new Set(Array.isArray(indices) ? indices : []);
+    const out = new Set();
+    const splitAt = Math.max(0, Number(insertSegmentIndex) || 0);
+    for (const raw of inSet) {
+      const idx = Number(raw);
+      if (!Number.isInteger(idx) || idx < 0) continue;
+      if (idx < splitAt) {
+        out.add(idx);
+      } else if (idx === splitAt) {
+        // The split segment becomes two child segments; inherit the same flag to both.
+        out.add(idx);
+        out.add(idx + 1);
+      } else {
+        out.add(idx + 1);
+      }
+    }
+    return [...out].sort((a, b) => a - b);
+  }
+
+  function remapSplitSegmentIndicesForRemovedPoint(indices, removedSplitPointIndex) {
+    const inSet = new Set(Array.isArray(indices) ? indices : []);
+    const out = new Set();
+    const mergeAt = Math.max(0, Number(removedSplitPointIndex) || 0);
+    for (const raw of inSet) {
+      const idx = Number(raw);
+      if (!Number.isInteger(idx) || idx < 0) continue;
+      if (idx < mergeAt) {
+        out.add(idx);
+      } else if (idx === mergeAt || idx === (mergeAt + 1)) {
+        // Removing split point k merges segments k and k+1 into the new segment k.
+        out.add(mergeAt);
+      } else {
+        out.add(idx - 1);
+      }
+    }
+    return [...out].sort((a, b) => a - b);
+  }
+
+  function getActiveSplitSegmentAtTime(duration, timeSec) {
+    const segments = getSplitSegments(duration);
+    if (!segments.length) return null;
+    const t = Math.max(0, Number(timeSec) || 0);
+    const eps = 0.0005;
+    for (const segment of segments) {
+      if (t + eps >= segment.start && t < segment.end - eps) return segment;
+    }
+    return segments[segments.length - 1] || null;
+  }
+
+  function isSplitSegmentZoomActive(index) {
+    if (!cropState) return false;
+    const zoom = new Set(cropState.splitZoomSegments || []);
+    return zoom.has(index);
+  }
+
+  function getCropPreviewDuration() {
+    const video = document.getElementById('crop-preview-media');
+    const d = Number(video?.duration);
+    return Number.isFinite(d) && d > 0 ? d : null;
+  }
+
+  function toSplitTimeLabel(seconds) {
+    const total = Math.max(0, Number(seconds) || 0);
+    const mins = Math.floor(total / 60);
+    const secs = Math.floor(total % 60);
+    const cs = Math.floor((total - Math.floor(total)) * 100);
+    return `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}.${String(cs).padStart(2, '0')}`;
+  }
+
+  function getSplitRulerTicks(duration) {
+    const safeDuration = Math.max(0.1, Number(duration) || 0.1);
+    const target = Math.min(12, Math.max(6, Math.round(safeDuration / 3)));
+    const ticks = [];
+    for (let i = 0; i <= target; i += 1) {
+      const ratio = i / target;
+      ticks.push({
+        ratio,
+        label: toSplitTimeLabel(safeDuration * ratio),
+      });
+    }
+    return ticks;
+  }
+
+  function getSplitSegments(duration) {
+    if (!cropState) return [];
+    const points = normalizeSplitPoints(cropState.splitPoints, duration);
+    const boundaries = [0, ...points, duration];
+    const deleted = new Set(normalizeSplitDeletedSegments(cropState.splitDeletedSegments, boundaries.length - 1));
+    const segments = [];
+    for (let i = 0; i < boundaries.length - 1; i += 1) {
+      const start = boundaries[i];
+      const end = boundaries[i + 1];
+      if ((end - start) <= 0.04) continue;
+      segments.push({ index: i, start, end, deleted: deleted.has(i) });
+    }
+    return segments;
+  }
+
+  function toggleSplitSegmentDeleted(index) {
+    if (!cropState) return;
+    const current = new Set(cropState.splitDeletedSegments || []);
+    const nextDeleted = !current.has(index);
+    setSplitSegmentDeleted(index, nextDeleted);
+  }
+
+  function setSplitSegmentDeleted(index, deleted) {
+    if (!cropState) return;
+    const current = new Set(cropState.splitDeletedSegments || []);
+    if (deleted) current.add(index);
+    else current.delete(index);
+    cropState.splitDeletedSegments = [...current].sort((a, b) => a - b);
+    selectedSplitSegmentIndex = index;
+    renderSplitEditor();
+  }
+
+  function setSplitSegmentZoom(index, zoomed) {
+    if (!cropState) return;
+    const current = new Set(cropState.splitZoomSegments || []);
+    if (zoomed) current.add(index);
+    else current.delete(index);
+    cropState.splitZoomSegments = [...current].sort((a, b) => a - b);
+    selectedSplitSegmentIndex = index;
+    renderSplitEditor();
+  }
+
+  function selectSplitSegment(index, seekToStart = false) {
+    if (!cropState) return;
+    selectedSplitSegmentIndex = index;
+    if (seekToStart) {
+      const duration = getCropPreviewDuration();
+      if (duration) {
+        const segments = getSplitSegments(duration);
+        const seg = segments.find(s => s.index === index);
+        if (seg) {
+          const video = document.getElementById('crop-preview-media');
+          video.currentTime = seg.start;
+        }
+      }
+    }
+    renderSplitEditor();
+  }
+
+  function removeSplitPointAtIndex(index) {
+    if (!cropState) return;
+    const points = normalizeSplitPoints(cropState.splitPoints, getCropPreviewDuration());
+    if (index < 0 || index >= points.length) return;
+    const oldDeleted = normalizeSplitDeletedSegments(cropState.splitDeletedSegments, points.length + 1);
+    const oldZoom = normalizeSplitZoomSegments(cropState.splitZoomSegments, points.length + 1);
+
+    points.splice(index, 1);
+    cropState.splitPoints = points;
+    cropState.splitDeletedSegments = normalizeSplitDeletedSegments(
+      remapSplitSegmentIndicesForRemovedPoint(oldDeleted, index),
+      points.length + 1
+    );
+    cropState.splitZoomSegments = normalizeSplitZoomSegments(
+      remapSplitSegmentIndicesForRemovedPoint(oldZoom, index),
+      points.length + 1
+    );
+
+    if (selectedSplitSegmentIndex !== null) {
+      if (selectedSplitSegmentIndex === index || selectedSplitSegmentIndex === (index + 1)) {
+        selectedSplitSegmentIndex = index;
+      } else if (selectedSplitSegmentIndex > (index + 1)) {
+        selectedSplitSegmentIndex -= 1;
+      }
+    }
+    renderSplitEditor();
+  }
+
+  function positionSplitSegmentActionPopover(trackEl, selectedSegment, safeDuration) {
+    if (!(trackEl instanceof HTMLElement) || !selectedSegment || !safeDuration) return;
+    const pop = trackEl.querySelector('.split-segment-actions-pop');
+    if (!(pop instanceof HTMLElement)) return;
+
+    const trackWidth = Math.max(1, trackEl.clientWidth);
+    const popWidth = Math.max(1, pop.offsetWidth);
+    const edgePad = 6;
+    const centerRatio = ((selectedSegment.start + selectedSegment.end) / 2) / safeDuration;
+    const centerX = Math.max(0, Math.min(trackWidth, centerRatio * trackWidth));
+    const minLeft = edgePad;
+    const maxLeft = Math.max(minLeft, trackWidth - popWidth - edgePad);
+    const clampedLeft = Math.max(minLeft, Math.min(maxLeft, centerX - (popWidth / 2)));
+    pop.style.left = `${clampedLeft.toFixed(2)}px`;
+  }
+
+    function renderSplitEditor() {
+    const panel = document.getElementById('split-editor-panel');
+    const emptyEl = document.getElementById('split-empty-note');
+    const timeEl = document.getElementById('split-current-time');
+    const rulerEl = document.getElementById('split-ruler');
+    const trackEl = document.getElementById('split-track');
+    const playheadEl = document.getElementById('split-playhead');
+    const video = document.getElementById('crop-preview-media');
+    if (!panel || !emptyEl || !timeEl || !rulerEl || !trackEl || !playheadEl) return;
+    updateSplitOverflowMenuUI();
+
+    const currentTime = Number(video?.currentTime || 0);
+    const previewDuration = getCropPreviewDuration();
+    const durLabel = previewDuration ? toSplitTimeLabel(previewDuration) : '--:--.--';
+    timeEl.innerHTML = `▶️ ${toSplitTimeLabel(currentTime)} <span class="dim">|</span> ⏱️ ${durLabel}`;
+
+    if (!cropState) {
+      emptyEl.textContent = '';
+      rulerEl.innerHTML = '';
+      trackEl.innerHTML = '';
+      playheadEl.style.display = 'none';
+      return;
+    }
+
+    const duration = getCropPreviewDuration();
+    if (!duration) {
+      emptyEl.textContent = 'Video metadata is still loading. Split controls will appear once duration is available.';
+      rulerEl.innerHTML = '';
+      trackEl.innerHTML = '';
+      playheadEl.style.display = 'none';
+      return;
+    }
+
+    cropState.splitPoints = normalizeSplitPoints(cropState.splitPoints, duration);
+    const segments = getSplitSegments(duration);
+    cropState.splitDeletedSegments = normalizeSplitDeletedSegments(cropState.splitDeletedSegments, segments.length);
+    cropState.splitZoomSegments = normalizeSplitZoomSegments(cropState.splitZoomSegments, segments.length);
+
+    const ticks = getSplitRulerTicks(duration);
+    rulerEl.innerHTML = ticks.map((tick, idx) => `
+      <span class="split-ruler-tick ${idx % 2 === 0 ? 'major' : ''}" style="left:${(tick.ratio * 100).toFixed(3)}%;"></span>
+      <span class="split-ruler-label" style="left:${(tick.ratio * 100).toFixed(3)}%;">${tick.label}</span>
+    `).join('');
+
+    const deleted = new Set(cropState.splitDeletedSegments);
+    const zoomed = new Set(cropState.splitZoomSegments || []);
+    const safeDuration = Math.max(0.1, duration);
+    const segmentBlocksHtml = segments.map((segment) => {
+      const isDeleted = deleted.has(segment.index);
+      const isZoomed = zoomed.has(segment.index);
+      const isSelected = selectedSplitSegmentIndex === segment.index;
+      const leftPct = (segment.start / safeDuration) * 100;
+      const widthPct = Math.max(0.6, ((segment.end - segment.start) / safeDuration) * 100);
+      return `
+        <div class="split-segment-block ${isDeleted ? 'deleted' : (isZoomed ? 'zoomed' : '')} ${isSelected ? 'selected' : ''}" style="left:${leftPct.toFixed(3)}%; width:${widthPct.toFixed(3)}%;" onclick="selectSplitSegment(${segment.index}, true)" title="Part ${segment.index + 1} (${isDeleted ? 'deleted' : (isZoomed ? 'zoom' : 'kept')})">
+          <span class="split-segment-label">${segment.index + 1}</span>
+        </div>
+      `;
+    }).join('');
+
+    const selectedSeg = segments.find((segment) => segment.index === selectedSplitSegmentIndex) || null;
+    const selectedSegZoomed = selectedSeg ? isSplitSegmentZoomActive(selectedSeg.index) : false;
+    const selectedControlsHtml = selectedSeg
+      ? `<div class="split-segment-actions-pop">
+          <button type="button" class="split-pill-btn delete" onclick="setSplitSegmentDeleted(${selectedSeg.index}, true)" title="Mark part as deleted">🗑 Delete</button>
+          <button type="button" class="split-pill-btn keep" onclick="setSplitSegmentDeleted(${selectedSeg.index}, false)" title="Keep this part">✓ Keep</button>
+          <button type="button" class="split-pill-btn zoom ${selectedSegZoomed ? 'active' : ''}" onclick="setSplitSegmentZoom(${selectedSeg.index}, ${selectedSegZoomed ? 'false' : 'true'})" title="Zoom cam full screen and hide name for this part">⭐ Zoom</button>
+        </div>`
+      : '';
+
+    const markerHtml = cropState.splitPoints.map((point, idx) => {
+      const leftPct = (point / safeDuration) * 100;
+      return `
+        <div class="split-marker" style="left:${leftPct.toFixed(3)}%;">
+          <button type="button" class="split-marker-btn" onclick="removeSplitPointAtIndex(${idx})" title="Remove split">x</button>
+        </div>
+      `;
+    }).join('');
+
+    trackEl.innerHTML = segmentBlocksHtml + markerHtml + selectedControlsHtml;
+    if (selectedSeg) {
+      positionSplitSegmentActionPopover(trackEl, selectedSeg, safeDuration);
+    }
+
+    const playheadPct = Math.max(0, Math.min(100, (currentTime / safeDuration) * 100));
+    playheadEl.style.display = 'block';
+    playheadEl.style.left = `${playheadPct.toFixed(3)}%`;
+
+    if (segments.length === 1 && cropState.splitPoints.length === 0) {
+      emptyEl.textContent = '';
+      return;
+    }
+
+    if (selectedSplitSegmentIndex !== null && !segments.some(s => s.index === selectedSplitSegmentIndex)) {
+      selectedSplitSegmentIndex = null;
+    }
+
+    emptyEl.textContent = '';
+    }
+
+  function addSplitPointAtCurrentTime() {
+    if (!cropState) return;
+    const duration = getCropPreviewDuration();
+    if (!duration) {
+      showToast('Video duration is not ready yet.', 'error');
+      return;
+    }
+    const video = document.getElementById('crop-preview-media');
+    const t = Number(video.currentTime || 0);
+    if (t <= 0.05 || t >= duration - 0.05) {
+      showToast('Split must be inside the clip, not at the very start/end.', 'error');
+      return;
+    }
+
+    const oldPoints = normalizeSplitPoints(cropState.splitPoints, duration);
+    const points = normalizeSplitPoints([...oldPoints, t], duration);
+    if (points.length === oldPoints.length) {
+      showToast('There is already a split very close to this position.');
+      return;
+    }
+
+    let insertSegmentIndex = points.findIndex((value, idx) => oldPoints[idx] !== value);
+    if (insertSegmentIndex < 0) insertSegmentIndex = oldPoints.length;
+
+    const oldDeleted = normalizeSplitDeletedSegments(cropState.splitDeletedSegments, oldPoints.length + 1);
+    const oldZoom = normalizeSplitZoomSegments(cropState.splitZoomSegments, oldPoints.length + 1);
+
+    cropState.splitPoints = points;
+    cropState.splitDeletedSegments = normalizeSplitDeletedSegments(
+      remapSplitSegmentIndicesForInsertedPoint(oldDeleted, insertSegmentIndex),
+      points.length + 1
+    );
+    cropState.splitZoomSegments = normalizeSplitZoomSegments(
+      remapSplitSegmentIndicesForInsertedPoint(oldZoom, insertSegmentIndex),
+      points.length + 1
+    );
+    if (selectedSplitSegmentIndex !== null) {
+      if (selectedSplitSegmentIndex > insertSegmentIndex) selectedSplitSegmentIndex += 1;
+    }
+    renderSplitEditor();
+    showToast(`Split added at ${toSplitTimeLabel(t)}.`);
+  }
+
+  function getCropPreviewSize() {
+    const preview = document.querySelector('.crop-preview');
+    if (!preview) return { width: 1, height: 1 };
+    const rect = preview.getBoundingClientRect();
+    return {
+      width: Math.max(1, rect.width),
+      height: Math.max(1, rect.height),
+    };
+  }
+
+  function stopCropDrag() {
+    dragState = null;
+    document.getElementById('cam-box').classList.remove('dragging');
+    document.getElementById('game-box').classList.remove('dragging');
+  }
+
+    function stopOutputCamDrag() {
+    outputCamDragState = null;
+    const overlay = document.getElementById('output-cam-area');
+    const moveHandle = document.getElementById('output-cam-move-handle');
+    const resizeHandle = document.getElementById('output-cam-resize-handle');
+    overlay?.classList.remove('dragging');
+    moveHandle?.classList.remove('dragging');
+    resizeHandle?.classList.remove('dragging');
+    }
+
+    function stopOutputGameplayDrag() {
+    outputGameplayDragState = null;
+    const overlay = document.getElementById('output-game-area');
+    const moveHandle = document.getElementById('output-game-move-handle');
+    const resizeHandle = document.getElementById('output-game-resize-handle');
+    overlay?.classList.remove('dragging');
+    moveHandle?.classList.remove('dragging');
+    resizeHandle?.classList.remove('dragging');
+    }
+
+  function stopOutputNameBadgeDrag() {
+    outputNameBadgeDragState = null;
+    outputNameBadgeSnapState = { x: false, y: false };
+    document.getElementById('output-name-badge')?.classList.remove('dragging');
+    updateOutputCenterGuides();
+  }
+
+  function updateOutputCenterGuides() {
+    const guideX = document.getElementById('output-center-guide-x');
+    const guideY = document.getElementById('output-center-guide-y');
+    if (guideX) guideX.style.display = outputNameBadgeSnapState.x ? 'block' : 'none';
+    if (guideY) guideY.style.display = outputNameBadgeSnapState.y ? 'block' : 'none';
+  }
+
+  function stopCropPreviewLoop() {
+    if (cropPreviewRaf) {
+      cancelAnimationFrame(cropPreviewRaf);
+      cropPreviewRaf = null;
+    }
+  }
+
+  function getPreviewSource() {
+    const video = document.getElementById('crop-preview-media');
+    const canUseVideo = video.readyState >= 1 && video.videoWidth > 0 && video.videoHeight > 0;
+    if (canUseVideo) {
+      return {
+        source: video,
+        width: video.videoWidth,
+        height: video.videoHeight,
+      };
+    }
+
+    const canUseImage = !!(cropFallbackImage && cropFallbackImage.complete && cropFallbackImage.naturalWidth > 0 && cropFallbackImage.naturalHeight > 0);
+    if (canUseImage) {
+      return {
+        source: cropFallbackImage,
+        width: cropFallbackImage.naturalWidth,
+        height: cropFallbackImage.naturalHeight,
+      };
+    }
+
+    return null;
+  }
+
+  // ...existing code...
+  function startCropPreviewLoop() {
+    stopCropPreviewLoop();
+    const loop = () => {
+      renderOutputPreview();
+      cropPreviewRaf = requestAnimationFrame(loop);
+    };
+    cropPreviewRaf = requestAnimationFrame(loop);
+  }
+
+  function startCropDrag(e, sectionName) {
+    if (!cropState) return;
+    if (sectionName === 'cam' && !cropState.camEnabled) return;
+    const handleEl = e.target.closest('.crop-handle');
+    const mode = handleEl ? 'resize' : 'move';
+    const handle = handleEl ? handleEl.dataset.handle : '';
+    const size = getCropPreviewSize();
+    const section = cropState[sectionName];
+    dragState = {
+      sectionName,
+      mode,
+      handle,
+      startMouseX: e.clientX,
+      startMouseY: e.clientY,
+      startX: section.x,
+      startY: section.y,
+      startW: section.w,
+      startH: section.h,
+      width: size.width,
+      height: size.height,
+    };
+
+    const activeBoxId = sectionName === 'cam' ? 'cam-box' : 'game-box';
+    document.getElementById(activeBoxId).classList.add('dragging');
+    e.preventDefault();
+  }
+
+    function startOutputCamDrag(e, mode) {
+    if (!cropState || !cropState.camEnabled) return;
+    const wrap = document.querySelector('.output-preview-wrap');
+    if (!wrap) return;
+    const rect = wrap.getBoundingClientRect();
+    outputCamDragState = {
+      mode,
+      startMouseY: e.clientY,
+      startY: cropState.camOutput?.y ?? DEFAULT_CROP.camOutput.y,
+      startH: cropState.camOutput?.h ?? DEFAULT_CROP.camOutput.h,
+      heightPx: Math.max(1, rect.height),
+    };
+    const overlay = document.getElementById('output-cam-area');
+    const moveHandle = document.getElementById('output-cam-move-handle');
+    const resizeHandle = document.getElementById('output-cam-resize-handle');
+    overlay?.classList.add('dragging');
+    moveHandle?.classList.add('dragging');
+    resizeHandle?.classList.add('dragging');
+    e.preventDefault();
+    e.stopPropagation();
+    }
+
+    function startOutputGameplayDrag(e) {
+        if (!cropState) return;
+    const wrap = document.querySelector('.output-preview-wrap');
+    if (!wrap) return;
+    const rect = wrap.getBoundingClientRect();
+        const gameplayY = clamp01(cropState.gameplayOutput?.y ?? DEFAULT_CROP.gameplayOutput.y);
+        const gameplayH = Math.max(0.05, Math.min(0.95, clamp01(cropState.gameplayOutput?.h ?? DEFAULT_CROP.gameplayOutput.h)));
+    outputGameplayDragState = {
+          mode: 'resize',
+      startMouseY: e.clientY,
+          startY: gameplayY,
+          startH: gameplayH,
+          startBottom: gameplayY + gameplayH,
+      heightPx: Math.max(1, rect.height),
+    };
+    const overlay = document.getElementById('output-game-area');
+    const moveHandle = document.getElementById('output-game-move-handle');
+    const resizeHandle = document.getElementById('output-game-resize-handle');
+    overlay?.classList.add('dragging');
+    moveHandle?.classList.add('dragging');
+    resizeHandle?.classList.add('dragging');
+    e.preventDefault();
+    e.stopPropagation();
+    }
+
+    function startOutputGameplayMove(e) {
+    if (!cropState) return;
+    const wrap = document.querySelector('.output-preview-wrap');
+    if (!wrap) return;
+    const rect = wrap.getBoundingClientRect();
+    outputGameplayDragState = {
+      mode: 'move',
+      startMouseY: e.clientY,
+      startY: cropState.gameplayOutput?.y ?? DEFAULT_CROP.gameplayOutput.y,
+      startH: cropState.gameplayOutput?.h ?? DEFAULT_CROP.gameplayOutput.h,
+      startBottom: (cropState.gameplayOutput?.y ?? DEFAULT_CROP.gameplayOutput.y) + (cropState.gameplayOutput?.h ?? DEFAULT_CROP.gameplayOutput.h),
+      heightPx: Math.max(1, rect.height),
+    };
+    const overlay = document.getElementById('output-game-area');
+    const moveHandle = document.getElementById('output-game-move-handle');
+    const resizeHandle = document.getElementById('output-game-resize-handle');
+    overlay?.classList.add('dragging');
+    moveHandle?.classList.add('dragging');
+    resizeHandle?.classList.add('dragging');
+    e.preventDefault();
+    e.stopPropagation();
+    }
+
+  function clamp01(n) {
+    const v = Number(n);
+    if (!Number.isFinite(v)) return 0;
+    return Math.max(0, Math.min(1, v));
+  }
+
+  function normalizeNamePos(raw, fallback) {
+    return {
+      x: clamp01(raw?.x ?? fallback.x),
+      y: clamp01(raw?.y ?? fallback.y),
+    };
+  }
+
+  function normalizeCrop(raw, fallback) {
+    const x = clamp01(raw?.x ?? fallback.x);
+    const y = clamp01(raw?.y ?? fallback.y);
+    const w = Math.max(0.01, clamp01(raw?.w ?? fallback.w));
+    const h = Math.max(0.01, clamp01(raw?.h ?? fallback.h));
+    return {
+      x: Math.min(x, 1 - w),
+      y: Math.min(y, 1 - h),
+      w,
+      h,
+    };
+  }
+
+  function syncCamToggleUI() {
+    const slider = document.getElementById('cam-enabled-slider');
+    const sliderFill = document.getElementById('cam-enabled-slider-fill');
+    const label = document.getElementById('cam-enabled-label');
+    const onLabel = document.getElementById('cam-enabled-on');
+    const offLabel = document.getElementById('cam-enabled-off');
+    const enabled = !!cropState?.camEnabled;
+    slider.setAttribute('aria-checked', enabled ? 'true' : 'false');
+    slider.setAttribute('aria-valuetext', enabled ? 'On' : 'Off');
+    sliderFill.style.transform = enabled ? 'translateX(0%)' : 'translateX(100%)';
+    onLabel.style.color = enabled ? '#ffffff' : '#a1a1aa';
+    offLabel.style.color = enabled ? '#a1a1aa' : '#ffffff';
+    label.textContent = enabled ? 'On' : 'Off';
+  }
+
+  function syncTwitchNameToggleUI() {
+    const slider = document.getElementById('twitch-name-enabled-slider');
+    const sliderFill = document.getElementById('twitch-name-enabled-slider-fill');
+    const label = document.getElementById('twitch-name-enabled-label');
+    const onLabel = document.getElementById('twitch-name-enabled-on');
+    const offLabel = document.getElementById('twitch-name-enabled-off');
+    if (!slider || !sliderFill || !label || !onLabel || !offLabel) return;
+    const enabled = !!cropState?.twitchNameEnabled;
+    slider.setAttribute('aria-checked', enabled ? 'true' : 'false');
+    slider.setAttribute('aria-valuetext', enabled ? 'On' : 'Off');
+    sliderFill.style.transform = enabled ? 'translateX(0%)' : 'translateX(100%)';
+    onLabel.style.color = enabled ? '#ffffff' : '#a1a1aa';
+    offLabel.style.color = enabled ? '#a1a1aa' : '#ffffff';
+    label.textContent = enabled ? 'On' : 'Off';
+  }
+
+  function syncPreviewBordersToggleUI() {
+    const slider = document.getElementById('preview-borders-enabled-slider');
+    const sliderFill = document.getElementById('preview-borders-enabled-slider-fill');
+    const label = document.getElementById('preview-borders-enabled-label');
+    const onLabel = document.getElementById('preview-borders-enabled-on');
+    const offLabel = document.getElementById('preview-borders-enabled-off');
+    if (!slider || !sliderFill || !label || !onLabel || !offLabel) return;
+    const enabled = cropState?.previewBordersEnabled !== false;
+    slider.setAttribute('aria-checked', enabled ? 'true' : 'false');
+    slider.setAttribute('aria-valuetext', enabled ? 'On' : 'Off');
+    sliderFill.style.transform = enabled ? 'translateX(0%)' : 'translateX(100%)';
+    onLabel.style.color = enabled ? '#ffffff' : '#a1a1aa';
+    offLabel.style.color = enabled ? '#a1a1aa' : '#ffffff';
+    label.textContent = enabled ? 'On' : 'Off';
+  }
+
+  async function openCropModal(clipId) {
+    const clipKey = String(clipId || '');
+    const clip = allClips.find(c => c.id === clipKey);
+    if (!clip) return;
+
+    // Ensure player modal media is fully torn down before opening the editor.
+    closeClipPlayerModal();
+
+    activeCropClip = clip;
+    document.getElementById('crop-title').innerHTML = `
+      <svg class="h-5 w-5 text-violet-400" viewBox="0 0 20 20" fill="currentColor" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+        <path d="M4.25 4.25A.75.75 0 015 3.5h1.5a.75.75 0 010 1.5H5.75v.75a.75.75 0 01-1.5 0v-1.5zM13.5 3.5a.75.75 0 000 1.5h.75v.75a.75.75 0 001.5 0v-1.5a.75.75 0 00-.75-.75H13.5zM4.25 13.5a.75.75 0 011.5 0v.75h.75a.75.75 0 010 1.5H5a.75.75 0 01-.75-.75V13.5zM15 14.25h-1.5a.75.75 0 000 1.5H15a.75.75 0 00.75-.75v-1.5a.75.75 0 00-1.5 0v.75zM7.5 9a1.5 1.5 0 113 0v2.25a.75.75 0 001.5 0V9a3 3 0 10-6 0v2.25a.75.75 0 001.5 0V9z"/>
+      </svg>
+      Upload Edit - ${escHtml(clip.broadcaster_name)}
+    `;
+
+    const video = document.getElementById('crop-preview-media');
+    video.pause();
+    video.removeAttribute('src');
+    video.load();
+    const posterUrl = thumbnailSrc(clip.thumbnail_url);
+    video.poster = posterUrl;
+    cropFallbackImage = new Image();
+    cropFallbackImage.src = posterUrl;
+    video.onerror = () => {
+      // Twitch preview MP4 is not always available; fallback image still powers crop preview.
+      showToast('No MP4 preview for this clip. Using thumbnail fallback.');
+      renderOutputPreview();
+    };
+    video.src = clipVideoSrc(clip);
+    video.load();
+
+    cropState = {
+      camEnabled: clip.cam_enabled !== 0,
+      twitchNameEnabled: clip.twitch_name_enabled === 1,
+      previewBordersEnabled: true,
+      twitchNamePos: normalizeNamePos({ x: clip.twitch_name_x, y: clip.twitch_name_y }, DEFAULT_CROP.twitchNamePos),
+      cam: normalizeCrop({ x: clip.cam_x, y: clip.cam_y, w: clip.cam_w, h: clip.cam_h }, DEFAULT_CROP.cam),
+      gameplay: normalizeCrop({ x: clip.gameplay_x, y: clip.gameplay_y, w: clip.gameplay_w, h: clip.gameplay_h }, DEFAULT_CROP.gameplay),
+      camOutput: {
+        y: clamp01(clip.cam_output_y ?? DEFAULT_CROP.camOutput.y),
+        h: Math.max(0.05, Math.min(0.95, clamp01(clip.cam_output_h ?? DEFAULT_CROP.camOutput.h))),
+      },
+      gameplayOutput: {
+        y: clamp01(clip.gameplay_output_y ?? DEFAULT_CROP.gameplayOutput.y),
+        h: Math.max(0.05, Math.min(0.95, clamp01(clip.gameplay_output_h ?? DEFAULT_CROP.gameplayOutput.h))),
+      },
+      splitPoints: normalizeSplitPoints(clip.split_points_json),
+      splitDeletedSegments: normalizeSplitDeletedSegments(clip.split_deleted_segments_json, null),
+      splitZoomSegments: normalizeSplitZoomSegments(clip.split_zoom_segments_json, null),
+    };
+
+    try {
+      const r = await fetch(`/api/crop/${clipKey}`);
+      if (r.ok) {
+        const data = await r.json();
+        cropState = {
+          camEnabled: data.crop.cam_enabled !== 0,
+          twitchNameEnabled: data.crop.twitch_name_enabled === 1,
+          previewBordersEnabled: cropState.previewBordersEnabled !== false,
+          twitchNamePos: normalizeNamePos({ x: data.crop.twitch_name_x, y: data.crop.twitch_name_y }, cropState.twitchNamePos),
+          cam: normalizeCrop({ x: data.crop.cam_x, y: data.crop.cam_y, w: data.crop.cam_w, h: data.crop.cam_h }, cropState.cam),
+          gameplay: normalizeCrop({ x: data.crop.gameplay_x, y: data.crop.gameplay_y, w: data.crop.gameplay_w, h: data.crop.gameplay_h }, cropState.gameplay),
+          camOutput: {
+            y: clamp01(data.crop.cam_output_y ?? cropState.camOutput.y),
+            h: Math.max(0.05, Math.min(0.95, clamp01(data.crop.cam_output_h ?? cropState.camOutput.h))),
+          },
+          gameplayOutput: {
+            y: clamp01(data.crop.gameplay_output_y ?? cropState.gameplayOutput.y),
+            h: Math.max(0.05, Math.min(0.95, clamp01(data.crop.gameplay_output_h ?? cropState.gameplayOutput.h))),
+          },
+          splitPoints: normalizeSplitPoints(data.crop.split_points),
+          splitDeletedSegments: normalizeSplitDeletedSegments(data.crop.split_deleted_segments, null),
+          splitZoomSegments: normalizeSplitZoomSegments(data.crop.split_zoom_segments, null),
+        };
+        cropState.camOutput.y = Math.min(cropState.camOutput.y, 1 - cropState.camOutput.h);
+        cropState.gameplayOutput.y = Math.min(cropState.gameplayOutput.y, 1 - cropState.gameplayOutput.h);
+      }
+    } catch {
+      // Keep local/default values if API read fails.
+    }
+
+    updateCropBoxes();
+    document.getElementById('crop-modal').classList.add('show');
+    startCropPreviewLoop();
+  }
+
+  function updateCropBoxes() {
+    if (!cropState) return;
+    const cam = document.getElementById('cam-box');
+    const game = document.getElementById('game-box');
+    const setBox = (el, c) => {
+      el.style.left = `${c.x * 100}%`;
+      el.style.top = `${c.y * 100}%`;
+      el.style.width = `${c.w * 100}%`;
+      el.style.height = `${c.h * 100}%`;
+    };
+    setBox(cam, cropState.cam);
+    setBox(game, cropState.gameplay);
+    cam.style.display = cropState.camEnabled ? 'block' : 'none';
+    game.style.display = 'block';
+    syncCamToggleUI();
+    syncTwitchNameToggleUI();
+    syncPreviewBordersToggleUI();
+    updateOutputAreaOverlays();
+    renderSplitEditor();
+    renderOutputPreview();
+    }
+
+    function updateOutputAreaOverlays() {
+    const camOverlay = document.getElementById('output-cam-area');
+    const gameplayOverlay = document.getElementById('output-game-area');
+        const camMoveHandle = document.getElementById('output-cam-move-handle');
+        const gameplayMoveHandle = document.getElementById('output-game-move-handle');
+        const camResizeHandle = document.getElementById('output-cam-resize-handle');
+        const gameplayResizeHandle = document.getElementById('output-game-resize-handle');
+        if (!cropState || !camOverlay || !gameplayOverlay || !camMoveHandle || !gameplayMoveHandle || !camResizeHandle || !gameplayResizeHandle) return;
+
+    const minH = 0.05;
+    const camY = clamp01(cropState.camOutput?.y ?? DEFAULT_CROP.camOutput.y);
+    const camRawH = Math.max(minH, Math.min(0.95, clamp01(cropState.camOutput?.h ?? DEFAULT_CROP.camOutput.h)));
+    const safeCamY = Math.max(0, Math.min(1 - minH, camY));
+    const safeCamH = Math.max(minH, Math.min(1 - safeCamY, camRawH));
+    cropState.camOutput = { y: safeCamY, h: safeCamH };
+
+    const gameplayY = clamp01(cropState.gameplayOutput?.y ?? DEFAULT_CROP.gameplayOutput.y);
+    const gameplayRawH = Math.max(minH, Math.min(0.95, clamp01(cropState.gameplayOutput?.h ?? DEFAULT_CROP.gameplayOutput.h)));
+    const safeGameplayY = Math.max(0, Math.min(1 - minH, gameplayY));
+    const safeGameplayH = Math.max(minH, Math.min(1 - safeGameplayY, gameplayRawH));
+    cropState.gameplayOutput = { y: safeGameplayY, h: safeGameplayH };
+
+    if (cropState.camEnabled) {
+      camOverlay.style.display = 'block';
+      camOverlay.style.top = `${safeCamY * 100}%`;
+      camOverlay.style.height = `${safeCamH * 100}%`;
+      camMoveHandle.style.display = 'block';
+      camMoveHandle.style.top = `${safeCamY * 100}%`;
+      camResizeHandle.style.display = 'block';
+      camResizeHandle.style.top = `${(safeCamY + safeCamH) * 100}%`;
+    } else {
+      camOverlay.style.display = 'none';
+      camMoveHandle.style.display = 'none';
+      camResizeHandle.style.display = 'none';
+    }
+
+    gameplayOverlay.style.display = 'block';
+    gameplayOverlay.style.top = `${safeGameplayY * 100}%`;
+    gameplayOverlay.style.height = `${safeGameplayH * 100}%`;
+    gameplayMoveHandle.style.display = 'block';
+    gameplayMoveHandle.style.top = `${(safeGameplayY + safeGameplayH) * 100}%`;
+    gameplayResizeHandle.style.display = 'block';
+    gameplayResizeHandle.style.top = `${safeGameplayY * 100}%`;
+    }
+
+  function getOutputBadgeLayout(ctx, canvas, streamerName) {
+    const fontPx = Math.max(18, Math.round(canvas.height * 0.036));
+    const hasLogo = !!(twitchLogoImage.complete && twitchLogoImage.naturalWidth > 0 && twitchLogoImage.naturalHeight > 0);
+    const padX = Math.round(fontPx * 0.62);
+    const iconHeight = Math.max(2, Math.round(fontPx * 1.04));
+    const logoAspect = hasLogo ? (twitchLogoImage.naturalWidth / twitchLogoImage.naturalHeight) : 1;
+    const iconWidth = Math.max(2, Math.round(iconHeight * Math.max(0.4, Math.min(3, logoAspect))));
+    const gap = Math.round(fontPx * 0.30);
+    const badgeHeight = Math.round(fontPx * 1.62);
+    const text = String(streamerName || '').trim();
+    const textWidth = Math.ceil(ctx.measureText(text).width + Math.max(10, fontPx * 0.30));
+    const badgeWidth = padX + (hasLogo ? (iconWidth + gap) : 0) + textWidth + padX;
+    const maxX = Math.max(0, 1 - (badgeWidth / canvas.width));
+    const maxY = Math.max(0, 1 - (badgeHeight / canvas.height));
+    const pos = normalizeNamePos(cropState?.twitchNamePos, DEFAULT_CROP.twitchNamePos);
+    const xNorm = Math.min(pos.x, maxX);
+    const yNorm = Math.min(pos.y, maxY);
+    return {
+      x: Math.round(canvas.width * xNorm),
+      y: Math.round(canvas.height * yNorm),
+      w: badgeWidth,
+      h: badgeHeight,
+      text,
+      fontPx,
+      padX,
+      iconWidth,
+      iconHeight,
+      gap,
+      hasLogo,
+      xNorm,
+      yNorm,
+    };
+  }
+
+  function updateOutputNameBadgeOverlay() {
+    const badgeEl = document.getElementById('output-name-badge');
+    const badgeTextEl = document.getElementById('output-name-badge-text');
+    const badgeLogoEl = document.getElementById('output-name-badge-logo');
+    const canvas = document.getElementById('output-preview');
+    if (!badgeEl || !badgeTextEl || !badgeLogoEl || !canvas) return;
+
+    if (!cropState?.twitchNameEnabled || !outputNameBadgeLayout) {
+      badgeEl.style.display = 'none';
+      outputNameBadgeSnapState = { x: false, y: false };
+      updateOutputCenterGuides();
+      return;
+    }
+
+    const badge = outputNameBadgeLayout;
+    const rect = canvas.getBoundingClientRect();
+    const scaleX = rect.width / canvas.width;
+    const scaleY = rect.height / canvas.height;
+    const scale = Math.min(scaleX, scaleY);
+    badgeEl.style.display = 'inline-flex';
+    badgeEl.style.left = `${badge.x * scaleX}px`;
+    badgeEl.style.top = `${badge.y * scaleY}px`;
+    badgeEl.style.width = `${badge.w * scaleX}px`;
+    badgeEl.style.height = `${badge.h * scaleY}px`;
+    badgeEl.style.paddingLeft = `${badge.padX * scale}px`;
+    badgeEl.style.paddingRight = `${badge.padX * scale}px`;
+    badgeEl.style.gap = `${badge.gap * scale}px`;
+    badgeEl.style.fontSize = `${badge.fontPx * scale}px`;
+
+    badgeLogoEl.style.width = `${badge.iconWidth * scale}px`;
+    badgeLogoEl.style.height = `${badge.iconHeight * scale}px`;
+    badgeLogoEl.style.display = badge.hasLogo ? 'block' : 'none';
+    badgeTextEl.textContent = badge.text;
+  }
+
+  function renderOutputPreview() {
+    const canvas = document.getElementById('output-preview');
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    ctx.fillStyle = '#000';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    if (!cropState) return;
+    outputNameBadgeLayout = null;
+    updateOutputNameBadgeOverlay();
+
+    const video = document.getElementById('crop-preview-media');
+    const previewDuration = getCropPreviewDuration();
+    const activeSegment = previewDuration ? getActiveSplitSegmentAtTime(previewDuration, Number(video.currentTime || 0)) : null;
+    const zoomActive = !!(activeSegment && isSplitSegmentZoomActive(activeSegment.index));
+    const canUseVideo = video.readyState >= 1 && video.videoWidth > 0 && video.videoHeight > 0;
+    const canUseImage = !!(cropFallbackImage && cropFallbackImage.complete && cropFallbackImage.naturalWidth > 0 && cropFallbackImage.naturalHeight > 0);
+
+    if (!canUseVideo && !canUseImage) {
+      ctx.fillStyle = '#adadb8';
+      ctx.font = '18px Segoe UI';
+      ctx.textAlign = 'center';
+      ctx.fillText('Video preview loading...', canvas.width / 2, canvas.height / 2);
+      updateOutputNameBadgeOverlay();
+      return;
+    }
+
+    const source = canUseVideo ? video : cropFallbackImage;
+    const sourceWidth = canUseVideo ? video.videoWidth : cropFallbackImage.naturalWidth;
+    const sourceHeight = canUseVideo ? video.videoHeight : cropFallbackImage.naturalHeight;
+
+    const drawRegion = (crop, x, y, w, h) => {
+      const sx = crop.x * sourceWidth;
+      const sy = crop.y * sourceHeight;
+      const sw = crop.w * sourceWidth;
+      const sh = crop.h * sourceHeight;
+
+      try {
+        ctx.drawImage(source, sx, sy, sw, sh, x, y, w, h);
+      } catch {
+        // Keep a black preview if frame drawing fails.
+      }
+    };
+
+    // Keep cam content undistorted in the top half (letterbox/pillarbox if needed).
+    const drawRegionPreserveAspect = (crop, x, y, w, h) => {
+      const sx = crop.x * sourceWidth;
+      const sy = crop.y * sourceHeight;
+      const sw = crop.w * sourceWidth;
+      const sh = crop.h * sourceHeight;
+
+      if (sw <= 0 || sh <= 0) return;
+
+      const srcAspect = sw / sh;
+      const dstAspect = w / h;
+
+      let dw = w;
+      let dh = h;
+      if (srcAspect > dstAspect) {
+        dh = w / srcAspect;
+      } else {
+        dw = h * srcAspect;
+      }
+
+      const dx = x + (w - dw) / 2;
+      const dy = y + (h - dh) / 2;
+
+      try {
+        ctx.drawImage(source, sx, sy, sw, sh, dx, dy, dw, dh);
+      } catch {
+        // Keep a black preview if frame drawing fails.
+      }
+    };
+
+    const gameplayLayout = cropState.gameplayOutput || DEFAULT_CROP.gameplayOutput;
+    const gameDrawX = 0;
+    const gameDrawY = Math.round(canvas.height * gameplayLayout.y);
+    const gameDrawW = canvas.width;
+    const gameDrawH = Math.max(2, Math.round(canvas.height * gameplayLayout.h));
+
+    // 1) Gameplay draws into its own user-defined output region.
+    drawRegion(cropState.gameplay, gameDrawX, gameDrawY, gameDrawW, gameDrawH);
+    if (!zoomActive && cropState.previewBordersEnabled !== false) {
+      ctx.strokeStyle = 'rgba(191, 219, 254, 0.55)';
+      ctx.lineWidth = 2;
+      ctx.strokeRect(gameDrawX, gameDrawY, gameDrawW, gameDrawH);
+    }
+
+    if (zoomActive) {
+      // Zoom segments force camera crop to fullscreen for emphasis.
+      drawRegion(cropState.cam, 0, 0, canvas.width, canvas.height);
+    } else if (cropState.camEnabled) {
+      // 2) Camera overlays using user-defined output region in 9:16 frame.
+      const camLayout = cropState.camOutput || DEFAULT_CROP.camOutput;
+      const camDrawX = 0;
+      const camDrawY = Math.round(canvas.height * camLayout.y);
+      const camDrawW = canvas.width;
+      const camDrawH = Math.max(2, Math.round(canvas.height * camLayout.h));
+
+      drawRegion(cropState.cam, camDrawX, camDrawY, camDrawW, camDrawH);
+      if (cropState.previewBordersEnabled !== false) {
+        ctx.strokeStyle = 'rgba(255,255,255,0.45)';
+        ctx.lineWidth = 2;
+        ctx.strokeRect(camDrawX, camDrawY, camDrawW, camDrawH);
+      }
+    }
+
+    const streamerName = String(activeCropClip?.broadcaster_name || '').trim();
+    if (!zoomActive && cropState.twitchNameEnabled && streamerName) {
+      const fontPx = Math.max(18, Math.round(canvas.height * 0.036));
+      ctx.font = `700 ${fontPx}px Segoe UI, Arial, sans-serif`;
+      ctx.textAlign = 'left';
+      ctx.textBaseline = 'middle';
+      const badge = getOutputBadgeLayout(ctx, canvas, streamerName);
+      cropState.twitchNamePos = { x: badge.xNorm, y: badge.yNorm };
+      outputNameBadgeLayout = badge;
+    }
+    updateOutputNameBadgeOverlay();
+  }
+
+  document.getElementById('output-name-badge').addEventListener('mousedown', (e) => {
+    if (!cropState?.twitchNameEnabled || !outputNameBadgeLayout) return;
+    const canvas = document.getElementById('output-preview');
+    const rect = canvas.getBoundingClientRect();
+    const x = ((e.clientX - rect.left) / rect.width) * canvas.width;
+    const y = ((e.clientY - rect.top) / rect.height) * canvas.height;
+    const badge = outputNameBadgeLayout;
+
+    outputNameBadgeDragState = {
+      offsetXNorm: (x / canvas.width) - badge.xNorm,
+      offsetYNorm: (y / canvas.height) - badge.yNorm,
+      badgeWNorm: badge.w / canvas.width,
+      badgeHNorm: badge.h / canvas.height,
+    };
+    document.getElementById('output-name-badge')?.classList.add('dragging');
+    e.preventDefault();
+    e.stopPropagation();
+  });
+
+  document.getElementById('output-name-badge').addEventListener('dblclick', (e) => {
+    if (!cropState?.twitchNameEnabled || !outputNameBadgeLayout) return;
+    const badge = outputNameBadgeLayout;
+    const canvas = document.getElementById('output-preview');
+    const badgeWNorm = badge.w / Math.max(1, canvas.width);
+    const badgeHNorm = badge.h / Math.max(1, canvas.height);
+    const nextX = Math.max(0, Math.min(1 - badgeWNorm, 0.5 - (badgeWNorm / 2)));
+    const nextY = Math.max(0, Math.min(1 - badgeHNorm, 0.5 - (badgeHNorm / 2)));
+    cropState.twitchNamePos = { x: nextX, y: nextY };
+    outputNameBadgeSnapState = { x: true, y: true };
+    updateOutputCenterGuides();
+    renderOutputPreview();
+    e.preventDefault();
+  });
+
+  document.getElementById('cam-box').addEventListener('mousedown', (e) => startCropDrag(e, 'cam'));
+  document.getElementById('game-box').addEventListener('mousedown', (e) => startCropDrag(e, 'gameplay'));
+  document.getElementById('crop-preview-media').addEventListener('timeupdate', () => {
+    renderSplitEditor();
+  });
+
+  window.addEventListener('mousemove', (e) => {
+    if (outputNameBadgeDragState && cropState) {
+      const canvas = document.getElementById('output-preview');
+      const rect = canvas.getBoundingClientRect();
+      const xNorm = clamp01((e.clientX - rect.left) / Math.max(1, rect.width));
+      const yNorm = clamp01((e.clientY - rect.top) / Math.max(1, rect.height));
+      const maxX = Math.max(0, 1 - outputNameBadgeDragState.badgeWNorm);
+      const maxY = Math.max(0, 1 - outputNameBadgeDragState.badgeHNorm);
+      let nextX = Math.max(0, Math.min(maxX, xNorm - outputNameBadgeDragState.offsetXNorm));
+      let nextY = Math.max(0, Math.min(maxY, yNorm - outputNameBadgeDragState.offsetYNorm));
+      let snapX = false;
+      let snapY = false;
+
+      const centerX = nextX + (outputNameBadgeDragState.badgeWNorm / 2);
+      if (Math.abs(centerX - 0.5) <= BADGE_CENTER_SNAP_THRESHOLD) {
+        nextX = Math.max(0, Math.min(maxX, 0.5 - (outputNameBadgeDragState.badgeWNorm / 2)));
+        snapX = true;
+      }
+
+      const centerY = nextY + (outputNameBadgeDragState.badgeHNorm / 2);
+      if (Math.abs(centerY - 0.5) <= BADGE_CENTER_SNAP_THRESHOLD) {
+        nextY = Math.max(0, Math.min(maxY, 0.5 - (outputNameBadgeDragState.badgeHNorm / 2)));
+        snapY = true;
+      }
+
+      outputNameBadgeSnapState = { x: snapX, y: snapY };
+      updateOutputCenterGuides();
+      cropState.twitchNamePos = { x: nextX, y: nextY };
+      renderOutputPreview();
+      return;
+    }
+
+    if (outputGameplayDragState && cropState) {
+      const minH = 0.05;
+      const dy = (e.clientY - outputGameplayDragState.startMouseY) / outputGameplayDragState.heightPx;
+      if (outputGameplayDragState.mode === 'move') {
+        const h = Math.max(minH, Math.min(0.95, outputGameplayDragState.startH));
+        const y = Math.max(0, Math.min(1 - h, outputGameplayDragState.startY + dy));
+        cropState.gameplayOutput = { y, h };
+      } else {
+        // Resize gameplay from the top edge so the dragged edge follows the cursor.
+        const bottom = Math.max(minH, Math.min(1, outputGameplayDragState.startBottom ?? (outputGameplayDragState.startY + outputGameplayDragState.startH)));
+        const y = Math.max(0, Math.min(bottom - minH, outputGameplayDragState.startY + dy));
+        const h = Math.max(minH, bottom - y);
+        cropState.gameplayOutput = { y, h };
+      }
+
+      updateOutputAreaOverlays();
+      renderOutputPreview();
+      return;
+    }
+
+    if (outputCamDragState && cropState) {
+      const minH = 0.05;
+      const dy = (e.clientY - outputCamDragState.startMouseY) / outputCamDragState.heightPx;
+
+      if (outputCamDragState.mode === 'move') {
+        const h = Math.max(minH, Math.min(0.95, outputCamDragState.startH));
+        const y = Math.max(0, Math.min(1 - h, outputCamDragState.startY + dy));
+        cropState.camOutput = { y, h };
+      } else {
+        const y = Math.max(0, Math.min(0.95, outputCamDragState.startY));
+        const h = Math.max(minH, Math.min(1 - y, outputCamDragState.startH + dy));
+        cropState.camOutput = { y, h };
+      }
+
+      updateOutputAreaOverlays();
+      renderOutputPreview();
+      return;
+    }
+
+    if (!dragState || !cropState) return;
+    const dx = (e.clientX - dragState.startMouseX) / dragState.width;
+    const dy = (e.clientY - dragState.startMouseY) / dragState.height;
+
+    const section = cropState[dragState.sectionName];
+    const minSize = 0.06;
+
+    if (dragState.mode === 'move') {
+      section.x = dragState.startX + dx;
+      section.y = dragState.startY + dy;
+    } else {
+      let left = dragState.startX;
+      let top = dragState.startY;
+      let right = dragState.startX + dragState.startW;
+      let bottom = dragState.startY + dragState.startH;
+      const handle = dragState.handle || '';
+
+      if (handle.includes('w')) left = dragState.startX + dx;
+      if (handle.includes('e')) right = dragState.startX + dragState.startW + dx;
+      if (handle.includes('n')) top = dragState.startY + dy;
+      if (handle.includes('s')) bottom = dragState.startY + dragState.startH + dy;
+
+      left = Math.max(0, Math.min(left, 1 - minSize));
+      top = Math.max(0, Math.min(top, 1 - minSize));
+      right = Math.max(minSize, Math.min(right, 1));
+      bottom = Math.max(minSize, Math.min(bottom, 1));
+
+      if (right - left < minSize) {
+        if (handle.includes('w') && !handle.includes('e')) left = right - minSize;
+        else right = left + minSize;
+      }
+      if (bottom - top < minSize) {
+        if (handle.includes('n') && !handle.includes('s')) top = bottom - minSize;
+        else bottom = top + minSize;
+      }
+
+      section.x = left;
+      section.y = top;
+      section.w = right - left;
+      section.h = bottom - top;
+    }
+
+    cropState[dragState.sectionName] = normalizeCrop(section, DEFAULT_CROP[dragState.sectionName]);
+
+    updateCropBoxes();
+  });
+
+    window.addEventListener('mouseup', () => {
+    stopOutputNameBadgeDrag();
+    stopCropDrag();
+    stopOutputCamDrag();
+    stopOutputGameplayDrag();
+    });
+
+  document.getElementById('output-cam-area').addEventListener('mousedown', (e) => {
+    if (e.target.id === 'output-cam-resize') return;
+    startOutputCamDrag(e, 'move');
+  });
+  document.getElementById('output-game-area').addEventListener('mousedown', (e) => {
+    if (e.target.id === 'output-game-resize') return;
+    startOutputGameplayMove(e);
+  });
+  document.getElementById('output-cam-move-handle').addEventListener('mousedown', (e) => {
+    startOutputCamDrag(e, 'move');
+  });
+  document.getElementById('output-game-move-handle').addEventListener('mousedown', (e) => {
+    startOutputGameplayMove(e);
+  });
+    document.getElementById('output-cam-resize-handle').addEventListener('mousedown', (e) => {
+    startOutputCamDrag(e, 'resize');
+    });
+    document.getElementById('output-game-resize-handle').addEventListener('mousedown', (e) => {
+    startOutputGameplayDrag(e);
+    });
+  document.getElementById('crop-preview-media').addEventListener('loadedmetadata', renderOutputPreview);
+  document.getElementById('crop-preview-media').addEventListener('loadeddata', renderOutputPreview);
+  document.getElementById('crop-preview-media').addEventListener('canplay', renderOutputPreview);
+  document.getElementById('crop-preview-media').addEventListener('seeked', renderOutputPreview);
+
+  document.getElementById('clip-player-close-btn').addEventListener('click', closeClipPlayerModal);
+  document.getElementById('clip-player-retry-btn').addEventListener('click', retryClipPlayerVideo);
+  document.getElementById('clip-player-modal').addEventListener('click', (e) => {
+    if (e.target.id === 'clip-player-modal') closeClipPlayerModal();
+  });
+  document.getElementById('clip-player-video').addEventListener('loadeddata', () => {
+    setClipPlayerStatus('hidden');
+  });
+  document.getElementById('clip-player-video').addEventListener('canplay', () => {
+    setClipPlayerStatus('hidden');
+  });
+  document.getElementById('clip-player-video').addEventListener('error', () => {
+    setClipPlayerStatus('error', 'Could not load this clip video. Try again or open on Twitch.');
+  });
+  document.getElementById('clip-player-video').addEventListener('stalled', () => {
+    setClipPlayerStatus('loading', 'Video stalled, waiting for data...');
+  });
+  document.getElementById('clip-player-video').addEventListener('waiting', () => {
+    setClipPlayerStatus('loading', 'Buffering clip...');
+  });
+  window.addEventListener('keydown', (e) => {
+    const target = e.target;
+    const isTyping = target instanceof HTMLElement && (
+      target.tagName === 'INPUT' ||
+      target.tagName === 'TEXTAREA' ||
+      target.tagName === 'SELECT' ||
+      target.isContentEditable
+    );
+    const cropModal = document.getElementById('crop-modal');
+    const cropModalOpen = cropModal.classList.contains('show');
+
+    if (cropModalOpen && !isTyping) {
+      const video = document.getElementById('crop-preview-media');
+      const stepSmall = e.shiftKey ? 2 : 1;
+      const stepLarge = e.shiftKey ? 10 : 5;
+
+      if (e.code === 'Space') {
+        e.preventDefault();
+        if (video.paused) video.play().catch(() => {});
+        else video.pause();
+        return;
+      }
+
+      if (e.key === 'ArrowLeft' || e.key === 'ArrowRight' || e.key === 'ArrowUp' || e.key === 'ArrowDown') {
+        e.preventDefault();
+        let delta = 0;
+        if (e.key === 'ArrowLeft') delta = -stepSmall;
+        if (e.key === 'ArrowRight') delta = stepSmall;
+        if (e.key === 'ArrowUp') delta = -stepLarge;
+        if (e.key === 'ArrowDown') delta = stepLarge;
+        const duration = Number(video.duration);
+        const maxT = Number.isFinite(duration) && duration > 0 ? duration : Number.POSITIVE_INFINITY;
+        video.currentTime = Math.max(0, Math.min(maxT, Number(video.currentTime || 0) + delta));
+        renderSplitEditor();
+        return;
+      }
+    }
+
+    if (e.key.toLowerCase() === 's') {
+      if (cropModal.classList.contains('show') && !isTyping) {
+        e.preventDefault();
+        addSplitPointAtCurrentTime();
+        return;
+      }
+    }
+
+    if (e.key !== 'Escape') return;
+    const clipModal = document.getElementById('clip-player-modal');
+    if (clipModal.classList.contains('show')) closeClipPlayerModal();
+  });
+
+  async function saveCropSettings() {
+    if (!activeCropClip || !cropState) return;
+
+    const payload = {
+      cam_x: cropState.cam.x,
+      cam_y: cropState.cam.y,
+      cam_w: cropState.cam.w,
+      cam_h: cropState.cam.h,
+      cam_enabled: cropState.camEnabled ? 1 : 0,
+      twitch_name_enabled: cropState.twitchNameEnabled ? 1 : 0,
+      twitch_name_x: cropState.twitchNamePos?.x ?? DEFAULT_CROP.twitchNamePos.x,
+      twitch_name_y: cropState.twitchNamePos?.y ?? DEFAULT_CROP.twitchNamePos.y,
+      gameplay_x: cropState.gameplay.x,
+      gameplay_y: cropState.gameplay.y,
+      gameplay_w: cropState.gameplay.w,
+      gameplay_h: cropState.gameplay.h,
+      cam_output_y: cropState.camOutput?.y ?? DEFAULT_CROP.camOutput.y,
+      cam_output_h: cropState.camOutput?.h ?? DEFAULT_CROP.camOutput.h,
+      gameplay_output_y: cropState.gameplayOutput?.y ?? DEFAULT_CROP.gameplayOutput.y,
+      gameplay_output_h: cropState.gameplayOutput?.h ?? DEFAULT_CROP.gameplayOutput.h,
+      split_points: normalizeSplitPoints(cropState.splitPoints, getCropPreviewDuration()),
+      split_deleted_segments: normalizeSplitDeletedSegments(
+        cropState.splitDeletedSegments,
+        normalizeSplitPoints(cropState.splitPoints, getCropPreviewDuration()).length + 1
+      ),
+      split_zoom_segments: normalizeSplitZoomSegments(
+        cropState.splitZoomSegments,
+        normalizeSplitPoints(cropState.splitPoints, getCropPreviewDuration()).length + 1
+      ),
+    };
+
+    const res = await fetch(`/api/crop/${activeCropClip.id}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+
+    if (!res.ok) {
+      showToast('Could not save crop settings', 'error');
+      return;
+    }
+
+    Object.assign(activeCropClip, payload);
+    showToast('Edit saved. Ready for TikTok upload flow.');
+    closeCropModal();
+  }
+
+  // ── Admin Modal ──────────────────────────────────────────────────────────
+  document.getElementById('admin-btn').addEventListener('click', openAdminModal);
+  document.getElementById('admin-close-btn').addEventListener('click', closeAdminModal);
+  document.getElementById('admin-modal').addEventListener('click', (e) => {
+    if (e.target.id === 'admin-modal') closeAdminModal();
+  });
+
+  function closeAdminModal() {
+    document.getElementById('admin-modal').classList.remove('show');
+  }
+
+  async function adminUndoApprove(clipId) {
+    if (!confirm('Undo approve for this clip?')) return;
+    await fetch(`/api/approve/${clipId}`, { method: 'DELETE' });
+    await openAdminModal(); // Refresh modal data while keeping search/tab state
+  }
+
+  function getFilteredAdminClips() {
+    if (!adminData?.clips) return [];
+    const q = adminSearchQuery.trim().toLowerCase();
+    const clips = q
+      ? adminData.clips.filter(clip => {
+          const haystack = [
+            clip.title,
+            clip.id,
+            clip.url,
+            clip.broadcaster_name,
+          ].join(' ').toLowerCase();
+          return haystack.includes(q);
+        })
+      : [...adminData.clips];
+
+    const factor = adminSort.dir === 'asc' ? 1 : -1;
+    clips.sort((a, b) => {
+      if (adminSort.key === 'view_count') return (a.view_count - b.view_count) * factor;
+      if (adminSort.key === 'created_at') return (new Date(a.created_at) - new Date(b.created_at)) * factor;
+      const av = String(a[adminSort.key] || '').toLowerCase();
+      const bv = String(b[adminSort.key] || '').toLowerCase();
+      return av.localeCompare(bv) * factor;
+    });
+
+    return clips;
+  }
+
+  function updateAdminSort(key) {
+    if (adminSort.key === key) {
+      adminSort.dir = adminSort.dir === 'asc' ? 'desc' : 'asc';
+    } else {
+      adminSort = { key, dir: key === 'created_at' || key === 'view_count' ? 'desc' : 'asc' };
+    }
+    saveAdminPrefs();
+    renderAdminBody();
+  }
+
+  function sortMark(key) {
+    if (adminSort.key !== key) return '';
+    return adminSort.dir === 'asc' ? ' ▲' : ' ▼';
+  }
+
+  function renderAdminBody() {
+    const body = document.getElementById('admin-body');
+    if (!adminData) {
+      body.innerHTML = '<div class="admin-empty-note">No admin data available.</div>';
+      return;
+    }
+
+    const clips = getFilteredAdminClips();
+
+    let tableRows = '';
+    clips.forEach(clip => {
+      const statusBadges = [];
+      if (clip.approved) statusBadges.push('<span class="badge approved">Approved</span>');
+      if (clip.sorted_out) statusBadges.push('<span class="badge sorted">Sorted</span>');
+      if (!clip.approved && !clip.sorted_out) statusBadges.push('<span class="badge" style="background: rgba(173,173,184,0.2); color: var(--muted);">Pending</span>');
+
+      const actions = [];
+      if (clip.approved) actions.push(`<button onclick="adminUndoApprove('${clip.id}')" style="background: #ff6b6b; color: white; border: none; padding: 4px 8px; border-radius: 4px; cursor: pointer; font-size: 0.75rem; margin-right: 4px;">Undo Approve</button>`);
+
+      tableRows += `
+        <tr>
+          <td title="${escHtml(clip.title)}" style="max-width: 250px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${escHtml(clip.title)}</td>
+          <td>${escHtml(clip.broadcaster_name || 'Unknown')}</td>
+          <td>${formatViews(clip.view_count)}</td>
+          <td>${formatDate(clip.created_at)}</td>
+          <td>${statusBadges.join(' ')}</td>
+          <td><a href="${clip.url}" target="_blank" rel="noopener" style="color: var(--purple); text-decoration: none; margin-right: 8px;">Open</a>${actions.join('')}</td>
+        </tr>
+      `;
+    });
+
+    body.innerHTML = `
+      <div class="admin-stats">
+        <div class="admin-stat-box">
+          <div class="stat-label">Total Clips</div>
+          <div class="stat-value">${adminData.total_clips}</div>
+        </div>
+        <div class="admin-stat-box approved">
+          <div class="stat-label">Approved</div>
+          <div class="stat-value">${adminData.approved_clips}</div>
+        </div>
+        <div class="admin-stat-box">
+          <div class="stat-label">Pending</div>
+          <div class="stat-value">${adminData.pending_clips}</div>
+        </div>
+        <div class="admin-stat-box sorted">
+          <div class="stat-label">Sorted Out</div>
+          <div class="stat-value">${adminData.sorted_out_clips}</div>
+        </div>
+      </div>
+
+      <div class="admin-tools">
+        <div class="admin-search-wrap">
+          <input id="admin-search" class="admin-search" type="text" placeholder="Type and press Enter or click Search..." value="${escHtml(adminSearchDraft)}" />
+          <button id="admin-search-btn" class="admin-search-btn" type="button">Search</button>
+        </div>
+      </div>
+
+      <div class="admin-table-wrapper">
+        <table class="admin-table">
+          <thead>
+            <tr>
+              <th class="sortable" data-sort="title">Title${sortMark('title')}</th>
+              <th class="sortable" data-sort="broadcaster_name">Streamer${sortMark('broadcaster_name')}</th>
+              <th class="sortable" data-sort="view_count">Views${sortMark('view_count')}</th>
+              <th class="sortable" data-sort="created_at">Date${sortMark('created_at')}</th>
+              <th>Status</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${tableRows || '<tr><td colspan="6" class="admin-empty-note">No clips found for this search.</td></tr>'}
+          </tbody>
+        </table>
+      </div>
+    `;
+
+    const searchInput = document.getElementById('admin-search');
+    const searchBtn = document.getElementById('admin-search-btn');
+    const applyAdminSearch = () => {
+      adminSearchQuery = adminSearchDraft;
+      saveAdminPrefs();
+      renderAdminBody();
+    };
+
+    searchInput.addEventListener('input', () => {
+      adminSearchDraft = searchInput.value;
+      saveAdminPrefs();
+    });
+    searchInput.addEventListener('keydown', (e) => {
+      if (e.key !== 'Enter') return;
+      applyAdminSearch();
+    });
+    searchBtn.addEventListener('click', applyAdminSearch);
+
+    body.querySelectorAll('.admin-table th.sortable').forEach((th) => {
+      th.addEventListener('click', () => updateAdminSort(th.dataset.sort));
+    });
+  }
+
+  async function openAdminModal() {
+    const modal = document.getElementById('admin-modal');
+    const body = document.getElementById('admin-body');
+    modal.classList.add('show');
+    body.innerHTML = '<div style="text-align: center;"><div class="spinner" style="margin: 40px auto;"></div>Loading data...</div>';
+
+    try {
+      const r = await fetch('/api/admin/db');
+      if (!r.ok) throw new Error('Failed to fetch admin data');
+      adminData = await r.json();
+      adminSearchDraft = adminSearchQuery;
+      renderAdminBody();
+    } catch (err) {
+      body.innerHTML = `<div style="color: var(--red);">❌ Error loading database: ${err.message}</div>`;
+    }
+  }
+
+  // ── Boot ─────────────────────────────────────────────────────────────────
+  applyStoredPrefs();
+  setAuthMode('login');
+  updateUploadControls(null);
+  setGlobalBuildLock(false);
+  checkAuth();
+</script>
+
+<div id="build-lock-overlay" aria-hidden="true" title="Build in progress"></div>
+<div id="toast"></div>
+<footer class="legal-footer">
+  <a href="/terms.html">Terms of Service</a>
+  <span>•</span>
+  <a href="/privacy.html">Privacy Policy</a>
+</footer>
+</body>
+</html>
+
