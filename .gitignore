@@ -1,8 +1,33 @@
+# Local environment and editor config
 .env
-.idea
-/node_modules
+.env.*
+!.env.example
+.idea/
+.vscode/
+.codex/
+
+# Dependencies and build artifacts
+node_modules/
+dist/
+
+# Runtime data and temporary processing artifacts
+tmp/
+*.db
+*.db-shm
+*.db-wal
+clips
+approved.json.migrated
+cookies*.txt
+*.bin
+*.headers
+*.log
+
+# Project-local helper files not meant for repo history
+/code_snippets/
 TwitchAPI.ts
 get-twitch-id.ps1
-/code_snippets
-.codex/
 tiktoksspGvbdDf6yjqElju2Df3C6Cqm0P9teP.txt
+
+# OS files
+.DS_Store
+Thumbs.db
