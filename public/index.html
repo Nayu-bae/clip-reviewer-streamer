@@ -41,7 +41,10 @@
       color: var(--text);
       font-family: 'Inter', 'Segoe UI', sans-serif;
       min-height: 100vh;
+      display: flex;
+      flex-direction: column;
     }
+
 
     /* ── Login ─────────────────────────────── */
     #login-screen {
@@ -58,32 +61,36 @@
     }
 
     .login-card {
-      background: rgba(24, 24, 27, 0.86);
-      border: 1px solid rgba(255, 255, 255, 0.12);
-      border-radius: 16px;
-      padding: 34px 30px;
+      background:
+        linear-gradient(180deg, rgba(32, 32, 36, 0.94), rgba(23, 23, 27, 0.9));
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 20px;
+      padding: 38px 32px 30px;
       width: min(420px, 92vw);
       text-align: center;
-      backdrop-filter: blur(12px);
+      backdrop-filter: blur(14px);
       box-shadow:
-        0 30px 70px rgba(0, 0, 0, 0.5),
-        0 0 0 1px rgba(145, 71, 255, 0.12) inset;
+        0 30px 80px rgba(0, 0, 0, 0.48),
+        0 0 0 1px rgba(255, 255, 255, 0.04) inset,
+        0 18px 40px rgba(124, 58, 237, 0.08);
     }
 
     .login-card .logo {
       font-size: 2rem;
-      margin-bottom: 8px;
+      margin-bottom: 12px;
     }
 
     .login-card h1 {
-      font-size: 1.4rem;
-      margin-bottom: 6px;
+      font-size: 1.5rem;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      margin-bottom: 8px;
     }
 
     .login-card p {
-      color: #b9b9c4;
+      color: #a9a9b7;
       font-size: 0.92rem;
-      margin-bottom: 18px;
+      margin-bottom: 20px;
     }
 
     .login-card input {
@@ -1904,29 +1911,51 @@
     }
 
     .legal-footer {
-      border-top: 1px solid var(--border);
       color: var(--muted);
       font-size: 0.82rem;
       text-align: center;
-      padding: 14px 12px 20px;
+      padding: 14px 18px;
+    }
+
+    body.login-view .legal-footer {
+      position: fixed;
+      left: 50%;
+      bottom: 16px;
+      transform: translateX(-50%);
+      z-index: 40;
+      width: auto;
+      min-width: 280px;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 999px;
+      background: rgba(20, 20, 24, 0.78);
+      backdrop-filter: blur(14px);
+      box-shadow:
+        0 12px 30px rgba(0, 0, 0, 0.32),
+        0 0 0 1px rgba(255, 255, 255, 0.03) inset;
+    }
+
+    body.login-view #app-screen {
+      display: none !important;
     }
 
     .legal-footer a {
       color: var(--muted);
       text-decoration: none;
       margin: 0 8px;
+      transition: color 0.2s ease;
     }
 
     .legal-footer a:hover {
       color: var(--text);
-      text-decoration: underline;
+      text-decoration: none;
     }
+
   </style>
 </head>
 <body class="bg-zinc-950 text-zinc-100 antialiased">
 
 <!-- ══════════════════ LOGIN SCREEN ══════════════════ -->
-<div id="login-screen" class="min-h-screen flex items-center justify-center px-4">
+<div id="login-screen" class="flex-1 flex items-center justify-center px-4">
   <div class="login-card shadow-2xl shadow-black/40">
     <div class="logo">
       <svg class="mx-auto h-9 w-9 text-violet-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
@@ -1934,7 +1963,7 @@
         <path stroke-linecap="round" stroke-linejoin="round" d="M8 5v14M16 5v14M4 9.5h16M4 14.5h16"/>
       </svg>
     </div>
-    <h1>Clip Reviewer</h1>
+    <h1>NayuClips</h1>
     <p>Enter your credentials to access the dashboard</p>
     <div id="auth-mode-switch" tabindex="0" role="group" aria-label="Authentication mode" class="relative mb-3 rounded-full border border-zinc-700/80 overflow-hidden text-sm bg-zinc-950/70 p-1 shadow-inner shadow-black/50 cursor-pointer select-none">
       <div id="auth-mode-slider" class="absolute inset-y-1 left-1 w-[calc(50%-0.25rem)] rounded-full bg-gradient-to-r from-violet-600 to-fuchsia-600 transition-transform duration-200 ease-out shadow-lg shadow-violet-700/40"></div>
@@ -1961,7 +1990,7 @@
           <path stroke-linecap="round" stroke-linejoin="round" d="M8 5v14M16 5v14M4 9.5h16M4 14.5h16"/>
         </svg>
       </span>
-      Clip Reviewer
+      NayuClips
     </div>
     <div class="right">
       <div id="navbar-username" class="inline-flex items-center gap-1.5 rounded-full border border-zinc-700 bg-zinc-900/70 px-3 py-1 text-xs text-zinc-300">@-</div>
@@ -2503,6 +2532,7 @@
     await fetch('/api/logout', { method: 'POST' });
     document.getElementById('app-screen').style.display = 'none';
     document.getElementById('login-screen').style.display = 'flex';
+    document.body.classList.add('login-view');
     document.getElementById('username-input').value = '';
     document.getElementById('password-input').value = '';
     document.getElementById('streamer-setup-modal').classList.add('hidden');
@@ -2518,6 +2548,7 @@
   function showApp() {
     document.getElementById('login-screen').style.display = 'none';
     document.getElementById('app-screen').style.display = 'block';
+    document.body.classList.remove('login-view');
     restoreActiveUploadJob();
     if (needsStreamerSetup) {
       openStreamerSetupModal();
@@ -4299,7 +4330,9 @@
     const safeGameplayH = Math.max(minH, Math.min(1 - safeGameplayY, gameplayRawH));
     cropState.gameplayOutput = { y: safeGameplayY, h: safeGameplayH };
 
-    if (cropState.camEnabled) {
+    const showPreviewBorders = cropState.previewBordersEnabled !== false;
+
+    if (cropState.camEnabled && showPreviewBorders) {
       camOverlay.style.display = 'block';
       camOverlay.style.top = `${safeCamY * 100}%`;
       camOverlay.style.height = `${safeCamH * 100}%`;
@@ -4313,13 +4346,19 @@
       camResizeHandle.style.display = 'none';
     }
 
-    gameplayOverlay.style.display = 'block';
-    gameplayOverlay.style.top = `${safeGameplayY * 100}%`;
-    gameplayOverlay.style.height = `${safeGameplayH * 100}%`;
-    gameplayMoveHandle.style.display = 'block';
-    gameplayMoveHandle.style.top = `${(safeGameplayY + safeGameplayH) * 100}%`;
-    gameplayResizeHandle.style.display = 'block';
-    gameplayResizeHandle.style.top = `${safeGameplayY * 100}%`;
+    if (showPreviewBorders) {
+      gameplayOverlay.style.display = 'block';
+      gameplayOverlay.style.top = `${safeGameplayY * 100}%`;
+      gameplayOverlay.style.height = `${safeGameplayH * 100}%`;
+      gameplayMoveHandle.style.display = 'block';
+      gameplayMoveHandle.style.top = `${(safeGameplayY + safeGameplayH) * 100}%`;
+      gameplayResizeHandle.style.display = 'block';
+      gameplayResizeHandle.style.top = `${safeGameplayY * 100}%`;
+    } else {
+      gameplayOverlay.style.display = 'none';
+      gameplayMoveHandle.style.display = 'none';
+      gameplayResizeHandle.style.display = 'none';
+    }
     }
 
   function getOutputBadgeLayout(ctx, canvas, streamerName) {
@@ -4997,6 +5036,7 @@
   }
 
   // ── Boot ─────────────────────────────────────────────────────────────────
+  document.body.classList.add('login-view');
   applyStoredPrefs();
   setAuthMode('login');
   updateUploadControls(null);
