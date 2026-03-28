@@ -891,6 +891,73 @@
 
     #empty .icon { font-size: 3rem; margin-bottom: 12px; }
 
+    .dashboard-state-card {
+      display: none;
+      max-width: 940px;
+      margin: 18px auto 0;
+      padding: 0 24px;
+    }
+
+    .dashboard-state-card.show {
+      display: block;
+    }
+
+    .dashboard-state-inner {
+      border-radius: 14px;
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      background: linear-gradient(180deg, rgba(24, 24, 27, 0.78), rgba(17, 17, 24, 0.84));
+      padding: 16px 18px;
+      box-shadow: 0 14px 32px rgba(0, 0, 0, 0.28);
+    }
+
+    .dashboard-state-card[data-tone="warn"] .dashboard-state-inner {
+      border-color: rgba(245, 158, 11, 0.55);
+      background: linear-gradient(180deg, rgba(120, 53, 15, 0.35), rgba(24, 24, 27, 0.86));
+    }
+
+    .dashboard-state-card[data-tone="error"] .dashboard-state-inner {
+      border-color: rgba(248, 113, 113, 0.55);
+      background: linear-gradient(180deg, rgba(127, 29, 29, 0.36), rgba(24, 24, 27, 0.88));
+    }
+
+    .dashboard-state-title {
+      font-size: 1rem;
+      font-weight: 700;
+      color: #f4f4f5;
+      margin-bottom: 6px;
+    }
+
+    .dashboard-state-msg {
+      font-size: 0.88rem;
+      color: #d4d4d8;
+      line-height: 1.45;
+    }
+
+    .dashboard-state-actions {
+      margin-top: 12px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .dashboard-state-action {
+      border: 1px solid rgba(255, 255, 255, 0.16);
+      border-radius: 999px;
+      background: rgba(39, 39, 42, 0.74);
+      color: #f4f4f5;
+      font-size: 0.78rem;
+      font-weight: 700;
+      padding: 6px 12px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .dashboard-state-action:hover {
+      border-color: rgba(196, 181, 253, 0.86);
+      color: #ede9fe;
+      background: rgba(76, 29, 149, 0.34);
+    }
+
     /* ── Admin Modal ────────────────────────────── */
     #admin-modal {
       display: none;
@@ -2452,6 +2519,14 @@
     <p>No clips found for this period.</p>
   </div>
 
+  <div id="dashboard-state-card" class="dashboard-state-card" data-tone="neutral" aria-live="polite">
+    <div class="dashboard-state-inner">
+      <div id="dashboard-state-title" class="dashboard-state-title"></div>
+      <div id="dashboard-state-msg" class="dashboard-state-msg"></div>
+      <div id="dashboard-state-actions" class="dashboard-state-actions"></div>
+    </div>
+  </div>
+
   <div id="clips-container" class="max-w-[1400px] mx-auto px-4 md:px-6 pb-10"></div>
 </div>
 
@@ -2745,6 +2820,7 @@
   const downloadInProgressIds = new Set();
   let actionProgressFlash = null;
   let actionProgressFlashTimer = null;
+  let dashboardStateCard = null;
   let cropAutosaveEnabled = false;
   let cropAutosaveSaving = false;
   let cropAutosaveQueued = false;
@@ -2760,6 +2836,41 @@
   const CROP_DRAFT_PREFIX = 'clipReviewer.cropDraft.v1.';
   const CROP_AUTOSAVE_DEBOUNCE_MS = 900;
   const CROP_AUTOSAVE_CHECK_INTERVAL_MS = 700;
+  const DASHBOARD_STATE_PRESETS = {
+    noClips: {
+      tone: 'neutral',
+      title: 'No clips yet',
+      message: 'No clips are available yet for this account. Add a streamer and fetch clips from Twitch.',
+      actions: [
+        { id: 'open-streamers', label: 'Add Streamer' },
+        { id: 'refresh-clips', label: 'Refresh from Twitch' },
+      ],
+    },
+    invalidStreamer: {
+      tone: 'warn',
+      title: 'Invalid streamer',
+      message: 'This streamer login or broadcaster ID could not be found on Twitch.',
+      actions: [
+        { id: 'open-streamers', label: 'Fix Streamer' },
+      ],
+    },
+    authExpired: {
+      tone: 'warn',
+      title: 'Auth expired',
+      message: 'Your session expired. Sign in again to continue loading clips.',
+      actions: [
+        { id: 'sign-in-again', label: 'Sign In Again' },
+      ],
+    },
+    serverUnavailable: {
+      tone: 'error',
+      title: 'Server unavailable',
+      message: 'The app could not reach the server right now. Please retry.',
+      actions: [
+        { id: 'retry-load', label: 'Retry' },
+      ],
+    },
+  };
 
   const DEFAULT_CROP = {
     camEnabled: true,
@@ -3172,23 +3283,7 @@
 
   // ── Logout ───────────────────────────────────────────────────────────────
   document.getElementById('logout-btn').addEventListener('click', async () => {
-    await fetch('/api/logout', { method: 'POST' });
-    document.getElementById('app-screen').style.display = 'none';
-    document.getElementById('login-screen').style.display = 'flex';
-    document.body.classList.add('login-view');
-    document.getElementById('username-input').value = '';
-    document.getElementById('password-input').value = '';
-    document.getElementById('streamer-setup-modal').classList.add('hidden');
-    document.getElementById('streamer-setup-modal').classList.remove('flex');
-    document.getElementById('add-streamer-modal').classList.add('hidden');
-    document.getElementById('add-streamer-modal').classList.remove('flex');
-    currentUsername = '';
-    loadOnboardingProgressForUser('', { allowLegacyMigration: false });
-    managedStreamerCount = 0;
-    lastClipSyncAt = null;
-    setNavbarUsername('');
-    updateSetupGuide();
-    setAuthMode('login');
+    await showLoginScreenFromState();
   });
 
   // ── Show app ─────────────────────────────────────────────────────────────
@@ -3196,6 +3291,7 @@
     document.getElementById('login-screen').style.display = 'none';
     document.getElementById('app-screen').style.display = 'block';
     document.body.classList.remove('login-view');
+    clearDashboardState();
     updateDashboardStatusRow();
     updateSetupGuide();
     void refreshManagedStreamerCount();
@@ -3272,8 +3368,12 @@
     closeStreamerSetupModal();
     if (Array.isArray(data.unresolved) && data.unresolved.length) {
       showToast(`Saved streamers. Could not resolve: ${data.unresolved.join(', ')}`, 'error');
+      showDashboardState('invalidStreamer', {
+        message: `Some streamer entries could not be resolved: ${data.unresolved.join(', ')}.`,
+      });
     } else {
       showToast('Streamers saved.');
+      clearDashboardState();
     }
     await refreshClipsFromTwitch();
   });
@@ -3372,9 +3472,21 @@
     if (!res.ok) {
       err.textContent = data.error || 'Failed to add streamer';
       err.classList.remove('hidden');
+      if (res.status === 404 || /not found/i.test(String(data.error || ''))) {
+        showDashboardState('invalidStreamer', {
+          message: `"${input}" was not found on Twitch. Check the login/ID and try again.`,
+        });
+      } else if (res.status === 401) {
+        showDashboardState('authExpired');
+      } else if (res.status >= 500) {
+        showDashboardState('serverUnavailable', {
+          message: data.error || 'Streamer validation is temporarily unavailable. Please retry.',
+        });
+      }
       return;
     }
 
+    clearDashboardState();
     managedStreamerCount = Array.isArray(data.streamers) ? data.streamers.length : managedStreamerCount;
     updateDashboardStatusRow();
     updateSetupGuide();
@@ -3414,6 +3526,14 @@
 
   document.getElementById('refresh-clips-btn').addEventListener('click', refreshClipsFromTwitch);
   document.getElementById('action-progress-cancel')?.addEventListener('click', cancelRefreshFromProgressChip);
+  document.getElementById('dashboard-state-actions')?.addEventListener('click', (e) => {
+    const target = e.target;
+    if (!(target instanceof HTMLElement)) return;
+    const button = target.closest('[data-dashboard-action]');
+    if (!(button instanceof HTMLElement)) return;
+    const actionId = button.getAttribute('data-dashboard-action');
+    void handleDashboardStateAction(actionId);
+  });
 
   // ── Load clips ───────────────────────────────────────────────────────────
   async function loadClips() {
@@ -3422,18 +3542,47 @@
     document.getElementById('empty').style.display = 'none';
     document.getElementById('stats-bar').textContent = 'Loading clips from database…';
     let loadedOk = false;
+    let errorStateKey = null;
+    let errorStateOverride = null;
 
     try {
       const r = await fetch(`/api/clips`);
-      if (!r.ok) throw new Error('Failed');
-      allClips = await r.json();
+      if (!r.ok) {
+        const data = await r.json().catch(() => ({}));
+        if (r.status === 401) {
+          errorStateKey = 'authExpired';
+        } else if (r.status >= 500) {
+          errorStateKey = 'serverUnavailable';
+        } else {
+          errorStateKey = 'serverUnavailable';
+          errorStateOverride = {
+            message: data.error || 'Could not load clips right now. Please retry.',
+          };
+        }
+        throw new Error(data.error || 'Failed');
+      }
+      const payload = await r.json().catch(() => []);
+      allClips = Array.isArray(payload) ? payload : [];
       loadedOk = true;
-    } catch {
+    } catch (err) {
       allClips = [];
+      if (!errorStateKey) {
+        errorStateKey = 'serverUnavailable';
+        errorStateOverride = {
+          message: err instanceof Error && err.message ? err.message : 'Could not connect to the server. Please retry.',
+        };
+      }
     }
 
     if (loadedOk) {
       lastClipSyncAt = new Date().toISOString();
+      if (allClips.length === 0) {
+        showDashboardState('noClips');
+      } else {
+        clearDashboardState();
+      }
+    } else if (errorStateKey) {
+      showDashboardState(errorStateKey, errorStateOverride || {});
     }
     updateDashboardStatusRow();
     updateSetupGuide();
@@ -3457,7 +3606,23 @@
     try {
       const r = await fetch('/api/clips/refresh', { method: 'POST', signal: refreshAbortController.signal });
       const data = await r.json().catch(() => ({}));
-      if (!r.ok) throw new Error(data.error || 'Refresh failed');
+      if (!r.ok) {
+        if (r.status === 401) {
+          showDashboardState('authExpired');
+        } else if (r.status === 400 && /no streamers configured/i.test(String(data.error || ''))) {
+          showDashboardState('noClips', {
+            title: 'No streamers configured',
+            message: 'Add at least one streamer first, then run refresh again.',
+            actions: [
+              { id: 'open-streamers', label: 'Add Streamer' },
+              { id: 'refresh-clips', label: 'Try Refresh Again' },
+            ],
+          });
+        } else if (r.status >= 500) {
+          showDashboardState('serverUnavailable');
+        }
+        throw new Error(data.error || 'Refresh failed');
+      }
       showToast(`Refresh done: ${data.fetched || 0} clips fetched.`);
       setActionProgressFlash('done', `Refresh completed: ${data.fetched || 0} clip${(data.fetched || 0) === 1 ? '' : 's'} fetched.`);
       await loadClips();
@@ -3468,6 +3633,9 @@
       } else {
         showToast(`Refresh failed: ${err.message || 'Unknown error'}`, 'error');
         setActionProgressFlash('error', `Refresh failed: ${err.message || 'Unknown error'}`);
+        showDashboardState('serverUnavailable', {
+          message: err instanceof Error && err.message ? err.message : 'Could not refresh clips right now.',
+        });
       }
     } finally {
       refreshAbortController = null;
@@ -3618,7 +3786,7 @@
     updateSetupGuide();
 
     if (filtered.length === 0) {
-      document.getElementById('empty').style.display = 'block';
+      document.getElementById('empty').style.display = dashboardStateCard ? 'none' : 'block';
       return;
     }
     document.getElementById('empty').style.display = 'none';
@@ -3751,6 +3919,95 @@
     textEl.textContent = text;
     cancelBtn.style.display = canCancel ? 'inline-flex' : 'none';
     cancelBtn.disabled = !canCancel;
+  }
+
+  function renderDashboardState() {
+    const card = document.getElementById('dashboard-state-card');
+    const titleEl = document.getElementById('dashboard-state-title');
+    const msgEl = document.getElementById('dashboard-state-msg');
+    const actionsEl = document.getElementById('dashboard-state-actions');
+    if (!card || !titleEl || !msgEl || !actionsEl) return;
+
+    if (!dashboardStateCard) {
+      card.classList.remove('show');
+      card.dataset.tone = 'neutral';
+      titleEl.textContent = '';
+      msgEl.textContent = '';
+      actionsEl.innerHTML = '';
+      return;
+    }
+
+    card.dataset.tone = dashboardStateCard.tone || 'neutral';
+    titleEl.textContent = dashboardStateCard.title || '';
+    msgEl.textContent = dashboardStateCard.message || '';
+    actionsEl.innerHTML = (dashboardStateCard.actions || []).map((action) => (
+      `<button type="button" class="dashboard-state-action" data-dashboard-action="${escHtml(action.id)}">${escHtml(action.label)}</button>`
+    )).join('');
+    card.classList.add('show');
+  }
+
+  function showDashboardState(key, overrides = {}) {
+    const preset = DASHBOARD_STATE_PRESETS[key];
+    if (!preset) return;
+    dashboardStateCard = {
+      tone: overrides.tone || preset.tone,
+      title: overrides.title || preset.title,
+      message: overrides.message || preset.message,
+      actions: Array.isArray(overrides.actions) ? overrides.actions : preset.actions,
+      key,
+    };
+    renderDashboardState();
+  }
+
+  function clearDashboardState() {
+    if (!dashboardStateCard) return;
+    dashboardStateCard = null;
+    renderDashboardState();
+  }
+
+  async function showLoginScreenFromState() {
+    try {
+      await fetch('/api/logout', { method: 'POST' });
+    } catch {
+      // If the session is already expired, continue to local login screen reset.
+    }
+    document.getElementById('app-screen').style.display = 'none';
+    document.getElementById('login-screen').style.display = 'flex';
+    document.body.classList.add('login-view');
+    document.getElementById('username-input').value = '';
+    document.getElementById('password-input').value = '';
+    document.getElementById('streamer-setup-modal').classList.add('hidden');
+    document.getElementById('streamer-setup-modal').classList.remove('flex');
+    document.getElementById('add-streamer-modal').classList.add('hidden');
+    document.getElementById('add-streamer-modal').classList.remove('flex');
+    currentUsername = '';
+    loadOnboardingProgressForUser('', { allowLegacyMigration: false });
+    managedStreamerCount = 0;
+    lastClipSyncAt = null;
+    setNavbarUsername('');
+    updateSetupGuide();
+    setAuthMode('login');
+    clearDashboardState();
+  }
+
+  async function handleDashboardStateAction(actionId) {
+    const action = String(actionId || '').trim();
+    if (!action) return;
+    if (action === 'open-streamers') {
+      openAddStreamerModal();
+      return;
+    }
+    if (action === 'refresh-clips') {
+      await refreshClipsFromTwitch();
+      return;
+    }
+    if (action === 'retry-load') {
+      await loadClips();
+      return;
+    }
+    if (action === 'sign-in-again') {
+      await showLoginScreenFromState();
+    }
   }
 
   function buildCard(clip) {
