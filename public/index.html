@@ -2285,6 +2285,27 @@
       line-height: 1.3;
     }
 
+    .split-shortcuts-hint {
+      margin-top: 6px;
+      font-size: 0.72rem;
+      color: #9ca3af;
+      line-height: 1.35;
+    }
+
+    .split-shortcuts-hint kbd {
+      display: inline-block;
+      padding: 1px 5px;
+      border-radius: 6px;
+      border: 1px solid rgba(255, 255, 255, 0.14);
+      background: rgba(24, 24, 27, 0.85);
+      color: #e4e4e7;
+      font-size: 0.7rem;
+      font-family: inherit;
+      font-weight: 600;
+      letter-spacing: 0.01em;
+      margin: 0 1px;
+    }
+
     .cam-toggle-switch {
       position: relative;
       width: 90px;
@@ -2685,6 +2706,7 @@
               <div id="split-playhead" class="split-playhead"></div>
             </div>
           </div>
+          <p class="split-shortcuts-hint">Shortcuts: <kbd>Space</kbd> play/pause, <kbd>Left</kbd>/<kbd>Right</kbd>/<kbd>Up</kbd>/<kbd>Down</kbd> seek, <kbd>S</kbd> split at current time.</p>
           <div id="split-empty-note" class="split-empty-note"></div>
         </div>
       </div>
@@ -6572,10 +6594,15 @@
     });
   });
   document.querySelector('.output-preview-wrap')?.addEventListener('wheel', handleOutputZoomWheel, { passive: false });
-  document.getElementById('crop-preview-media').addEventListener('loadedmetadata', renderOutputPreview);
-  document.getElementById('crop-preview-media').addEventListener('loadeddata', renderOutputPreview);
-  document.getElementById('crop-preview-media').addEventListener('canplay', renderOutputPreview);
-  document.getElementById('crop-preview-media').addEventListener('seeked', renderOutputPreview);
+  const handleCropPreviewMediaReady = () => {
+    renderSplitEditor();
+    renderOutputPreview();
+  };
+  document.getElementById('crop-preview-media').addEventListener('loadedmetadata', handleCropPreviewMediaReady);
+  document.getElementById('crop-preview-media').addEventListener('loadeddata', handleCropPreviewMediaReady);
+  document.getElementById('crop-preview-media').addEventListener('canplay', handleCropPreviewMediaReady);
+  document.getElementById('crop-preview-media').addEventListener('durationchange', handleCropPreviewMediaReady);
+  document.getElementById('crop-preview-media').addEventListener('seeked', handleCropPreviewMediaReady);
 
   document.getElementById('clip-player-close-btn').addEventListener('click', closeClipPlayerModal);
   document.getElementById('clip-player-retry-btn').addEventListener('click', retryClipPlayerVideo);
