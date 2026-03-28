@@ -1873,74 +1873,6 @@
       background: rgba(17, 17, 24, 0.42);
     }
 
-    .split-zoom-toolbar {
-      margin-top: 8px;
-      display: none;
-      align-items: center;
-      justify-content: space-between;
-      gap: 8px;
-      padding: 7px 10px;
-      border-radius: 10px;
-      border: 1px solid rgba(250, 204, 21, 0.52);
-      background: linear-gradient(180deg, rgba(120, 53, 15, 0.38), rgba(24, 24, 27, 0.55));
-      box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.04);
-      position: sticky;
-      top: 0;
-      z-index: 6;
-    }
-
-    .split-zoom-toolbar.show {
-      display: flex;
-    }
-
-    .split-zoom-toolbar-meta {
-      min-width: 0;
-      display: flex;
-      flex-direction: column;
-      gap: 1px;
-    }
-
-    .split-zoom-toolbar-title {
-      font-size: 0.75rem;
-      font-weight: 700;
-      color: #fef3c7;
-      white-space: nowrap;
-    }
-
-    .split-zoom-toolbar-sub {
-      font-size: 0.68rem;
-      color: #fcd34d;
-      opacity: 0.92;
-    }
-
-    .split-zoom-toolbar-actions {
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      flex-wrap: wrap;
-      justify-content: flex-end;
-    }
-
-    .split-zoom-btn {
-      border: 1px solid rgba(250, 204, 21, 0.45);
-      border-radius: 999px;
-      background: rgba(113, 63, 18, 0.42);
-      color: #fef3c7;
-      font-size: 0.69rem;
-      font-weight: 700;
-      line-height: 1;
-      padding: 4px 9px;
-      cursor: pointer;
-      transition: all 0.15s ease;
-      min-height: 24px;
-    }
-
-    .split-zoom-btn:hover {
-      border-color: rgba(253, 224, 71, 0.72);
-      background: rgba(146, 64, 14, 0.62);
-      color: #fffbeb;
-    }
-
     .split-tools-main {
       display: flex;
       align-items: center;
@@ -2327,15 +2259,6 @@
         width: 100%;
         justify-content: space-between;
       }
-      .split-zoom-toolbar {
-        position: static;
-        flex-direction: column;
-        align-items: flex-start;
-      }
-      .split-zoom-toolbar-actions {
-        width: 100%;
-        justify-content: flex-start;
-      }
     }
 
     .legal-footer {
@@ -2644,18 +2567,6 @@
                   <button type="button" class="split-btn" id="split-clear-btn"><span class="glyph">⊘</span><span class="txt">Clear cuts</span></button>
                 </div>
               </div>
-            </div>
-          </div>
-          <div id="split-zoom-toolbar" class="split-zoom-toolbar" aria-live="polite">
-            <div class="split-zoom-toolbar-meta">
-              <div id="split-zoom-toolbar-title" class="split-zoom-toolbar-title">Zoom part active</div>
-              <div id="split-zoom-toolbar-sub" class="split-zoom-toolbar-sub">Drag in TikTok preview to position and resize.</div>
-            </div>
-            <div class="split-zoom-toolbar-actions">
-              <button type="button" id="split-zoom-nudge-out-btn" class="split-zoom-btn" title="Zoom out slightly">-</button>
-              <button type="button" id="split-zoom-nudge-in-btn" class="split-zoom-btn" title="Zoom in slightly">+</button>
-              <button type="button" id="split-zoom-center-btn" class="split-zoom-btn" title="Center current zoom">Center</button>
-              <button type="button" id="split-zoom-reset-btn" class="split-zoom-btn" title="Reset to full frame">Reset</button>
             </div>
           </div>
           <div class="split-timeline-wrap">
@@ -4361,10 +4272,6 @@
     updateSplitOverflowMenuUI();
     renderSplitEditor();
     });
-    document.getElementById('split-zoom-nudge-in-btn')?.addEventListener('click', () => nudgeSplitZoomToolbar('in'));
-    document.getElementById('split-zoom-nudge-out-btn')?.addEventListener('click', () => nudgeSplitZoomToolbar('out'));
-    document.getElementById('split-zoom-center-btn')?.addEventListener('click', centerSplitZoomToolbar);
-    document.getElementById('split-zoom-reset-btn')?.addEventListener('click', resetSplitZoomToolbar);
     document.addEventListener('click', (e) => {
     const wrap = document.querySelector('.split-overflow');
     if (!splitOverflowMenuOpen || !wrap) return;
@@ -4685,79 +4592,6 @@
     };
   }
 
-  function getSplitZoomToolbarContext() {
-    const live = getActiveZoomSegmentContext();
-    if (live) return { ...live, source: 'live' };
-    if (selectedSplitSegmentIndex === null || !isSplitSegmentZoomActive(selectedSplitSegmentIndex)) return null;
-    return {
-      index: selectedSplitSegmentIndex,
-      layout: getSplitSegmentZoomLayout(selectedSplitSegmentIndex),
-      source: 'selected',
-    };
-  }
-
-  function updateSplitZoomToolbar(context = null) {
-    const wrap = document.getElementById('split-zoom-toolbar');
-    const titleEl = document.getElementById('split-zoom-toolbar-title');
-    const subEl = document.getElementById('split-zoom-toolbar-sub');
-    if (!wrap || !titleEl || !subEl) return;
-
-    if (!context) {
-      wrap.classList.remove('show');
-      return;
-    }
-
-    const layout = context.layout || { x: 0, y: 0, w: 1, h: 1 };
-    const zoomXPct = Math.round((clampSplitZoomLayoutPosition(layout.x, layout.w, 0) * 100) * 10) / 10;
-    const zoomYPct = Math.round((clampSplitZoomLayoutPosition(layout.y, layout.h, 0) * 100) * 10) / 10;
-    const zoomWPct = Math.round((clampSplitZoomLayoutDimension(layout.w, 1) * 100) * 10) / 10;
-    const zoomHPct = Math.round((clampSplitZoomLayoutDimension(layout.h, 1) * 100) * 10) / 10;
-    const liveHint = context.source === 'live' ? ' (playhead active)' : '';
-    titleEl.textContent = `Zoom part ${context.index + 1}${liveHint}`;
-    subEl.textContent = `Position X ${zoomXPct}% / Y ${zoomYPct}% | Size ${zoomWPct}% x ${zoomHPct}%`;
-    wrap.classList.add('show');
-  }
-
-  function nudgeSplitZoomToolbar(direction) {
-    const ctx = getSplitZoomToolbarContext();
-    if (!ctx) {
-      showToast('Move playhead onto a zoom part first.', 'error');
-      return;
-    }
-    const step = direction === 'in' ? -0.06 : 0.06;
-    const current = ctx.layout || { x: 0, y: 0, w: 1, h: 1 };
-    const nextW = clampSplitZoomLayoutDimension(current.w + step, current.w);
-    const nextH = clampSplitZoomLayoutDimension(current.h + step, current.h);
-    const centerX = current.x + (current.w / 2);
-    const centerY = current.y + (current.h / 2);
-    const nextX = clampSplitZoomLayoutPosition(centerX - (nextW / 2), nextW, current.x);
-    const nextY = clampSplitZoomLayoutPosition(centerY - (nextH / 2), nextH, current.y);
-    setSplitSegmentZoomLayout(ctx.index, { x: nextX, y: nextY, w: nextW, h: nextH });
-  }
-
-  function centerSplitZoomToolbar() {
-    const ctx = getSplitZoomToolbarContext();
-    if (!ctx) {
-      showToast('Move playhead onto a zoom part first.', 'error');
-      return;
-    }
-    const current = ctx.layout || { x: 0, y: 0, w: 1, h: 1 };
-    const nextW = clampSplitZoomLayoutDimension(current.w, 1);
-    const nextH = clampSplitZoomLayoutDimension(current.h, 1);
-    const centeredX = clampSplitZoomLayoutPosition((1 - nextW) / 2, nextW, current.x);
-    const centeredY = clampSplitZoomLayoutPosition((1 - nextH) / 2, nextH, current.y);
-    setSplitSegmentZoomLayout(ctx.index, { x: centeredX, y: centeredY, w: nextW, h: nextH });
-  }
-
-  function resetSplitZoomToolbar() {
-    const ctx = getSplitZoomToolbarContext();
-    if (!ctx) {
-      showToast('Move playhead onto a zoom part first.', 'error');
-      return;
-    }
-    setSplitSegmentZoomLayout(ctx.index, { x: 0, y: 0, w: 1, h: 1 });
-  }
-
   function getCropPreviewDuration() {
     const video = document.getElementById('crop-preview-media');
     const d = Number(video?.duration);
@@ -4915,7 +4749,6 @@
       rulerEl.innerHTML = '';
       trackEl.innerHTML = '';
       playheadEl.style.display = 'none';
-      updateSplitZoomToolbar(null);
       return;
     }
 
@@ -4925,7 +4758,6 @@
       rulerEl.innerHTML = '';
       trackEl.innerHTML = '';
       playheadEl.style.display = 'none';
-      updateSplitZoomToolbar(null);
       return;
     }
 
@@ -4988,9 +4820,6 @@
     if (selectedSplitSegmentIndex !== null && !segments.some(s => s.index === selectedSplitSegmentIndex)) {
       selectedSplitSegmentIndex = null;
     }
-
-    const toolbarCtx = getSplitZoomToolbarContext();
-    updateSplitZoomToolbar(toolbarCtx);
 
     if (segments.length === 1 && cropState.splitPoints.length === 0 && !(selectedSeg && selectedSegZoomed)) {
       emptyEl.textContent = '';
