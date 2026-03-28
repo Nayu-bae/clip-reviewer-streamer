@@ -172,13 +172,23 @@ db.exec(`
         gameplay_y    REAL,
         gameplay_w    REAL,
         gameplay_h    REAL,
+        third_x       REAL,
+        third_y       REAL,
+        third_w       REAL,
+        third_h       REAL,
         cam_output_y  REAL,
         cam_output_h  REAL,
         gameplay_output_y REAL,
         gameplay_output_h REAL,
+        third_area_enabled INTEGER NOT NULL DEFAULT 0,
+        third_output_x REAL,
+        third_output_y REAL,
+        third_output_w REAL,
+        third_output_h REAL,
         split_points_json TEXT,
         split_deleted_segments_json TEXT,
         split_zoom_segments_json TEXT,
+        split_zoom_layouts_json TEXT,
         fetched_at    TEXT NOT NULL,
         PRIMARY KEY (user_id, clip_id),
         FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE,
@@ -213,12 +223,22 @@ addColumnIfMissing('ALTER TABLE user_clip_state ADD COLUMN cam_output_y REAL');
 addColumnIfMissing('ALTER TABLE user_clip_state ADD COLUMN cam_output_h REAL');
 addColumnIfMissing('ALTER TABLE user_clip_state ADD COLUMN gameplay_output_y REAL');
 addColumnIfMissing('ALTER TABLE user_clip_state ADD COLUMN gameplay_output_h REAL');
+addColumnIfMissing('ALTER TABLE user_clip_state ADD COLUMN third_x REAL');
+addColumnIfMissing('ALTER TABLE user_clip_state ADD COLUMN third_y REAL');
+addColumnIfMissing('ALTER TABLE user_clip_state ADD COLUMN third_w REAL');
+addColumnIfMissing('ALTER TABLE user_clip_state ADD COLUMN third_h REAL');
+addColumnIfMissing('ALTER TABLE user_clip_state ADD COLUMN third_area_enabled INTEGER NOT NULL DEFAULT 0');
+addColumnIfMissing('ALTER TABLE user_clip_state ADD COLUMN third_output_x REAL');
+addColumnIfMissing('ALTER TABLE user_clip_state ADD COLUMN third_output_y REAL');
+addColumnIfMissing('ALTER TABLE user_clip_state ADD COLUMN third_output_w REAL');
+addColumnIfMissing('ALTER TABLE user_clip_state ADD COLUMN third_output_h REAL');
 addColumnIfMissing('ALTER TABLE user_clip_state ADD COLUMN twitch_name_enabled INTEGER NOT NULL DEFAULT 0');
 addColumnIfMissing('ALTER TABLE user_clip_state ADD COLUMN twitch_name_x REAL');
 addColumnIfMissing('ALTER TABLE user_clip_state ADD COLUMN twitch_name_y REAL');
 addColumnIfMissing('ALTER TABLE user_clip_state ADD COLUMN split_points_json TEXT');
 addColumnIfMissing('ALTER TABLE user_clip_state ADD COLUMN split_deleted_segments_json TEXT');
 addColumnIfMissing('ALTER TABLE user_clip_state ADD COLUMN split_zoom_segments_json TEXT');
+addColumnIfMissing('ALTER TABLE user_clip_state ADD COLUMN split_zoom_layouts_json TEXT');
 function hashPassword(plain) {
     const salt = (0, crypto_2.randomBytes)(16).toString('hex');
     const derived = (0, crypto_2.scryptSync)(plain, salt, 64).toString('hex');
@@ -371,18 +391,22 @@ function ensureLegacySeedUser() {
                 cam_x, cam_y, cam_w, cam_h, cam_enabled, twitch_name_enabled,
                 twitch_name_x, twitch_name_y,
                 gameplay_x, gameplay_y, gameplay_w, gameplay_h,
+                third_x, third_y, third_w, third_h,
                 cam_output_y, cam_output_h,
                 gameplay_output_y, gameplay_output_h,
-                split_points_json, split_deleted_segments_json, split_zoom_segments_json,
+                third_area_enabled, third_output_x, third_output_y, third_output_w, third_output_h,
+                split_points_json, split_deleted_segments_json, split_zoom_segments_json, split_zoom_layouts_json,
                 fetched_at
             ) VALUES (
                 $user_id, $clip_id, $approved, $sorted_out,
                 $cam_x, $cam_y, $cam_w, $cam_h, $cam_enabled, $twitch_name_enabled,
                 $twitch_name_x, $twitch_name_y,
                 $gameplay_x, $gameplay_y, $gameplay_w, $gameplay_h,
+                $third_x, $third_y, $third_w, $third_h,
                 $cam_output_y, $cam_output_h,
                 $gameplay_output_y, $gameplay_output_h,
-                $split_points_json, $split_deleted_segments_json, $split_zoom_segments_json,
+                $third_area_enabled, $third_output_x, $third_output_y, $third_output_w, $third_output_h,
+                $split_points_json, $split_deleted_segments_json, $split_zoom_segments_json, $split_zoom_layouts_json,
                 $fetched_at
             )
             ON CONFLICT(user_id, clip_id) DO NOTHING
@@ -405,13 +429,23 @@ function ensureLegacySeedUser() {
                 $gameplay_y: row.gameplay_y,
                 $gameplay_w: row.gameplay_w,
                 $gameplay_h: row.gameplay_h,
+                $third_x: null,
+                $third_y: null,
+                $third_w: null,
+                $third_h: null,
                 $cam_output_y: row.cam_output_y,
                 $cam_output_h: row.cam_output_h,
                 $gameplay_output_y: row.gameplay_output_y,
                 $gameplay_output_h: row.gameplay_output_h,
+                $third_area_enabled: 0,
+                $third_output_x: null,
+                $third_output_y: null,
+                $third_output_w: null,
+                $third_output_h: null,
                 $split_points_json: null,
                 $split_deleted_segments_json: null,
                 $split_zoom_segments_json: null,
+                $split_zoom_layouts_json: null,
                 $fetched_at: row.fetched_at || now,
             });
         }
@@ -516,13 +550,23 @@ function getAllClips(userId) {
             s.gameplay_y,
             s.gameplay_w,
             s.gameplay_h,
+            s.third_x,
+            s.third_y,
+            s.third_w,
+            s.third_h,
             s.cam_output_y,
             s.cam_output_h,
             s.gameplay_output_y,
             s.gameplay_output_h,
+            s.third_area_enabled,
+            s.third_output_x,
+            s.third_output_y,
+            s.third_output_w,
+            s.third_output_h,
             s.split_points_json,
             s.split_deleted_segments_json,
-            s.split_zoom_segments_json
+            s.split_zoom_segments_json,
+            s.split_zoom_layouts_json
         FROM user_clip_state s
         JOIN clips c ON c.id = s.clip_id
         WHERE s.user_id = $user_id
@@ -595,13 +639,23 @@ function getApprovedClips(userId, limit) {
             s.gameplay_y,
             s.gameplay_w,
             s.gameplay_h,
+            s.third_x,
+            s.third_y,
+            s.third_w,
+            s.third_h,
             s.cam_output_y,
             s.cam_output_h,
             s.gameplay_output_y,
             s.gameplay_output_h,
+            s.third_area_enabled,
+            s.third_output_x,
+            s.third_output_y,
+            s.third_output_w,
+            s.third_output_h,
             s.split_points_json,
             s.split_deleted_segments_json,
-            s.split_zoom_segments_json
+            s.split_zoom_segments_json,
+            s.split_zoom_layouts_json
         FROM user_clip_state s
         JOIN clips c ON c.id = s.clip_id
         WHERE s.user_id = $user_id AND s.approved = 1 AND s.sorted_out = 0
@@ -751,6 +805,14 @@ function getCropOrDefault(clip) {
     cam.y = Math.min(cam.y, 1 - cam.h);
     gameplay.x = Math.min(gameplay.x, 1 - gameplay.w);
     gameplay.y = Math.min(gameplay.y, 1 - gameplay.h);
+    const third = {
+        x: clamp(asNum(clip.third_x, cam.x)),
+        y: clamp(asNum(clip.third_y, cam.y)),
+        w: Math.max(0.01, clamp(asNum(clip.third_w, cam.w))),
+        h: Math.max(0.01, clamp(asNum(clip.third_h, cam.h))),
+    };
+    third.x = Math.min(third.x, 1 - third.w);
+    third.y = Math.min(third.y, 1 - third.h);
     const camEnabled = clip.cam_enabled !== 0;
     const camOutputH = Math.max(0.05, Math.min(0.95, asNum(clip.cam_output_h, 0.30)));
     const camOutputY = Math.max(0, Math.min(1 - camOutputH, asNum(clip.cam_output_y, 0)));
@@ -760,6 +822,17 @@ function getCropOrDefault(clip) {
     const gameplayOutputH = Math.max(0.05, Math.min(0.95, asNum(clip.gameplay_output_h, gameplayFallbackH)));
     const gameplayOutputY = Math.max(0, Math.min(1 - gameplayOutputH, asNum(clip.gameplay_output_y, gameplayFallbackY)));
     const gameplayOutput = { y: gameplayOutputY, h: gameplayOutputH };
+    const thirdOutputW = Math.max(0.06, Math.min(1, asNum(clip.third_output_w, 0.36)));
+    const thirdOutputH = Math.max(0.06, Math.min(1, asNum(clip.third_output_h, 0.30)));
+    const thirdOutputX = Math.max(0, Math.min(1 - thirdOutputW, asNum(clip.third_output_x, 0.58)));
+    const thirdOutputY = Math.max(0, Math.min(1 - thirdOutputH, asNum(clip.third_output_y, 0.56)));
+    const thirdOutput = {
+        enabled: clip.third_area_enabled === 1,
+        x: thirdOutputX,
+        y: thirdOutputY,
+        w: thirdOutputW,
+        h: thirdOutputH,
+    };
     const twitchNameText = String(clip.broadcaster_name || '').trim().slice(0, 64);
     const twitchName = {
         enabled: clip.twitch_name_enabled === 1 && twitchNameText.length > 0,
@@ -771,8 +844,9 @@ function getCropOrDefault(clip) {
         points: normalizeSplitPoints(parseJsonNumberArray(clip.split_points_json), null),
         deletedSegments: normalizeSplitDeletedSegments(parseJsonIntArray(clip.split_deleted_segments_json), null),
         zoomSegments: normalizeSplitDeletedSegments(parseJsonIntArray(clip.split_zoom_segments_json), null),
+        zoomLayouts: normalizeSplitZoomLayouts(parseJsonZoomLayoutMap(clip.split_zoom_layouts_json), null),
     };
-    return { cam, gameplay, camEnabled, camOutput, gameplayOutput, twitchName, split };
+    return { cam, gameplay, third, camEnabled, camOutput, gameplayOutput, thirdOutput, twitchName, split };
 }
 function parseJsonNumberArray(raw) {
     if (!raw)
@@ -798,6 +872,58 @@ function parseJsonIntArray(raw) {
     }
     catch {
         return [];
+    }
+}
+function normalizeSplitZoomLayouts(rawLayouts, segmentCount) {
+    const out = {};
+    const maxIndex = Number.isInteger(segmentCount) && segmentCount !== null ? Math.max(-1, segmentCount - 1) : null;
+    const clampDim = (value, fallback) => {
+        const n = Number(value);
+        if (!Number.isFinite(n))
+            return fallback;
+        return Math.max(0.25, Math.min(2.5, n));
+    };
+    const clampPos = (value, size, fallback) => {
+        const n = Number(value);
+        const zoomSize = Math.max(0.25, Math.min(2.5, size));
+        const minPos = zoomSize > 1 ? (1 - zoomSize) : 0;
+        const maxPos = zoomSize > 1 ? 0 : (1 - zoomSize);
+        if (!Number.isFinite(n))
+            return Math.max(minPos, Math.min(maxPos, fallback));
+        return Math.max(minPos, Math.min(maxPos, n));
+    };
+    for (const [rawKey, rawValue] of Object.entries(rawLayouts || {})) {
+        const idx = Number(rawKey);
+        if (!Number.isInteger(idx) || idx < 0)
+            continue;
+        if (maxIndex !== null && idx > maxIndex)
+            continue;
+        if (!rawValue || typeof rawValue !== 'object' || Array.isArray(rawValue))
+            continue;
+        const value = rawValue;
+        const w = clampDim(value.w, 1);
+        const h = clampDim(value.h, 1);
+        const defaultX = Math.max(0, (1 - w) / 2);
+        const defaultY = Math.max(0, (1 - h) / 2);
+        const x = clampPos(value.x, w, defaultX);
+        const y = clampPos(value.y, h, defaultY);
+        if (Math.abs(w - 1) < 0.0001 && Math.abs(h - 1) < 0.0001 && Math.abs(x) < 0.0001 && Math.abs(y) < 0.0001)
+            continue;
+        out[String(idx)] = { x, y, w, h };
+    }
+    return out;
+}
+function parseJsonZoomLayoutMap(raw) {
+    if (!raw)
+        return {};
+    try {
+        const parsed = JSON.parse(raw);
+        if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed))
+            return {};
+        return normalizeSplitZoomLayouts(parsed, null);
+    }
+    catch {
+        return {};
     }
 }
 function normalizeSplitPoints(points, durationLimit) {
@@ -903,6 +1029,37 @@ function buildOutputTimelineZoomRanges(points, deletedSegments, zoomSegments) {
         }
     }
     return ranges;
+}
+function buildOutputTimelineZoomLayoutGroups(points, deletedSegments, zoomSegments, zoomLayouts) {
+    const normalizedPoints = normalizeSplitPoints(points, null);
+    const segmentCount = normalizedPoints.length + 1;
+    const deleted = new Set(normalizeSplitDeletedSegments(deletedSegments, segmentCount));
+    const zoomed = new Set(normalizeSplitDeletedSegments(zoomSegments, segmentCount));
+    const normalizedLayouts = normalizeSplitZoomLayouts(zoomLayouts, segmentCount);
+    const groups = new Map();
+    let cursor = 0;
+    for (let i = 0; i < segmentCount; i += 1) {
+        const start = i === 0 ? 0 : normalizedPoints[i - 1];
+        const end = i < normalizedPoints.length ? normalizedPoints[i] : null;
+        const duration = end === null ? null : Math.max(0, end - start);
+        if (!deleted.has(i) && zoomed.has(i)) {
+            const layout = normalizedLayouts[String(i)] || { x: 0, y: 0, w: 1, h: 1 };
+            const key = `${layout.x.toFixed(4)}:${layout.y.toFixed(4)}:${layout.w.toFixed(4)}:${layout.h.toFixed(4)}`;
+            if (!groups.has(key))
+                groups.set(key, { x: layout.x, y: layout.y, w: layout.w, h: layout.h, ranges: [] });
+            const group = groups.get(key);
+            if (end === null) {
+                group.ranges.push({ start: cursor, end: null });
+            }
+            else if (duration !== null && duration >= 0.04) {
+                group.ranges.push({ start: cursor, end: cursor + duration });
+            }
+        }
+        if (!deleted.has(i) && end !== null) {
+            cursor += Math.max(0, end - start);
+        }
+    }
+    return [...groups.values()];
 }
 function buildFfmpegEnableExprFromRanges(ranges) {
     const ts = (v) => Math.max(0, v).toFixed(3);
@@ -1318,7 +1475,7 @@ function runCommandCaptureOutput(command, args) {
     });
 }
 async function processClipToTikTokFormat(inputPath, outputPath, clip, videoPreset = 'medium') {
-    const { cam, gameplay, camEnabled, camOutput, gameplayOutput, twitchName, split } = getCropOrDefault(clip);
+    const { cam, gameplay, third, camEnabled, camOutput, gameplayOutput, thirdOutput, twitchName, split } = getCropOrDefault(clip);
     const n = (v) => v.toFixed(6);
     const ts = (v) => Math.max(0, v).toFixed(3);
     const outputW = 1080;
@@ -1327,6 +1484,10 @@ async function processClipToTikTokFormat(inputPath, outputPath, clip, videoPrese
     const camOutputYPx = Math.max(0, Math.round(1920 * camOutput.y));
     const gameplayOutputHeightPx = Math.max(2, Math.round(1920 * gameplayOutput.h));
     const gameplayOutputYPx = Math.max(0, Math.round(1920 * gameplayOutput.y));
+    const thirdOutputWPx = Math.max(2, Math.round(outputW * thirdOutput.w));
+    const thirdOutputHPx = Math.max(2, Math.round(outputH * thirdOutput.h));
+    const thirdOutputXPx = Math.max(0, Math.round(outputW * thirdOutput.x));
+    const thirdOutputYPx = Math.max(0, Math.round(outputH * thirdOutput.y));
     const logoPath = twitchName.enabled ? resolveTwitchLogoPath() : null;
     const showNameBadge = twitchName.enabled;
     const drawtextFontPath = resolveDrawtextFontPath();
@@ -1361,9 +1522,11 @@ async function processClipToTikTokFormat(inputPath, outputPath, clip, videoPrese
     const splitSegmentCount = splitPoints.length + 1;
     const splitDeletedSegments = normalizeSplitDeletedSegments(split.deletedSegments, splitSegmentCount);
     const splitZoomSegments = normalizeSplitDeletedSegments(split.zoomSegments, splitSegmentCount);
+    const splitZoomLayouts = normalizeSplitZoomLayouts(split.zoomLayouts, splitSegmentCount);
     const splitConfigured = splitPoints.length > 0 || splitDeletedSegments.length > 0 || splitZoomSegments.length > 0;
     const splitRanges = splitConfigured ? buildKeptSplitRanges(splitPoints, splitDeletedSegments) : [];
-    const zoomRanges = buildOutputTimelineZoomRanges(splitPoints, splitDeletedSegments, splitZoomSegments);
+    const zoomLayoutGroups = buildOutputTimelineZoomLayoutGroups(splitPoints, splitDeletedSegments, splitZoomSegments, splitZoomLayouts);
+    const zoomRanges = zoomLayoutGroups.flatMap(group => group.ranges);
     const zoomExpr = buildFfmpegEnableExprFromRanges(zoomRanges);
     const notZoomExpr = zoomExpr ? `not(${zoomExpr})` : '1';
     if (splitConfigured && splitRanges.length === 0) {
@@ -1410,30 +1573,56 @@ async function processClipToTikTokFormat(inputPath, outputPath, clip, videoPrese
         }
     }
     const hasZoomEffect = zoomExpr.length > 0;
-    const shouldRenderCamLayer = camEnabled || hasZoomEffect;
+    const shouldRenderCamLayer = camEnabled || hasZoomEffect || thirdOutput.enabled;
     if (shouldRenderCamLayer) {
         // Duplicate the source branch once before two crops; a single filter output label cannot be consumed safely twice.
         const gameplaySourceLabel = 'src_game';
         const camSourceLabel = 'src_cam';
-        const camZoomSourceLabel = 'src_cam_zoom';
-        if (hasZoomEffect) {
-            filterSteps.push(`[${sourceVideoLabel}]split=3[${gameplaySourceLabel}][${camSourceLabel}][${camZoomSourceLabel}]`);
-        }
-        else {
-            filterSteps.push(`[${sourceVideoLabel}]split=2[${gameplaySourceLabel}][${camSourceLabel}]`);
-        }
+        const camThirdSourceLabel = thirdOutput.enabled ? 'src_cam_third' : null;
+        const camZoomSourceLabels = zoomLayoutGroups.map((_, idx) => `src_cam_zoom_${idx}`);
+        const splitTargets = [`[${gameplaySourceLabel}]`, `[${camSourceLabel}]`];
+        if (camThirdSourceLabel)
+            splitTargets.push(`[${camThirdSourceLabel}]`);
+        splitTargets.push(...camZoomSourceLabels.map(label => `[${label}]`));
+        filterSteps.push(`[${sourceVideoLabel}]split=${splitTargets.length}${splitTargets.join('')}`);
         filterSteps.push(`[${gameplaySourceLabel}]crop=iw*${n(gameplay.w)}:ih*${n(gameplay.h)}:iw*${n(gameplay.x)}:ih*${n(gameplay.y)},scale=${outputW}:${gameplayOutputHeightPx}:flags=lanczos:force_original_aspect_ratio=disable,setsar=1[game]`);
         filterSteps.push(`color=c=black:s=${outputW}x${outputH}:d=${badgeSourceDurationSec}[layout_base]`);
         filterSteps.push(`[layout_base][game]overlay=0:${gameplayOutputYPx}:format=auto:shortest=1[bg]`);
         filterSteps.push(`[${camSourceLabel}]crop=iw*${n(cam.w)}:ih*${n(cam.h)}:iw*${n(cam.x)}:ih*${n(cam.y)},scale=${outputW}:${camOutputHeightPx}:flags=lanczos:force_original_aspect_ratio=disable,setsar=1[cam]`);
         const normalCamEnable = camEnabled ? notZoomExpr : '0';
         filterSteps.push(`[bg][cam]overlay=0:${camOutputYPx}:format=auto:enable='${normalCamEnable}'[base_norm]`);
+        let normalBaseLabel = 'base_norm';
+        if (thirdOutput.enabled && camThirdSourceLabel) {
+            const thirdOverlayX = `${thirdOutputXPx}+(${thirdOutputWPx}-overlay_w)/2`;
+            const thirdOverlayY = `${thirdOutputYPx}+(${thirdOutputHPx}-overlay_h)/2`;
+            filterSteps.push(`[${camThirdSourceLabel}]crop=iw*${n(third.w)}:ih*${n(third.h)}:iw*${n(third.x)}:ih*${n(third.y)},scale=${thirdOutputWPx}:${thirdOutputHPx}:flags=lanczos:force_original_aspect_ratio=decrease,setsar=1[cam_third]`);
+            filterSteps.push(`[base_norm][cam_third]overlay=${thirdOverlayX}:${thirdOverlayY}:format=auto:enable='${notZoomExpr}'[base_norm_third]`);
+            normalBaseLabel = 'base_norm_third';
+        }
         if (hasZoomEffect) {
-            filterSteps.push(`[${camZoomSourceLabel}]crop=iw*${n(cam.w)}:ih*${n(cam.h)}:iw*${n(cam.x)}:ih*${n(cam.y)},scale=${outputW}:${outputH}:flags=lanczos:force_original_aspect_ratio=disable,setsar=1[cam_zoom]`);
-            filterSteps.push(`[base_norm][cam_zoom]overlay=0:0:format=auto:enable='${zoomExpr}',setsar=1[base]`);
+            let zoomBaseLabel = normalBaseLabel;
+            zoomLayoutGroups.forEach((group, idx) => {
+                const zoomW = Math.max(2, Math.round(outputW * group.w));
+                const zoomH = Math.max(2, Math.round(outputH * group.h));
+                const minZoomX = zoomW > outputW ? (outputW - zoomW) : 0;
+                const maxZoomX = zoomW > outputW ? 0 : (outputW - zoomW);
+                const minZoomY = zoomH > outputH ? (outputH - zoomH) : 0;
+                const maxZoomY = zoomH > outputH ? 0 : (outputH - zoomH);
+                const zoomX = Math.max(minZoomX, Math.min(maxZoomX, Math.round(outputW * group.x)));
+                const zoomY = Math.max(minZoomY, Math.min(maxZoomY, Math.round(outputH * group.y)));
+                const zoomExprForGroup = buildFfmpegEnableExprFromRanges(group.ranges);
+                const camZoomLabel = `cam_zoom_${idx}`;
+                const nextBaseLabel = idx === (zoomLayoutGroups.length - 1) ? 'base' : `base_zoom_${idx}`;
+                const zoomOverlayX = `${zoomX}+(${zoomW}-overlay_w)/2`;
+                const zoomOverlayY = `${zoomY}+(${zoomH}-overlay_h)/2`;
+                // Keep background gameplay visible around zoom camera; avoid black letterbox padding.
+                filterSteps.push(`[${camZoomSourceLabels[idx]}]crop=iw*${n(cam.w)}:ih*${n(cam.h)}:iw*${n(cam.x)}:ih*${n(cam.y)},scale=${zoomW}:${zoomH}:flags=lanczos:force_original_aspect_ratio=decrease,setsar=1[${camZoomLabel}]`);
+                filterSteps.push(`[${zoomBaseLabel}][${camZoomLabel}]overlay=${zoomOverlayX}:${zoomOverlayY}:format=auto:enable='${zoomExprForGroup}',setsar=1[${nextBaseLabel}]`);
+                zoomBaseLabel = nextBaseLabel;
+            });
         }
         else {
-            filterSteps.push('[base_norm]setsar=1[base]');
+            filterSteps.push(`[${normalBaseLabel}]setsar=1[base]`);
         }
     }
     else {
@@ -1680,6 +1869,13 @@ function parseSplitZoomSegmentsPayload(value, maxSegments) {
     if (ints.some(v => !Number.isInteger(v) || v < 0))
         return null;
     return normalizeSplitDeletedSegments(ints, maxSegments);
+}
+function parseSplitZoomLayoutsPayload(value, maxSegments) {
+    if (value === undefined || value === null)
+        return {};
+    if (!value || typeof value !== 'object' || Array.isArray(value))
+        return null;
+    return normalizeSplitZoomLayouts(value, maxSegments);
 }
 // ── Twitch helpers ─────────────────────────────────────────────────────────
 async function getTwitchAccessToken() {
@@ -2207,13 +2403,23 @@ app.get('/api/clips/:clipId/download-cropped', requireAuth, async (req, res) => 
                 s.gameplay_y,
                 s.gameplay_w,
                 s.gameplay_h,
+                s.third_x,
+                s.third_y,
+                s.third_w,
+                s.third_h,
                 s.cam_output_y,
                 s.cam_output_h,
                 s.gameplay_output_y,
                 s.gameplay_output_h,
+                s.third_area_enabled,
+                s.third_output_x,
+                s.third_output_y,
+                s.third_output_w,
+                s.third_output_h,
                 s.split_points_json,
                 s.split_deleted_segments_json,
-                s.split_zoom_segments_json
+                s.split_zoom_segments_json,
+                s.split_zoom_layouts_json
             FROM clips c
             JOIN user_clip_state s ON s.clip_id = c.id
             WHERE c.id = $id AND s.user_id = $user_id
@@ -2410,8 +2616,9 @@ app.get('/api/crop/:clipId', requireAuth, (req, res) => {
     const userId = getRequiredUserId(req);
     const { clipId } = req.params;
     const row = db.prepare(`
-        SELECT c.id, s.approved, s.cam_x, s.cam_y, s.cam_w, s.cam_h, s.cam_enabled, s.twitch_name_enabled, s.twitch_name_x, s.twitch_name_y, s.gameplay_x, s.gameplay_y, s.gameplay_w, s.gameplay_h, s.cam_output_y, s.cam_output_h, s.gameplay_output_y, s.gameplay_output_h
-             , s.split_points_json, s.split_deleted_segments_json, s.split_zoom_segments_json
+        SELECT c.id, s.approved, s.cam_x, s.cam_y, s.cam_w, s.cam_h, s.cam_enabled, s.twitch_name_enabled, s.twitch_name_x, s.twitch_name_y, s.gameplay_x, s.gameplay_y, s.gameplay_w, s.gameplay_h, s.third_x, s.third_y, s.third_w, s.third_h, s.cam_output_y, s.cam_output_h, s.gameplay_output_y, s.gameplay_output_h
+             , s.third_area_enabled, s.third_output_x, s.third_output_y, s.third_output_w, s.third_output_h
+             , s.split_points_json, s.split_deleted_segments_json, s.split_zoom_segments_json, s.split_zoom_layouts_json
         FROM clips c
         JOIN user_clip_state s ON s.clip_id = c.id
         WHERE c.id = $id AND s.user_id = $user_id
@@ -2436,20 +2643,30 @@ app.get('/api/crop/:clipId', requireAuth, (req, res) => {
             gameplay_y: row.gameplay_y,
             gameplay_w: row.gameplay_w,
             gameplay_h: row.gameplay_h,
+            third_x: row.third_x,
+            third_y: row.third_y,
+            third_w: row.third_w,
+            third_h: row.third_h,
             cam_output_y: row.cam_output_y,
             cam_output_h: row.cam_output_h,
             gameplay_output_y: row.gameplay_output_y,
             gameplay_output_h: row.gameplay_output_h,
+            third_area_enabled: row.third_area_enabled === 1 ? 1 : 0,
+            third_output_x: row.third_output_x,
+            third_output_y: row.third_output_y,
+            third_output_w: row.third_output_w,
+            third_output_h: row.third_output_h,
             split_points: parseJsonNumberArray(row.split_points_json),
             split_deleted_segments: parseJsonIntArray(row.split_deleted_segments_json),
             split_zoom_segments: parseJsonIntArray(row.split_zoom_segments_json),
+            split_zoom_layouts: parseJsonZoomLayoutMap(row.split_zoom_layouts_json),
         }
     });
 });
 app.post('/api/crop/:clipId', requireAuth, (req, res) => {
     const userId = getRequiredUserId(req);
     const { clipId } = req.params;
-    const { cam_x, cam_y, cam_w, cam_h, cam_enabled, twitch_name_enabled, twitch_name_x, twitch_name_y, gameplay_x, gameplay_y, gameplay_w, gameplay_h, cam_output_y, cam_output_h, gameplay_output_y, gameplay_output_h, split_points, split_deleted_segments, split_zoom_segments, } = req.body;
+    const { cam_x, cam_y, cam_w, cam_h, cam_enabled, twitch_name_enabled, twitch_name_x, twitch_name_y, gameplay_x, gameplay_y, gameplay_w, gameplay_h, third_x, third_y, third_w, third_h, cam_output_y, cam_output_h, gameplay_output_y, gameplay_output_h, third_area_enabled, third_output_x, third_output_y, third_output_w, third_output_h, split_points, split_deleted_segments, split_zoom_segments, split_zoom_layouts, } = req.body;
     const parsedCamEnabled = parseCamEnabled(cam_enabled);
     if (parsedCamEnabled === null) {
         res.status(400).json({ error: 'Invalid cam_enabled value. Use 0 or 1.' });
@@ -2460,8 +2677,13 @@ app.post('/api/crop/:clipId', requireAuth, (req, res) => {
         res.status(400).json({ error: 'Invalid twitch_name_enabled value. Use 0 or 1.' });
         return;
     }
-    const values = [cam_x, cam_y, cam_w, cam_h, gameplay_x, gameplay_y, gameplay_w, gameplay_h];
-    if (!values.every(isValidCropNumber) || cam_w <= 0 || cam_h <= 0 || gameplay_w <= 0 || gameplay_h <= 0) {
+    const parsedThirdAreaEnabled = parseCamEnabled(third_area_enabled);
+    if (parsedThirdAreaEnabled === null) {
+        res.status(400).json({ error: 'Invalid third_area_enabled value. Use 0 or 1.' });
+        return;
+    }
+    const values = [cam_x, cam_y, cam_w, cam_h, gameplay_x, gameplay_y, gameplay_w, gameplay_h, third_x, third_y, third_w, third_h];
+    if (!values.every(isValidCropNumber) || cam_w <= 0 || cam_h <= 0 || gameplay_w <= 0 || gameplay_h <= 0 || third_w <= 0 || third_h <= 0 || (third_x + third_w) > 1 || (third_y + third_h) > 1) {
         res.status(400).json({ error: 'Invalid crop values. Use numbers between 0 and 1.' });
         return;
     }
@@ -2473,6 +2695,11 @@ app.post('/api/crop/:clipId', requireAuth, (req, res) => {
     const gameplayOutputLayoutValues = [gameplay_output_y, gameplay_output_h];
     if (!gameplayOutputLayoutValues.every(isValidCropNumber) || gameplay_output_h < 0.05 || (gameplay_output_y + gameplay_output_h) > 1) {
         res.status(400).json({ error: 'Invalid gameplay output layout. Keep height >= 0.05 and inside the 9:16 frame.' });
+        return;
+    }
+    const thirdOutputValues = [third_output_x, third_output_y, third_output_w, third_output_h];
+    if (!thirdOutputValues.every(isValidCropNumber) || third_output_w < 0.06 || third_output_h < 0.06 || (third_output_x + third_output_w) > 1 || (third_output_y + third_output_h) > 1) {
+        res.status(400).json({ error: 'Invalid third output area. Keep width/height >= 0.06 and inside the 9:16 frame.' });
         return;
     }
     const twitchNamePosValues = [twitch_name_x, twitch_name_y];
@@ -2499,6 +2726,11 @@ app.post('/api/crop/:clipId', requireAuth, (req, res) => {
         res.status(400).json({ error: 'Invalid split_zoom_segments. Provide an array of non-negative integers.' });
         return;
     }
+    const parsedSplitZoomLayouts = parseSplitZoomLayoutsPayload(split_zoom_layouts, parsedSplitPoints.length + 1);
+    if (parsedSplitZoomLayouts === null) {
+        res.status(400).json({ error: 'Invalid split_zoom_layouts. Provide an object of segment indexes with x/y/width/height values.' });
+        return;
+    }
     const updated = db.prepare(`
         UPDATE user_clip_state
         SET cam_x = $cam_x,
@@ -2507,19 +2739,29 @@ app.post('/api/crop/:clipId', requireAuth, (req, res) => {
             cam_h = $cam_h,
             cam_enabled = $cam_enabled,
             twitch_name_enabled = $twitch_name_enabled,
+            third_area_enabled = $third_area_enabled,
             twitch_name_x = $twitch_name_x,
             twitch_name_y = $twitch_name_y,
             gameplay_x = $gameplay_x,
             gameplay_y = $gameplay_y,
             gameplay_w = $gameplay_w,
             gameplay_h = $gameplay_h,
+            third_x = $third_x,
+            third_y = $third_y,
+            third_w = $third_w,
+            third_h = $third_h,
             cam_output_y = $cam_output_y,
             cam_output_h = $cam_output_h,
             gameplay_output_y = $gameplay_output_y,
             gameplay_output_h = $gameplay_output_h,
+            third_output_x = $third_output_x,
+            third_output_y = $third_output_y,
+            third_output_w = $third_output_w,
+            third_output_h = $third_output_h,
             split_points_json = $split_points_json,
             split_deleted_segments_json = $split_deleted_segments_json,
-            split_zoom_segments_json = $split_zoom_segments_json
+            split_zoom_segments_json = $split_zoom_segments_json,
+            split_zoom_layouts_json = $split_zoom_layouts_json
         WHERE clip_id = $id AND user_id = $user_id AND approved = 1
     `).run({
         $id: clipId,
@@ -2530,19 +2772,29 @@ app.post('/api/crop/:clipId', requireAuth, (req, res) => {
         $cam_h: cam_h,
         $cam_enabled: parsedCamEnabled,
         $twitch_name_enabled: parsedTwitchNameEnabled,
+        $third_area_enabled: parsedThirdAreaEnabled,
         $twitch_name_x: twitch_name_x,
         $twitch_name_y: twitch_name_y,
         $gameplay_x: gameplay_x,
         $gameplay_y: gameplay_y,
         $gameplay_w: gameplay_w,
         $gameplay_h: gameplay_h,
+        $third_x: third_x,
+        $third_y: third_y,
+        $third_w: third_w,
+        $third_h: third_h,
         $cam_output_y: cam_output_y,
         $cam_output_h: cam_output_h,
         $gameplay_output_y: gameplay_output_y,
         $gameplay_output_h: gameplay_output_h,
+        $third_output_x: third_output_x,
+        $third_output_y: third_output_y,
+        $third_output_w: third_output_w,
+        $third_output_h: third_output_h,
         $split_points_json: JSON.stringify(parsedSplitPoints),
         $split_deleted_segments_json: JSON.stringify(parsedSplitDeletedSegments),
         $split_zoom_segments_json: JSON.stringify(parsedSplitZoomSegments),
+        $split_zoom_layouts_json: JSON.stringify(parsedSplitZoomLayouts),
     });
     if (!updated.changes) {
         res.status(400).json({ error: 'Crop can only be saved for approved clips.' });

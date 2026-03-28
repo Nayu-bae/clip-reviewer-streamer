@@ -1145,6 +1145,15 @@
       background: #ffa500;
     }
 
+    #third-box {
+      border-color: #22c55e;
+      background: rgba(34, 197, 94, 0.14);
+    }
+
+    #third-box .label {
+      background: #22c55e;
+    }
+
     .crop-side {
       display: grid;
       gap: 14px;
@@ -1225,6 +1234,57 @@
     .output-game-area.dragging {
       z-index: 15;
     }
+
+    .output-third-area {
+      position: absolute;
+      z-index: 17;
+      border: 2px solid rgba(34, 197, 94, 0.92);
+      background: rgba(34, 197, 94, 0.14);
+      box-shadow:
+        inset 0 0 0 1px rgba(187, 247, 208, 0.62),
+        0 0 0 1px rgba(0, 0, 0, 0.34);
+      cursor: move;
+      user-select: none;
+      pointer-events: auto;
+    }
+
+    .output-third-area.dragging {
+      cursor: grabbing;
+      z-index: 18;
+    }
+
+    .output-third-area .output-third-label {
+      position: absolute;
+      left: 8px;
+      top: 8px;
+      font-size: 0.72rem;
+      font-weight: 700;
+      color: #fff;
+      background: rgba(0, 0, 0, 0.5);
+      border-radius: 999px;
+      padding: 2px 8px;
+      pointer-events: none;
+    }
+
+    .output-third-handle {
+      position: absolute;
+      width: 12px;
+      height: 12px;
+      border-radius: 3px;
+      background: rgba(240, 253, 244, 0.95);
+      border: 1px solid rgba(22, 101, 52, 0.9);
+      box-shadow: 0 1px 4px rgba(0, 0, 0, 0.45);
+      pointer-events: auto;
+    }
+
+    .output-third-handle.n { left: 50%; top: -6px; transform: translateX(-50%); cursor: ns-resize; }
+    .output-third-handle.s { left: 50%; bottom: -6px; transform: translateX(-50%); cursor: ns-resize; }
+    .output-third-handle.e { right: -6px; top: 50%; transform: translateY(-50%); cursor: ew-resize; }
+    .output-third-handle.w { left: -6px; top: 50%; transform: translateY(-50%); cursor: ew-resize; }
+    .output-third-handle.nw { left: -6px; top: -6px; cursor: nwse-resize; }
+    .output-third-handle.ne { right: -6px; top: -6px; cursor: nesw-resize; }
+    .output-third-handle.sw { left: -6px; bottom: -6px; cursor: nesw-resize; }
+    .output-third-handle.se { right: -6px; bottom: -6px; cursor: nwse-resize; }
 
     .output-cam-area .output-cam-label,
     .output-game-area .output-cam-label {
@@ -1386,6 +1446,24 @@
       width: 48px;
       height: 3px;
       opacity: 1;
+    }
+
+    .output-resize-handle.zoom-mode {
+      left: auto;
+      width: 18px;
+      height: 18px;
+      transform: translate(-50%, -50%);
+      cursor: nwse-resize;
+      border-radius: 4px;
+      border: 1px solid rgba(250, 204, 21, 0.85);
+      background: linear-gradient(135deg, rgba(250, 204, 21, 0.9), rgba(180, 83, 9, 0.95));
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.45);
+      opacity: 0.92;
+    }
+
+    .output-resize-handle.zoom-mode::before,
+    .output-resize-handle.zoom-mode::after {
+      display: none;
     }
 
     .output-name-badge {
@@ -1963,7 +2041,7 @@
         <path stroke-linecap="round" stroke-linejoin="round" d="M8 5v14M16 5v14M4 9.5h16M4 14.5h16"/>
       </svg>
     </div>
-    <h1>NayuClips</h1>
+    <h1>Clip-Reviewer</h1>
     <p>Enter your credentials to access the dashboard</p>
     <div id="auth-mode-switch" tabindex="0" role="group" aria-label="Authentication mode" class="relative mb-3 rounded-full border border-zinc-700/80 overflow-hidden text-sm bg-zinc-950/70 p-1 shadow-inner shadow-black/50 cursor-pointer select-none">
       <div id="auth-mode-slider" class="absolute inset-y-1 left-1 w-[calc(50%-0.25rem)] rounded-full bg-gradient-to-r from-violet-600 to-fuchsia-600 transition-transform duration-200 ease-out shadow-lg shadow-violet-700/40"></div>
@@ -1990,7 +2068,7 @@
           <path stroke-linecap="round" stroke-linejoin="round" d="M8 5v14M16 5v14M4 9.5h16M4 14.5h16"/>
         </svg>
       </span>
-      NayuClips
+      Clip-Reviewer
     </div>
     <div class="right">
       <div id="navbar-username" class="inline-flex items-center gap-1.5 rounded-full border border-zinc-700 bg-zinc-900/70 px-3 py-1 text-xs text-zinc-300">@-</div>
@@ -2133,6 +2211,17 @@
               <span class="crop-handle sw" data-handle="sw"></span>
               <span class="crop-handle se" data-handle="se"></span>
             </div>
+            <div id="third-box" class="crop-box" style="display:none;">
+              <span class="label">Third Area Source</span>
+              <span class="crop-handle n" data-handle="n"></span>
+              <span class="crop-handle e" data-handle="e"></span>
+              <span class="crop-handle s" data-handle="s"></span>
+              <span class="crop-handle w" data-handle="w"></span>
+              <span class="crop-handle nw" data-handle="nw"></span>
+              <span class="crop-handle ne" data-handle="ne"></span>
+              <span class="crop-handle sw" data-handle="sw"></span>
+              <span class="crop-handle se" data-handle="se"></span>
+            </div>
           </div>
         </div>
 
@@ -2171,7 +2260,7 @@
       <div class="crop-side">
         <div class="crop-group">
           <h4>Edit Instructions</h4>
-          <p class="crop-help">Drag inside a box to move it. Drag an edge or corner handle to resize it. Blue box is the top (cam), orange box is the bottom (gameplay).</p>
+          <p class="crop-help">Drag inside a box to move it. Drag an edge or corner handle to resize it. In zoom segments, hold Alt and use mouse wheel to resize quickly (Shift+wheel = width only, Ctrl+wheel = height only). Cyan box is camera source, orange box is gameplay source, green box is the third source area.</p>
           <div class="crop-toggle-row" id="cam-toggle-row">
             <span>Camera</span>
             <div id="cam-enabled-slider" class="cam-toggle-switch" tabindex="0" role="switch" aria-checked="true" aria-label="Camera toggle">
@@ -2205,6 +2294,17 @@
             </div>
             <strong id="preview-borders-enabled-label">On</strong>
           </div>
+          <div class="crop-toggle-row" id="third-area-toggle-row">
+            <span>Third area</span>
+            <div id="third-area-enabled-slider" class="cam-toggle-switch" tabindex="0" role="switch" aria-checked="false" aria-label="Third area toggle">
+              <div id="third-area-enabled-slider-fill" class="cam-toggle-slider"></div>
+              <div class="cam-toggle-labels">
+                <span id="third-area-enabled-on">On</span>
+                <span id="third-area-enabled-off">Off</span>
+              </div>
+            </div>
+            <strong id="third-area-enabled-label">Off</strong>
+          </div>
         </div>
         <div class="crop-group">
           <h4>TikTok Output Preview</h4>
@@ -2218,6 +2318,17 @@
               <span id="output-game-resize" class="output-cam-resize"></span>
               <span class="output-cam-label">Gameplay Area</span>
             </div>
+            <div id="output-third-area" class="output-third-area" style="display:none; left:58%; top:56%; width:36%; height:30%;">
+              <span class="output-third-label">Third Area</span>
+              <span class="output-third-handle n" data-handle="n"></span>
+              <span class="output-third-handle s" data-handle="s"></span>
+              <span class="output-third-handle e" data-handle="e"></span>
+              <span class="output-third-handle w" data-handle="w"></span>
+              <span class="output-third-handle nw" data-handle="nw"></span>
+              <span class="output-third-handle ne" data-handle="ne"></span>
+              <span class="output-third-handle sw" data-handle="sw"></span>
+              <span class="output-third-handle se" data-handle="se"></span>
+            </div>
             <button id="output-cam-move-handle" type="button" class="output-move-handle output-cam-move-handle" style="display:none;">Move Camera</button>
             <button id="output-game-move-handle" type="button" class="output-move-handle output-game-move-handle" style="display:none;">Move Gameplay</button>
             <button id="output-cam-resize-handle" type="button" class="output-resize-handle output-cam-resize-handle" style="display:none;" aria-label="Resize camera area"></button>
@@ -2229,7 +2340,7 @@
             <div id="output-center-guide-x" class="output-center-guide output-center-guide-x"></div>
             <div id="output-center-guide-y" class="output-center-guide output-center-guide-y"></div>
           </div>
-          <p class="preview-note">Drag camera or gameplay area to move. Drag each resize edge to change area height.</p>
+          <p class="preview-note">Drag camera/gameplay/third area directly on the preview. Camera and gameplay use horizontal resize handles, third area uses corner and edge handles. On zoom segments: Alt+wheel resizes, Shift+wheel adjusts width only, Ctrl+wheel adjusts height only.</p>
         </div>
         <div class="crop-actions">
           <button class="btn-secondary" id="crop-reset-btn">Reset</button>
@@ -2246,7 +2357,7 @@
   <div class="w-full max-w-xl rounded-2xl border border-white/15 bg-zinc-900/90 p-5 shadow-2xl shadow-black/60 ring-1 ring-violet-400/20">
     <h3 class="text-lg font-semibold mb-1 text-zinc-100">Set Your Streamers</h3>
     <p class="text-sm text-zinc-300 mb-3">Add Twitch logins or broadcaster IDs (comma, space, or one per line).</p>
-    <textarea id="streamer-setup-input" class="w-full min-h-[130px] rounded-xl border border-white/10 bg-zinc-800/70 px-3 py-2 text-sm text-zinc-100 placeholder:text-zinc-400 focus:outline-none focus:ring-2 focus:ring-violet-500/60 focus:border-violet-400/70" placeholder="treelover&#10;shroud&#10;123456789"></textarea>
+    <textarea id="streamer-setup-input" class="w-full min-h-[130px] rounded-xl border border-white/10 bg-zinc-800/70 px-3 py-2 text-sm text-zinc-100 placeholder:text-zinc-400 focus:outline-none focus:ring-2 focus:ring-violet-500/60 focus:border-violet-400/70" placeholder="shroud&#10;ninja&#10;123456789"></textarea>
     <div class="mt-3 flex gap-2 justify-end">
       <button id="streamer-setup-save" class="rounded-xl border border-violet-400/60 bg-gradient-to-r from-violet-600 to-fuchsia-600 px-4 py-2 text-sm font-semibold text-white shadow-lg shadow-violet-900/40 hover:brightness-110">Save Streamers</button>
     </div>
@@ -2259,7 +2370,7 @@
   <div class="w-full max-w-md rounded-2xl border border-zinc-700 bg-zinc-900 p-5 shadow-2xl shadow-black/50">
     <h3 class="text-lg font-semibold mb-1">Add Streamer</h3>
     <p class="text-sm text-zinc-400 mb-3">Enter Twitch login or broadcaster ID.</p>
-    <input id="add-streamer-input" class="w-full rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm" placeholder="treelover" />
+    <input id="add-streamer-input" class="w-full rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm" placeholder="shroud" />
     <div class="mt-3 flex gap-2 justify-end">
       <button id="add-streamer-cancel" class="rounded-lg border border-zinc-700 px-3 py-2 text-sm text-zinc-300">Cancel</button>
       <button id="add-streamer-save" class="rounded-lg border border-violet-500 bg-violet-600 px-4 py-2 text-sm font-semibold text-white hover:bg-violet-500">Add</button>
@@ -2284,6 +2395,7 @@
     let outputCamDragState = null;
     let outputGameplayDragState = null;
     let outputNameBadgeDragState = null;
+    let outputThirdDragState = null;
     let outputNameBadgeSnapState = { x: false, y: false };
     let outputNameBadgeLayout = null;
     let selectedSplitSegmentIndex = null;
@@ -2314,14 +2426,18 @@
     camEnabled: true,
     twitchNameEnabled: false,
     previewBordersEnabled: true,
+    thirdAreaEnabled: false,
     twitchNamePos: { x: 0.04, y: 0.04 },
     cam: { x: 0.62, y: 0.02, w: 0.35, h: 0.32 },
     gameplay: { x: 0, y: 0.2, w: 1, h: 0.8 },
+    third: { x: 0.62, y: 0.02, w: 0.35, h: 0.32 },
     camOutput: { y: 0, h: 0.30 },
     gameplayOutput: { y: 0.30, h: 0.70 },
+    thirdOutput: { x: 0.58, y: 0.56, w: 0.36, h: 0.30 },
     splitPoints: [],
     splitDeletedSegments: [],
     splitZoomSegments: [],
+    splitZoomLayouts: {},
   };
 
   // ── Helpers ─────────────────────────────────────────────────────────────
@@ -3327,6 +3443,8 @@
   const twitchNameEnabledSlider = document.getElementById('twitch-name-enabled-slider');
   const previewBordersToggleRow = document.getElementById('preview-borders-toggle-row');
   const previewBordersEnabledSlider = document.getElementById('preview-borders-enabled-slider');
+  const thirdAreaToggleRow = document.getElementById('third-area-toggle-row');
+  const thirdAreaEnabledSlider = document.getElementById('third-area-enabled-slider');
   const setCamEnabled = (enabled) => {
     if (!cropState) return;
     cropState.camEnabled = !!enabled;
@@ -3342,6 +3460,11 @@
     cropState.previewBordersEnabled = !!enabled;
     updateCropBoxes();
   };
+  const setThirdAreaEnabled = (enabled) => {
+    if (!cropState) return;
+    cropState.thirdAreaEnabled = !!enabled;
+    updateCropBoxes();
+  };
 
   const toggleCamEnabled = () => {
     if (!cropState) return;
@@ -3354,6 +3477,10 @@
   const togglePreviewBordersEnabled = () => {
     if (!cropState) return;
     setPreviewBordersEnabled(!cropState.previewBordersEnabled);
+  };
+  const toggleThirdAreaEnabled = () => {
+    if (!cropState) return;
+    setThirdAreaEnabled(!cropState.thirdAreaEnabled);
   };
 
   camToggleRow.addEventListener('pointerdown', (e) => {
@@ -3443,6 +3570,35 @@
       togglePreviewBordersEnabled();
     }
   });
+  thirdAreaToggleRow.addEventListener('pointerdown', (e) => {
+    if (!cropState) return;
+    if (e.target === thirdAreaEnabledSlider) return;
+    if (thirdAreaEnabledSlider.contains(e.target)) return;
+    e.preventDefault();
+    toggleThirdAreaEnabled();
+  });
+
+  thirdAreaEnabledSlider.addEventListener('click', (e) => {
+    if (!cropState) return;
+    e.preventDefault();
+    toggleThirdAreaEnabled();
+  });
+
+  thirdAreaEnabledSlider.addEventListener('keydown', (e) => {
+    if (!cropState) return;
+    if (e.key === 'ArrowLeft') {
+      e.preventDefault();
+      setThirdAreaEnabled(true);
+    }
+    if (e.key === 'ArrowRight') {
+      e.preventDefault();
+      setThirdAreaEnabled(false);
+    }
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      toggleThirdAreaEnabled();
+    }
+  });
   document.getElementById('crop-modal').addEventListener('click', (e) => {
     if (e.target.id === 'crop-modal') closeCropModal();
   });
@@ -3467,6 +3623,7 @@
     cropState.splitPoints = [];
     cropState.splitDeletedSegments = [];
     cropState.splitZoomSegments = [];
+    cropState.splitZoomLayouts = {};
     selectedSplitSegmentIndex = null;
     splitOverflowMenuOpen = false;
     updateSplitOverflowMenuUI();
@@ -3550,6 +3707,7 @@
     stopCropDrag();
     stopOutputCamDrag();
     stopOutputGameplayDrag();
+    stopOutputThirdDrag();
     stopCropPreviewLoop();
     cropFallbackImage = null;
     activeCropClip = null;
@@ -3609,6 +3767,118 @@
     return normalizeSplitDeletedSegments(rawZoom, segmentCount);
   }
 
+  function clampSplitZoomLayoutDimension(value, fallback = 1) {
+    const num = Number(value);
+    if (!Number.isFinite(num)) return fallback;
+    return Math.max(0.25, Math.min(2.5, num));
+  }
+
+  function clampSplitZoomLayoutPosition(value, size, fallback = 0) {
+    const num = Number(value);
+    const zoomSize = Math.max(0.25, Math.min(2.5, Number(size) || 1));
+    const minPos = zoomSize > 1 ? (1 - zoomSize) : 0;
+    const maxPos = zoomSize > 1 ? 0 : (1 - zoomSize);
+    if (!Number.isFinite(num)) return Math.max(minPos, Math.min(maxPos, fallback));
+    return Math.max(minPos, Math.min(maxPos, num));
+  }
+
+  function normalizeSplitZoomLayouts(rawLayouts, segmentCount) {
+    let parsed = rawLayouts;
+    if (typeof parsed === 'string') {
+      try {
+        parsed = JSON.parse(parsed);
+      } catch {
+        parsed = {};
+      }
+    }
+    if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return {};
+    const out = {};
+    const maxIndex = Number.isInteger(segmentCount) && segmentCount !== null ? Math.max(-1, segmentCount - 1) : null;
+    Object.entries(parsed).forEach(([rawKey, rawValue]) => {
+      const idx = Number(rawKey);
+      if (!Number.isInteger(idx) || idx < 0) return;
+      if (maxIndex !== null && idx > maxIndex) return;
+      if (!rawValue || typeof rawValue !== 'object' || Array.isArray(rawValue)) return;
+      const w = clampSplitZoomLayoutDimension(rawValue.w, 1);
+      const h = clampSplitZoomLayoutDimension(rawValue.h, 1);
+      const centeredX = Math.max(0, (1 - w) / 2);
+      const centeredY = Math.max(0, (1 - h) / 2);
+      const x = clampSplitZoomLayoutPosition(rawValue.x, w, centeredX);
+      const y = clampSplitZoomLayoutPosition(rawValue.y, h, centeredY);
+      if (Math.abs(w - 1) < 0.0001 && Math.abs(h - 1) < 0.0001 && Math.abs(x) < 0.0001 && Math.abs(y) < 0.0001) return;
+      out[idx] = { x, y, w, h };
+    });
+    return out;
+  }
+
+  function getSplitSegmentZoomLayout(index) {
+    if (!cropState) return { x: 0, y: 0, w: 1, h: 1 };
+    const layouts = normalizeSplitZoomLayouts(cropState.splitZoomLayouts, null);
+    return layouts[index] || { x: 0, y: 0, w: 1, h: 1 };
+  }
+
+  function setSplitSegmentZoomLayout(index, nextPartial) {
+    if (!cropState) return;
+    const layouts = normalizeSplitZoomLayouts(cropState.splitZoomLayouts, null);
+    const current = layouts[index] || { x: 0, y: 0, w: 1, h: 1 };
+    const next = {
+      w: clampSplitZoomLayoutDimension(nextPartial?.w ?? current.w, current.w),
+      h: clampSplitZoomLayoutDimension(nextPartial?.h ?? current.h, current.h),
+      x: 0,
+      y: 0,
+    };
+    next.x = clampSplitZoomLayoutPosition(nextPartial?.x ?? current.x, next.w, current.x);
+    next.y = clampSplitZoomLayoutPosition(nextPartial?.y ?? current.y, next.h, current.y);
+    if (Math.abs(next.w - 1) < 0.0001 && Math.abs(next.h - 1) < 0.0001) {
+      delete layouts[index];
+    } else {
+      layouts[index] = next;
+    }
+    cropState.splitZoomLayouts = layouts;
+    selectedSplitSegmentIndex = index;
+    renderSplitEditor();
+    renderOutputPreview();
+  }
+
+  function remapSplitZoomLayoutsForInsertedPoint(layouts, insertSegmentIndex) {
+    const source = normalizeSplitZoomLayouts(layouts, null);
+    const out = {};
+    const splitAt = Math.max(0, Number(insertSegmentIndex) || 0);
+    Object.entries(source).forEach(([rawKey, layout]) => {
+      const idx = Number(rawKey);
+      if (!Number.isInteger(idx) || idx < 0) return;
+      if (idx < splitAt) {
+        out[idx] = { ...layout };
+      } else if (idx === splitAt) {
+        out[idx] = { ...layout };
+        out[idx + 1] = { ...layout };
+      } else {
+        out[idx + 1] = { ...layout };
+      }
+    });
+    return out;
+  }
+
+  function remapSplitZoomLayoutsForRemovedPoint(layouts, removedSplitPointIndex) {
+    const source = normalizeSplitZoomLayouts(layouts, null);
+    const out = {};
+    const mergeAt = Math.max(0, Number(removedSplitPointIndex) || 0);
+    const mergedLayout = source[mergeAt] || source[mergeAt + 1] || null;
+    Object.entries(source).forEach(([rawKey, layout]) => {
+      const idx = Number(rawKey);
+      if (!Number.isInteger(idx) || idx < 0) return;
+      if (idx < mergeAt) {
+        out[idx] = { ...layout };
+      } else if (idx === mergeAt || idx === (mergeAt + 1)) {
+        return;
+      } else {
+        out[idx - 1] = { ...layout };
+      }
+    });
+    if (mergedLayout) out[mergeAt] = { ...mergedLayout };
+    return out;
+  }
+
   function remapSplitSegmentIndicesForInsertedPoint(indices, insertSegmentIndex) {
     const inSet = new Set(Array.isArray(indices) ? indices : []);
     const out = new Set();
@@ -3663,6 +3933,19 @@
     if (!cropState) return false;
     const zoom = new Set(cropState.splitZoomSegments || []);
     return zoom.has(index);
+  }
+
+  function getActiveZoomSegmentContext() {
+    if (!cropState) return null;
+    const duration = getCropPreviewDuration();
+    if (!duration) return null;
+    const video = document.getElementById('crop-preview-media');
+    const activeSegment = getActiveSplitSegmentAtTime(duration, Number(video?.currentTime || 0));
+    if (!activeSegment || !isSplitSegmentZoomActive(activeSegment.index)) return null;
+    return {
+      index: activeSegment.index,
+      layout: getSplitSegmentZoomLayout(activeSegment.index),
+    };
   }
 
   function getCropPreviewDuration() {
@@ -3758,6 +4041,7 @@
     if (index < 0 || index >= points.length) return;
     const oldDeleted = normalizeSplitDeletedSegments(cropState.splitDeletedSegments, points.length + 1);
     const oldZoom = normalizeSplitZoomSegments(cropState.splitZoomSegments, points.length + 1);
+    const oldZoomLayouts = normalizeSplitZoomLayouts(cropState.splitZoomLayouts, points.length + 1);
 
     points.splice(index, 1);
     cropState.splitPoints = points;
@@ -3767,6 +4051,10 @@
     );
     cropState.splitZoomSegments = normalizeSplitZoomSegments(
       remapSplitSegmentIndicesForRemovedPoint(oldZoom, index),
+      points.length + 1
+    );
+    cropState.splitZoomLayouts = normalizeSplitZoomLayouts(
+      remapSplitZoomLayoutsForRemovedPoint(oldZoomLayouts, index),
       points.length + 1
     );
 
@@ -3833,6 +4121,7 @@
     const segments = getSplitSegments(duration);
     cropState.splitDeletedSegments = normalizeSplitDeletedSegments(cropState.splitDeletedSegments, segments.length);
     cropState.splitZoomSegments = normalizeSplitZoomSegments(cropState.splitZoomSegments, segments.length);
+    cropState.splitZoomLayouts = normalizeSplitZoomLayouts(cropState.splitZoomLayouts, segments.length);
 
     const ticks = getSplitRulerTicks(duration);
     rulerEl.innerHTML = ticks.map((tick, idx) => `
@@ -3884,14 +4173,20 @@
     playheadEl.style.display = 'block';
     playheadEl.style.left = `${playheadPct.toFixed(3)}%`;
 
-    if (segments.length === 1 && cropState.splitPoints.length === 0) {
+    if (selectedSplitSegmentIndex !== null && !segments.some(s => s.index === selectedSplitSegmentIndex)) {
+      selectedSplitSegmentIndex = null;
+    }
+
+    if (segments.length === 1 && cropState.splitPoints.length === 0 && !(selectedSeg && selectedSegZoomed)) {
       emptyEl.textContent = '';
       return;
     }
 
-    if (selectedSplitSegmentIndex !== null && !segments.some(s => s.index === selectedSplitSegmentIndex)) {
-      selectedSplitSegmentIndex = null;
+    if (selectedSeg && selectedSegZoomed) {
+      emptyEl.textContent = 'Zoom segment selected: drag the yellow zoom box to move it, drag the corner handle to resize.';
+      return;
     }
+
 
     emptyEl.textContent = '';
     }
@@ -3922,6 +4217,7 @@
 
     const oldDeleted = normalizeSplitDeletedSegments(cropState.splitDeletedSegments, oldPoints.length + 1);
     const oldZoom = normalizeSplitZoomSegments(cropState.splitZoomSegments, oldPoints.length + 1);
+    const oldZoomLayouts = normalizeSplitZoomLayouts(cropState.splitZoomLayouts, oldPoints.length + 1);
 
     cropState.splitPoints = points;
     cropState.splitDeletedSegments = normalizeSplitDeletedSegments(
@@ -3930,6 +4226,10 @@
     );
     cropState.splitZoomSegments = normalizeSplitZoomSegments(
       remapSplitSegmentIndicesForInsertedPoint(oldZoom, insertSegmentIndex),
+      points.length + 1
+    );
+    cropState.splitZoomLayouts = normalizeSplitZoomLayouts(
+      remapSplitZoomLayoutsForInsertedPoint(oldZoomLayouts, insertSegmentIndex),
       points.length + 1
     );
     if (selectedSplitSegmentIndex !== null) {
@@ -3953,6 +4253,7 @@
     dragState = null;
     document.getElementById('cam-box').classList.remove('dragging');
     document.getElementById('game-box').classList.remove('dragging');
+    document.getElementById('third-box').classList.remove('dragging');
   }
 
     function stopOutputCamDrag() {
@@ -3973,6 +4274,12 @@
     overlay?.classList.remove('dragging');
     moveHandle?.classList.remove('dragging');
     resizeHandle?.classList.remove('dragging');
+    }
+
+    function stopOutputThirdDrag() {
+    outputThirdDragState = null;
+    const overlay = document.getElementById('output-third-area');
+    overlay?.classList.remove('dragging');
     }
 
   function stopOutputNameBadgeDrag() {
@@ -4032,6 +4339,7 @@
   function startCropDrag(e, sectionName) {
     if (!cropState) return;
     if (sectionName === 'cam' && !cropState.camEnabled) return;
+    if (sectionName === 'third' && !cropState.thirdAreaEnabled) return;
     const handleEl = e.target.closest('.crop-handle');
     const mode = handleEl ? 'resize' : 'move';
     const handle = handleEl ? handleEl.dataset.handle : '';
@@ -4051,16 +4359,33 @@
       height: size.height,
     };
 
-    const activeBoxId = sectionName === 'cam' ? 'cam-box' : 'game-box';
+    const activeBoxId = sectionName === 'cam' ? 'cam-box' : (sectionName === 'third' ? 'third-box' : 'game-box');
     document.getElementById(activeBoxId).classList.add('dragging');
     e.preventDefault();
   }
 
     function startOutputCamDrag(e, mode) {
-    if (!cropState || !cropState.camEnabled) return;
+    if (!cropState) return;
     const wrap = document.querySelector('.output-preview-wrap');
     if (!wrap) return;
     const rect = wrap.getBoundingClientRect();
+    const zoomCtx = getActiveZoomSegmentContext();
+    if (zoomCtx) {
+      const zoomLayout = zoomCtx.layout || { x: 0, y: 0, w: 1, h: 1 };
+      outputCamDragState = {
+        mode: mode === 'resize' ? 'zoom-resize' : 'zoom-move',
+        segmentIndex: zoomCtx.index,
+        startMouseX: e.clientX,
+        startMouseY: e.clientY,
+        startX: zoomLayout.x,
+        startY: zoomLayout.y,
+        startW: zoomLayout.w,
+        startH: zoomLayout.h,
+        widthPx: Math.max(1, rect.width),
+        heightPx: Math.max(1, rect.height),
+      };
+    } else {
+      if (!cropState.camEnabled) return;
     outputCamDragState = {
       mode,
       startMouseY: e.clientY,
@@ -4068,6 +4393,7 @@
       startH: cropState.camOutput?.h ?? DEFAULT_CROP.camOutput.h,
       heightPx: Math.max(1, rect.height),
     };
+    }
     const overlay = document.getElementById('output-cam-area');
     const moveHandle = document.getElementById('output-cam-move-handle');
     const resizeHandle = document.getElementById('output-cam-resize-handle');
@@ -4124,6 +4450,63 @@
     resizeHandle?.classList.add('dragging');
     e.preventDefault();
     e.stopPropagation();
+    }
+
+  function startOutputThirdDrag(e, mode = 'move', handle = '') {
+    if (!cropState?.thirdAreaEnabled) return;
+    const zoomCtx = getActiveZoomSegmentContext();
+    if (zoomCtx) return;
+    const wrap = document.querySelector('.output-preview-wrap');
+    if (!wrap) return;
+    const rect = wrap.getBoundingClientRect();
+    const third = normalizeCrop(cropState.thirdOutput, DEFAULT_CROP.thirdOutput);
+    cropState.thirdOutput = third;
+    outputThirdDragState = {
+      mode: mode === 'resize' ? 'resize' : 'move',
+      handle: String(handle || ''),
+      startMouseX: e.clientX,
+      startMouseY: e.clientY,
+      startX: third.x,
+      startY: third.y,
+      startW: third.w,
+      startH: third.h,
+      widthPx: Math.max(1, rect.width),
+      heightPx: Math.max(1, rect.height),
+    };
+    const overlay = document.getElementById('output-third-area');
+    overlay?.classList.add('dragging');
+    e.preventDefault();
+    e.stopPropagation();
+    }
+
+    function handleOutputZoomWheel(e) {
+    if (!cropState) return;
+    const zoomCtx = getActiveZoomSegmentContext();
+    if (!zoomCtx) return;
+    if (!(e.altKey || e.shiftKey || e.ctrlKey)) return;
+
+    const step = 0.03;
+    const delta = e.deltaY < 0 ? step : -step;
+    const current = zoomCtx.layout || { x: 0, y: 0, w: 1, h: 1 };
+    let nextW = current.w;
+    let nextH = current.h;
+
+    if (e.shiftKey && !e.ctrlKey) {
+      nextW = clampSplitZoomLayoutDimension(current.w + delta, current.w);
+    } else if (e.ctrlKey && !e.shiftKey) {
+      nextH = clampSplitZoomLayoutDimension(current.h + delta, current.h);
+    } else {
+      nextW = clampSplitZoomLayoutDimension(current.w + delta, current.w);
+      nextH = clampSplitZoomLayoutDimension(current.h + delta, current.h);
+    }
+
+    const centerX = current.x + (current.w / 2);
+    const centerY = current.y + (current.h / 2);
+    const nextX = clampSplitZoomLayoutPosition(centerX - (nextW / 2), nextW, current.x);
+    const nextY = clampSplitZoomLayoutPosition(centerY - (nextH / 2), nextH, current.y);
+    e.preventDefault();
+    e.stopPropagation();
+    setSplitSegmentZoomLayout(zoomCtx.index, { x: nextX, y: nextY, w: nextW, h: nextH });
     }
 
   function clamp01(n) {
@@ -4199,6 +4582,22 @@
     label.textContent = enabled ? 'On' : 'Off';
   }
 
+  function syncThirdAreaToggleUI() {
+    const slider = document.getElementById('third-area-enabled-slider');
+    const sliderFill = document.getElementById('third-area-enabled-slider-fill');
+    const label = document.getElementById('third-area-enabled-label');
+    const onLabel = document.getElementById('third-area-enabled-on');
+    const offLabel = document.getElementById('third-area-enabled-off');
+    if (!slider || !sliderFill || !label || !onLabel || !offLabel) return;
+    const enabled = !!cropState?.thirdAreaEnabled;
+    slider.setAttribute('aria-checked', enabled ? 'true' : 'false');
+    slider.setAttribute('aria-valuetext', enabled ? 'On' : 'Off');
+    sliderFill.style.transform = enabled ? 'translateX(0%)' : 'translateX(100%)';
+    onLabel.style.color = enabled ? '#ffffff' : '#a1a1aa';
+    offLabel.style.color = enabled ? '#a1a1aa' : '#ffffff';
+    label.textContent = enabled ? 'On' : 'Off';
+  }
+
   async function openCropModal(clipId) {
     const clipKey = String(clipId || '');
     const clip = allClips.find(c => c.id === clipKey);
@@ -4235,6 +4634,7 @@
       camEnabled: clip.cam_enabled !== 0,
       twitchNameEnabled: clip.twitch_name_enabled === 1,
       previewBordersEnabled: true,
+      thirdAreaEnabled: clip.third_area_enabled === 1,
       twitchNamePos: normalizeNamePos({ x: clip.twitch_name_x, y: clip.twitch_name_y }, DEFAULT_CROP.twitchNamePos),
       cam: normalizeCrop({ x: clip.cam_x, y: clip.cam_y, w: clip.cam_w, h: clip.cam_h }, DEFAULT_CROP.cam),
       gameplay: normalizeCrop({ x: clip.gameplay_x, y: clip.gameplay_y, w: clip.gameplay_w, h: clip.gameplay_h }, DEFAULT_CROP.gameplay),
@@ -4246,9 +4646,22 @@
         y: clamp01(clip.gameplay_output_y ?? DEFAULT_CROP.gameplayOutput.y),
         h: Math.max(0.05, Math.min(0.95, clamp01(clip.gameplay_output_h ?? DEFAULT_CROP.gameplayOutput.h))),
       },
+      third: normalizeCrop({
+        x: clip.third_x,
+        y: clip.third_y,
+        w: clip.third_w,
+        h: clip.third_h,
+      }, DEFAULT_CROP.third),
+      thirdOutput: normalizeCrop({
+        x: clip.third_output_x,
+        y: clip.third_output_y,
+        w: clip.third_output_w,
+        h: clip.third_output_h,
+      }, DEFAULT_CROP.thirdOutput),
       splitPoints: normalizeSplitPoints(clip.split_points_json),
       splitDeletedSegments: normalizeSplitDeletedSegments(clip.split_deleted_segments_json, null),
       splitZoomSegments: normalizeSplitZoomSegments(clip.split_zoom_segments_json, null),
+      splitZoomLayouts: normalizeSplitZoomLayouts(clip.split_zoom_layouts_json, null),
     };
 
     try {
@@ -4259,6 +4672,7 @@
           camEnabled: data.crop.cam_enabled !== 0,
           twitchNameEnabled: data.crop.twitch_name_enabled === 1,
           previewBordersEnabled: cropState.previewBordersEnabled !== false,
+          thirdAreaEnabled: data.crop.third_area_enabled === 1,
           twitchNamePos: normalizeNamePos({ x: data.crop.twitch_name_x, y: data.crop.twitch_name_y }, cropState.twitchNamePos),
           cam: normalizeCrop({ x: data.crop.cam_x, y: data.crop.cam_y, w: data.crop.cam_w, h: data.crop.cam_h }, cropState.cam),
           gameplay: normalizeCrop({ x: data.crop.gameplay_x, y: data.crop.gameplay_y, w: data.crop.gameplay_w, h: data.crop.gameplay_h }, cropState.gameplay),
@@ -4270,9 +4684,22 @@
             y: clamp01(data.crop.gameplay_output_y ?? cropState.gameplayOutput.y),
             h: Math.max(0.05, Math.min(0.95, clamp01(data.crop.gameplay_output_h ?? cropState.gameplayOutput.h))),
           },
+          third: normalizeCrop({
+            x: data.crop.third_x,
+            y: data.crop.third_y,
+            w: data.crop.third_w,
+            h: data.crop.third_h,
+          }, cropState.third),
+          thirdOutput: normalizeCrop({
+            x: data.crop.third_output_x,
+            y: data.crop.third_output_y,
+            w: data.crop.third_output_w,
+            h: data.crop.third_output_h,
+          }, cropState.thirdOutput),
           splitPoints: normalizeSplitPoints(data.crop.split_points),
           splitDeletedSegments: normalizeSplitDeletedSegments(data.crop.split_deleted_segments, null),
           splitZoomSegments: normalizeSplitZoomSegments(data.crop.split_zoom_segments, null),
+          splitZoomLayouts: normalizeSplitZoomLayouts(data.crop.split_zoom_layouts, null),
         };
         cropState.camOutput.y = Math.min(cropState.camOutput.y, 1 - cropState.camOutput.h);
         cropState.gameplayOutput.y = Math.min(cropState.gameplayOutput.y, 1 - cropState.gameplayOutput.h);
@@ -4290,19 +4717,25 @@
     if (!cropState) return;
     const cam = document.getElementById('cam-box');
     const game = document.getElementById('game-box');
+    const third = document.getElementById('third-box');
     const setBox = (el, c) => {
       el.style.left = `${c.x * 100}%`;
       el.style.top = `${c.y * 100}%`;
       el.style.width = `${c.w * 100}%`;
       el.style.height = `${c.h * 100}%`;
     };
+    cropState.third = normalizeCrop(cropState.third, DEFAULT_CROP.third);
+    cropState.thirdOutput = normalizeCrop(cropState.thirdOutput, DEFAULT_CROP.thirdOutput);
     setBox(cam, cropState.cam);
     setBox(game, cropState.gameplay);
+    setBox(third, cropState.third);
     cam.style.display = cropState.camEnabled ? 'block' : 'none';
     game.style.display = 'block';
+    third.style.display = cropState.thirdAreaEnabled ? 'block' : 'none';
     syncCamToggleUI();
     syncTwitchNameToggleUI();
     syncPreviewBordersToggleUI();
+    syncThirdAreaToggleUI();
     updateOutputAreaOverlays();
     renderSplitEditor();
     renderOutputPreview();
@@ -4311,11 +4744,12 @@
     function updateOutputAreaOverlays() {
     const camOverlay = document.getElementById('output-cam-area');
     const gameplayOverlay = document.getElementById('output-game-area');
-        const camMoveHandle = document.getElementById('output-cam-move-handle');
-        const gameplayMoveHandle = document.getElementById('output-game-move-handle');
-        const camResizeHandle = document.getElementById('output-cam-resize-handle');
-        const gameplayResizeHandle = document.getElementById('output-game-resize-handle');
-        if (!cropState || !camOverlay || !gameplayOverlay || !camMoveHandle || !gameplayMoveHandle || !camResizeHandle || !gameplayResizeHandle) return;
+    const thirdOverlay = document.getElementById('output-third-area');
+    const camMoveHandle = document.getElementById('output-cam-move-handle');
+    const gameplayMoveHandle = document.getElementById('output-game-move-handle');
+    const camResizeHandle = document.getElementById('output-cam-resize-handle');
+    const gameplayResizeHandle = document.getElementById('output-game-resize-handle');
+    if (!cropState || !camOverlay || !gameplayOverlay || !thirdOverlay || !camMoveHandle || !gameplayMoveHandle || !camResizeHandle || !gameplayResizeHandle) return;
 
     const minH = 0.05;
     const camY = clamp01(cropState.camOutput?.y ?? DEFAULT_CROP.camOutput.y);
@@ -4329,18 +4763,74 @@
     const safeGameplayY = Math.max(0, Math.min(1 - minH, gameplayY));
     const safeGameplayH = Math.max(minH, Math.min(1 - safeGameplayY, gameplayRawH));
     cropState.gameplayOutput = { y: safeGameplayY, h: safeGameplayH };
+    cropState.thirdOutput = normalizeCrop(cropState.thirdOutput, DEFAULT_CROP.thirdOutput);
 
     const showPreviewBorders = cropState.previewBordersEnabled !== false;
+    const zoomCtx = getActiveZoomSegmentContext();
+    const zoomActive = !!zoomCtx;
+
+    if (zoomActive) {
+      const zoomIndex = zoomCtx.index;
+      const rawZoomLayout = zoomCtx.layout || { x: 0, y: 0, w: 1, h: 1 };
+      const zoomW = clampSplitZoomLayoutDimension(rawZoomLayout.w, 1);
+      const zoomH = clampSplitZoomLayoutDimension(rawZoomLayout.h, 1);
+      const centeredX = Math.max(0, (1 - zoomW) / 2);
+      const centeredY = Math.max(0, (1 - zoomH) / 2);
+      const zoomX = clampSplitZoomLayoutPosition(rawZoomLayout.x, zoomW, centeredX);
+      const zoomY = clampSplitZoomLayoutPosition(rawZoomLayout.y, zoomH, centeredY);
+      const zoomLayouts = normalizeSplitZoomLayouts(cropState.splitZoomLayouts, null);
+      if (Math.abs(zoomW - 1) < 0.0001 && Math.abs(zoomH - 1) < 0.0001 && Math.abs(zoomX) < 0.0001 && Math.abs(zoomY) < 0.0001) {
+        delete zoomLayouts[zoomIndex];
+      } else {
+        zoomLayouts[zoomIndex] = { x: zoomX, y: zoomY, w: zoomW, h: zoomH };
+      }
+      cropState.splitZoomLayouts = zoomLayouts;
+
+      if (showPreviewBorders) {
+        camOverlay.style.display = 'block';
+        camOverlay.style.left = `${zoomX * 100}%`;
+        camOverlay.style.top = `${zoomY * 100}%`;
+        camOverlay.style.width = `${zoomW * 100}%`;
+        camOverlay.style.height = `${zoomH * 100}%`;
+        const camLabel = camOverlay.querySelector('.output-cam-label');
+        if (camLabel) camLabel.textContent = 'Zoom Camera';
+        camMoveHandle.style.display = 'block';
+        camMoveHandle.style.left = `${(zoomX + (zoomW / 2)) * 100}%`;
+        camMoveHandle.style.top = `${(zoomY + (zoomH / 2)) * 100}%`;
+        camResizeHandle.classList.add('zoom-mode');
+        camResizeHandle.style.display = 'block';
+        camResizeHandle.style.left = '50%';
+        camResizeHandle.style.top = '50%';
+      } else {
+        camOverlay.style.display = 'none';
+        camMoveHandle.style.display = 'none';
+        camResizeHandle.style.display = 'none';
+      }
+
+      gameplayOverlay.style.display = 'none';
+      gameplayMoveHandle.style.display = 'none';
+      gameplayResizeHandle.style.display = 'none';
+      thirdOverlay.style.display = 'none';
+      return;
+    }
 
     if (cropState.camEnabled && showPreviewBorders) {
+      camResizeHandle.classList.remove('zoom-mode');
       camOverlay.style.display = 'block';
+      camOverlay.style.left = '0%';
       camOverlay.style.top = `${safeCamY * 100}%`;
+      camOverlay.style.width = '100%';
       camOverlay.style.height = `${safeCamH * 100}%`;
+      const camLabel = camOverlay.querySelector('.output-cam-label');
+      if (camLabel) camLabel.textContent = 'Camera Area';
       camMoveHandle.style.display = 'block';
+      camMoveHandle.style.left = '50%';
       camMoveHandle.style.top = `${safeCamY * 100}%`;
       camResizeHandle.style.display = 'block';
+      camResizeHandle.style.left = '0%';
       camResizeHandle.style.top = `${(safeCamY + safeCamH) * 100}%`;
     } else {
+      camResizeHandle.classList.remove('zoom-mode');
       camOverlay.style.display = 'none';
       camMoveHandle.style.display = 'none';
       camResizeHandle.style.display = 'none';
@@ -4358,6 +4848,16 @@
       gameplayOverlay.style.display = 'none';
       gameplayMoveHandle.style.display = 'none';
       gameplayResizeHandle.style.display = 'none';
+    }
+
+    if (cropState.thirdAreaEnabled && showPreviewBorders) {
+      thirdOverlay.style.display = 'block';
+      thirdOverlay.style.left = `${cropState.thirdOutput.x * 100}%`;
+      thirdOverlay.style.top = `${cropState.thirdOutput.y * 100}%`;
+      thirdOverlay.style.width = `${cropState.thirdOutput.w * 100}%`;
+      thirdOverlay.style.height = `${cropState.thirdOutput.h * 100}%`;
+    } else {
+      thirdOverlay.style.display = 'none';
     }
     }
 
@@ -4446,6 +4946,8 @@
     const previewDuration = getCropPreviewDuration();
     const activeSegment = previewDuration ? getActiveSplitSegmentAtTime(previewDuration, Number(video.currentTime || 0)) : null;
     const zoomActive = !!(activeSegment && isSplitSegmentZoomActive(activeSegment.index));
+    const zoomLayout = zoomActive && activeSegment ? getSplitSegmentZoomLayout(activeSegment.index) : { x: 0, y: 0, w: 1, h: 1 };
+    updateOutputAreaOverlays();
     const canUseVideo = video.readyState >= 1 && video.videoWidth > 0 && video.videoHeight > 0;
     const canUseImage = !!(cropFallbackImage && cropFallbackImage.complete && cropFallbackImage.naturalWidth > 0 && cropFallbackImage.naturalHeight > 0);
 
@@ -4520,8 +5022,16 @@
     }
 
     if (zoomActive) {
-      // Zoom segments force camera crop to fullscreen for emphasis.
-      drawRegion(cropState.cam, 0, 0, canvas.width, canvas.height);
+      const zoomDrawW = Math.max(2, Math.round(canvas.width * clampSplitZoomLayoutDimension(zoomLayout.w, 1)));
+      const zoomDrawH = Math.max(2, Math.round(canvas.height * clampSplitZoomLayoutDimension(zoomLayout.h, 1)));
+      const zoomDrawX = Math.round(canvas.width * clampSplitZoomLayoutPosition(zoomLayout.x, zoomLayout.w, (1 - zoomLayout.w) / 2));
+      const zoomDrawY = Math.round(canvas.height * clampSplitZoomLayoutPosition(zoomLayout.y, zoomLayout.h, (1 - zoomLayout.h) / 2));
+      drawRegionPreserveAspect(cropState.cam, zoomDrawX, zoomDrawY, zoomDrawW, zoomDrawH);
+      if (cropState.previewBordersEnabled !== false) {
+        ctx.strokeStyle = 'rgba(250, 204, 21, 0.8)';
+        ctx.lineWidth = 2;
+        ctx.strokeRect(zoomDrawX, zoomDrawY, zoomDrawW, zoomDrawH);
+      }
     } else if (cropState.camEnabled) {
       // 2) Camera overlays using user-defined output region in 9:16 frame.
       const camLayout = cropState.camOutput || DEFAULT_CROP.camOutput;
@@ -4535,6 +5045,21 @@
         ctx.strokeStyle = 'rgba(255,255,255,0.45)';
         ctx.lineWidth = 2;
         ctx.strokeRect(camDrawX, camDrawY, camDrawW, camDrawH);
+      }
+    }
+
+    if (!zoomActive && cropState.thirdAreaEnabled) {
+      const thirdLayout = normalizeCrop(cropState.thirdOutput, DEFAULT_CROP.thirdOutput);
+      cropState.thirdOutput = thirdLayout;
+      const thirdDrawX = Math.round(canvas.width * thirdLayout.x);
+      const thirdDrawY = Math.round(canvas.height * thirdLayout.y);
+      const thirdDrawW = Math.max(2, Math.round(canvas.width * thirdLayout.w));
+      const thirdDrawH = Math.max(2, Math.round(canvas.height * thirdLayout.h));
+      drawRegionPreserveAspect(cropState.third, thirdDrawX, thirdDrawY, thirdDrawW, thirdDrawH);
+      if (cropState.previewBordersEnabled !== false) {
+        ctx.strokeStyle = 'rgba(74, 222, 128, 0.88)';
+        ctx.lineWidth = 2;
+        ctx.strokeRect(thirdDrawX, thirdDrawY, thirdDrawW, thirdDrawH);
       }
     }
 
@@ -4587,6 +5112,7 @@
 
   document.getElementById('cam-box').addEventListener('mousedown', (e) => startCropDrag(e, 'cam'));
   document.getElementById('game-box').addEventListener('mousedown', (e) => startCropDrag(e, 'gameplay'));
+  document.getElementById('third-box').addEventListener('mousedown', (e) => startCropDrag(e, 'third'));
   document.getElementById('crop-preview-media').addEventListener('timeupdate', () => {
     renderSplitEditor();
   });
@@ -4644,6 +5170,27 @@
     }
 
     if (outputCamDragState && cropState) {
+      if (outputCamDragState.mode === 'zoom-move') {
+        const dx = (e.clientX - outputCamDragState.startMouseX) / Math.max(1, outputCamDragState.widthPx);
+        const dy = (e.clientY - outputCamDragState.startMouseY) / Math.max(1, outputCamDragState.heightPx);
+        const nextW = clampSplitZoomLayoutDimension(outputCamDragState.startW, 1);
+        const nextH = clampSplitZoomLayoutDimension(outputCamDragState.startH, 1);
+        const nextX = clampSplitZoomLayoutPosition(outputCamDragState.startX + dx, nextW, outputCamDragState.startX);
+        const nextY = clampSplitZoomLayoutPosition(outputCamDragState.startY + dy, nextH, outputCamDragState.startY);
+        setSplitSegmentZoomLayout(outputCamDragState.segmentIndex, { x: nextX, y: nextY });
+        return;
+      }
+      if (outputCamDragState.mode === 'zoom-resize') {
+        const dx = (e.clientX - outputCamDragState.startMouseX) / Math.max(1, outputCamDragState.widthPx);
+        const dy = (e.clientY - outputCamDragState.startMouseY) / Math.max(1, outputCamDragState.heightPx);
+        const nextW = clampSplitZoomLayoutDimension(outputCamDragState.startW + dx, outputCamDragState.startW);
+        const nextH = clampSplitZoomLayoutDimension(outputCamDragState.startH + dy, outputCamDragState.startH);
+        const nextX = clampSplitZoomLayoutPosition(outputCamDragState.startX, nextW, outputCamDragState.startX);
+        const nextY = clampSplitZoomLayoutPosition(outputCamDragState.startY, nextH, outputCamDragState.startY);
+        setSplitSegmentZoomLayout(outputCamDragState.segmentIndex, { x: nextX, y: nextY, w: nextW, h: nextH });
+        return;
+      }
+
       const minH = 0.05;
       const dy = (e.clientY - outputCamDragState.startMouseY) / outputCamDragState.heightPx;
 
@@ -4657,6 +5204,54 @@
         cropState.camOutput = { y, h };
       }
 
+      updateOutputAreaOverlays();
+      renderOutputPreview();
+      return;
+    }
+
+    if (outputThirdDragState && cropState) {
+      const dx = (e.clientX - outputThirdDragState.startMouseX) / Math.max(1, outputThirdDragState.widthPx);
+      const dy = (e.clientY - outputThirdDragState.startMouseY) / Math.max(1, outputThirdDragState.heightPx);
+      const minSize = 0.06;
+      if (outputThirdDragState.mode === 'move') {
+        const w = Math.max(minSize, Math.min(1, outputThirdDragState.startW));
+        const h = Math.max(minSize, Math.min(1, outputThirdDragState.startH));
+        const x = Math.max(0, Math.min(1 - w, outputThirdDragState.startX + dx));
+        const y = Math.max(0, Math.min(1 - h, outputThirdDragState.startY + dy));
+        cropState.thirdOutput = normalizeCrop({ x, y, w, h }, DEFAULT_CROP.thirdOutput);
+      } else {
+        let left = outputThirdDragState.startX;
+        let top = outputThirdDragState.startY;
+        let right = outputThirdDragState.startX + outputThirdDragState.startW;
+        let bottom = outputThirdDragState.startY + outputThirdDragState.startH;
+        const handle = outputThirdDragState.handle || '';
+
+        if (handle.includes('w')) left = outputThirdDragState.startX + dx;
+        if (handle.includes('e')) right = outputThirdDragState.startX + outputThirdDragState.startW + dx;
+        if (handle.includes('n')) top = outputThirdDragState.startY + dy;
+        if (handle.includes('s')) bottom = outputThirdDragState.startY + outputThirdDragState.startH + dy;
+
+        left = Math.max(0, Math.min(left, 1 - minSize));
+        top = Math.max(0, Math.min(top, 1 - minSize));
+        right = Math.max(minSize, Math.min(right, 1));
+        bottom = Math.max(minSize, Math.min(bottom, 1));
+
+        if (right - left < minSize) {
+          if (handle.includes('w') && !handle.includes('e')) left = right - minSize;
+          else right = left + minSize;
+        }
+        if (bottom - top < minSize) {
+          if (handle.includes('n') && !handle.includes('s')) top = bottom - minSize;
+          else bottom = top + minSize;
+        }
+
+        cropState.thirdOutput = normalizeCrop({
+          x: left,
+          y: top,
+          w: Math.max(minSize, right - left),
+          h: Math.max(minSize, bottom - top),
+        }, DEFAULT_CROP.thirdOutput);
+      }
       updateOutputAreaOverlays();
       renderOutputPreview();
       return;
@@ -4714,6 +5309,7 @@
     stopCropDrag();
     stopOutputCamDrag();
     stopOutputGameplayDrag();
+    stopOutputThirdDrag();
     });
 
   document.getElementById('output-cam-area').addEventListener('mousedown', (e) => {
@@ -4733,9 +5329,21 @@
     document.getElementById('output-cam-resize-handle').addEventListener('mousedown', (e) => {
     startOutputCamDrag(e, 'resize');
     });
-    document.getElementById('output-game-resize-handle').addEventListener('mousedown', (e) => {
+  document.getElementById('output-game-resize-handle').addEventListener('mousedown', (e) => {
     startOutputGameplayDrag(e);
     });
+  document.getElementById('output-third-area').addEventListener('mousedown', (e) => {
+    const target = e.target;
+    if (target instanceof HTMLElement && target.classList.contains('output-third-handle')) return;
+    startOutputThirdDrag(e, 'move');
+  });
+  document.querySelectorAll('#output-third-area .output-third-handle').forEach((handleEl) => {
+    handleEl.addEventListener('mousedown', (e) => {
+      const handle = e.currentTarget?.dataset?.handle || '';
+      startOutputThirdDrag(e, 'resize', handle);
+    });
+  });
+  document.querySelector('.output-preview-wrap')?.addEventListener('wheel', handleOutputZoomWheel, { passive: false });
   document.getElementById('crop-preview-media').addEventListener('loadedmetadata', renderOutputPreview);
   document.getElementById('crop-preview-media').addEventListener('loadeddata', renderOutputPreview);
   document.getElementById('crop-preview-media').addEventListener('canplay', renderOutputPreview);
@@ -4822,16 +5430,25 @@
       cam_h: cropState.cam.h,
       cam_enabled: cropState.camEnabled ? 1 : 0,
       twitch_name_enabled: cropState.twitchNameEnabled ? 1 : 0,
+      third_area_enabled: cropState.thirdAreaEnabled ? 1 : 0,
       twitch_name_x: cropState.twitchNamePos?.x ?? DEFAULT_CROP.twitchNamePos.x,
       twitch_name_y: cropState.twitchNamePos?.y ?? DEFAULT_CROP.twitchNamePos.y,
       gameplay_x: cropState.gameplay.x,
       gameplay_y: cropState.gameplay.y,
       gameplay_w: cropState.gameplay.w,
       gameplay_h: cropState.gameplay.h,
+      third_x: cropState.third.x,
+      third_y: cropState.third.y,
+      third_w: cropState.third.w,
+      third_h: cropState.third.h,
       cam_output_y: cropState.camOutput?.y ?? DEFAULT_CROP.camOutput.y,
       cam_output_h: cropState.camOutput?.h ?? DEFAULT_CROP.camOutput.h,
       gameplay_output_y: cropState.gameplayOutput?.y ?? DEFAULT_CROP.gameplayOutput.y,
       gameplay_output_h: cropState.gameplayOutput?.h ?? DEFAULT_CROP.gameplayOutput.h,
+      third_output_x: cropState.thirdOutput?.x ?? DEFAULT_CROP.thirdOutput.x,
+      third_output_y: cropState.thirdOutput?.y ?? DEFAULT_CROP.thirdOutput.y,
+      third_output_w: cropState.thirdOutput?.w ?? DEFAULT_CROP.thirdOutput.w,
+      third_output_h: cropState.thirdOutput?.h ?? DEFAULT_CROP.thirdOutput.h,
       split_points: normalizeSplitPoints(cropState.splitPoints, getCropPreviewDuration()),
       split_deleted_segments: normalizeSplitDeletedSegments(
         cropState.splitDeletedSegments,
@@ -4839,6 +5456,10 @@
       ),
       split_zoom_segments: normalizeSplitZoomSegments(
         cropState.splitZoomSegments,
+        normalizeSplitPoints(cropState.splitPoints, getCropPreviewDuration()).length + 1
+      ),
+      split_zoom_layouts: normalizeSplitZoomLayouts(
+        cropState.splitZoomLayouts,
         normalizeSplitPoints(cropState.splitPoints, getCropPreviewDuration()).length + 1
       ),
     };
@@ -5053,4 +5674,5 @@
 </footer>
 </body>
 </html>
+
 
