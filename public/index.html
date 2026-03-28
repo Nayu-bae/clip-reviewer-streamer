@@ -476,6 +476,93 @@
       color: #e9d5ff;
     }
 
+    .action-progress-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 12px;
+      border-radius: 999px;
+      border: 1px solid rgba(255, 255, 255, 0.14);
+      background: rgba(24, 24, 27, 0.78);
+      color: #d4d4d8;
+      font-size: 0.78rem;
+      font-weight: 600;
+      min-height: 34px;
+    }
+
+    .action-progress-chip[data-state="running"] {
+      border-color: rgba(167, 139, 250, 0.72);
+      color: #ede9fe;
+      background: rgba(76, 29, 149, 0.3);
+    }
+
+    .action-progress-chip[data-state="done"] {
+      border-color: rgba(52, 211, 153, 0.6);
+      color: #a7f3d0;
+      background: rgba(6, 78, 59, 0.32);
+    }
+
+    .action-progress-chip[data-state="error"] {
+      border-color: rgba(248, 113, 113, 0.62);
+      color: #fecaca;
+      background: rgba(127, 29, 29, 0.34);
+    }
+
+    .action-progress-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 999px;
+      background: #71717a;
+      box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.08);
+      flex: 0 0 auto;
+    }
+
+    .action-progress-chip[data-state="running"] .action-progress-dot {
+      background: #a78bfa;
+      box-shadow: 0 0 10px rgba(167, 139, 250, 0.85);
+      animation: action-progress-pulse 1.2s ease-in-out infinite;
+    }
+
+    .action-progress-chip[data-state="done"] .action-progress-dot {
+      background: #34d399;
+      box-shadow: 0 0 8px rgba(52, 211, 153, 0.72);
+      animation: none;
+    }
+
+    .action-progress-chip[data-state="error"] .action-progress-dot {
+      background: #f87171;
+      box-shadow: 0 0 8px rgba(248, 113, 113, 0.66);
+      animation: none;
+    }
+
+    @keyframes action-progress-pulse {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.7; transform: scale(0.85); }
+    }
+
+    .action-progress-text {
+      white-space: nowrap;
+    }
+
+    .action-progress-cancel {
+      border: 1px solid rgba(248, 113, 113, 0.55);
+      border-radius: 999px;
+      background: rgba(127, 29, 29, 0.35);
+      color: #fecaca;
+      font-size: 0.72rem;
+      font-weight: 700;
+      line-height: 1;
+      padding: 4px 9px;
+      cursor: pointer;
+      transition: all 0.16s ease;
+    }
+
+    .action-progress-cancel:hover {
+      border-color: rgba(252, 165, 165, 0.82);
+      color: #fee2e2;
+      background: rgba(127, 29, 29, 0.5);
+    }
+
     /* ── Toast ─────────────────────────────── */
     #toast {
       position: fixed;
@@ -1786,6 +1873,74 @@
       background: rgba(17, 17, 24, 0.42);
     }
 
+    .split-zoom-toolbar {
+      margin-top: 8px;
+      display: none;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      padding: 7px 10px;
+      border-radius: 10px;
+      border: 1px solid rgba(250, 204, 21, 0.52);
+      background: linear-gradient(180deg, rgba(120, 53, 15, 0.38), rgba(24, 24, 27, 0.55));
+      box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.04);
+      position: sticky;
+      top: 0;
+      z-index: 6;
+    }
+
+    .split-zoom-toolbar.show {
+      display: flex;
+    }
+
+    .split-zoom-toolbar-meta {
+      min-width: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 1px;
+    }
+
+    .split-zoom-toolbar-title {
+      font-size: 0.75rem;
+      font-weight: 700;
+      color: #fef3c7;
+      white-space: nowrap;
+    }
+
+    .split-zoom-toolbar-sub {
+      font-size: 0.68rem;
+      color: #fcd34d;
+      opacity: 0.92;
+    }
+
+    .split-zoom-toolbar-actions {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+    }
+
+    .split-zoom-btn {
+      border: 1px solid rgba(250, 204, 21, 0.45);
+      border-radius: 999px;
+      background: rgba(113, 63, 18, 0.42);
+      color: #fef3c7;
+      font-size: 0.69rem;
+      font-weight: 700;
+      line-height: 1;
+      padding: 4px 9px;
+      cursor: pointer;
+      transition: all 0.15s ease;
+      min-height: 24px;
+    }
+
+    .split-zoom-btn:hover {
+      border-color: rgba(253, 224, 71, 0.72);
+      background: rgba(146, 64, 14, 0.62);
+      color: #fffbeb;
+    }
+
     .split-tools-main {
       display: flex;
       align-items: center;
@@ -2165,6 +2320,22 @@
       .crop-preview-wrap {
         min-height: 360px;
       }
+      .controls {
+        align-items: stretch;
+      }
+      .action-progress-chip {
+        width: 100%;
+        justify-content: space-between;
+      }
+      .split-zoom-toolbar {
+        position: static;
+        flex-direction: column;
+        align-items: flex-start;
+      }
+      .split-zoom-toolbar-actions {
+        width: 100%;
+        justify-content: flex-start;
+      }
     }
 
     .legal-footer {
@@ -2326,6 +2497,11 @@
       <button class="period-btn" data-days="365">1 Year</button>
     </div>
     <button class="btn-refresh" id="refresh-clips-btn">Refresh from Twitch</button>
+    <div id="action-progress-chip" class="action-progress-chip" data-state="idle" aria-live="polite">
+      <span class="action-progress-dot" aria-hidden="true"></span>
+      <span id="action-progress-text" class="action-progress-text">No active tasks</span>
+      <button type="button" id="action-progress-cancel" class="action-progress-cancel" style="display:none;">Cancel</button>
+    </div>
     <div class="filter-btns">
       <button class="filter-btn active" data-filter="all">All</button>
       <button class="filter-btn" data-filter="approved">Approved</button>
@@ -2468,6 +2644,18 @@
                   <button type="button" class="split-btn" id="split-clear-btn"><span class="glyph">⊘</span><span class="txt">Clear cuts</span></button>
                 </div>
               </div>
+            </div>
+          </div>
+          <div id="split-zoom-toolbar" class="split-zoom-toolbar" aria-live="polite">
+            <div class="split-zoom-toolbar-meta">
+              <div id="split-zoom-toolbar-title" class="split-zoom-toolbar-title">Zoom part active</div>
+              <div id="split-zoom-toolbar-sub" class="split-zoom-toolbar-sub">Drag in TikTok preview to position and resize.</div>
+            </div>
+            <div class="split-zoom-toolbar-actions">
+              <button type="button" id="split-zoom-nudge-out-btn" class="split-zoom-btn" title="Zoom out slightly">-</button>
+              <button type="button" id="split-zoom-nudge-in-btn" class="split-zoom-btn" title="Zoom in slightly">+</button>
+              <button type="button" id="split-zoom-center-btn" class="split-zoom-btn" title="Center current zoom">Center</button>
+              <button type="button" id="split-zoom-reset-btn" class="split-zoom-btn" title="Reset to full frame">Reset</button>
             </div>
           </div>
           <div class="split-timeline-wrap">
@@ -2640,9 +2828,12 @@
   let activePlaybackClipId = null;
   let activePlaybackRequestToken = '';
   let uploadPollTimer = null;
+  let refreshAbortController = null;
   let managedStreamerCount = 0;
   let lastClipSyncAt = null;
   const downloadInProgressIds = new Set();
+  let actionProgressFlash = null;
+  let actionProgressFlashTimer = null;
   let cropAutosaveEnabled = false;
   let cropAutosaveSaving = false;
   let cropAutosaveQueued = false;
@@ -3311,6 +3502,7 @@
   });
 
   document.getElementById('refresh-clips-btn').addEventListener('click', refreshClipsFromTwitch);
+  document.getElementById('action-progress-cancel')?.addEventListener('click', cancelRefreshFromProgressChip);
 
   // ── Load clips ───────────────────────────────────────────────────────────
   async function loadClips() {
@@ -3339,23 +3531,45 @@
   }
 
   async function refreshClipsFromTwitch() {
+    if (refreshAbortController) {
+      showToast('A refresh is already running.');
+      updateActionProgressChip();
+      return;
+    }
     const btn = document.getElementById('refresh-clips-btn');
     const oldText = btn.textContent;
+    refreshAbortController = new AbortController();
     btn.disabled = true;
     btn.textContent = 'Refreshing...';
+    updateActionProgressChip();
 
     try {
-      const r = await fetch('/api/clips/refresh', { method: 'POST' });
+      const r = await fetch('/api/clips/refresh', { method: 'POST', signal: refreshAbortController.signal });
       const data = await r.json().catch(() => ({}));
       if (!r.ok) throw new Error(data.error || 'Refresh failed');
       showToast(`Refresh done: ${data.fetched || 0} clips fetched.`);
+      setActionProgressFlash('done', `Refresh completed: ${data.fetched || 0} clip${(data.fetched || 0) === 1 ? '' : 's'} fetched.`);
       await loadClips();
     } catch (err) {
-      showToast(`Refresh failed: ${err.message || 'Unknown error'}`, 'error');
+      if (err && (err.name === 'AbortError' || /aborted/i.test(String(err.message || '')))) {
+        showToast('Refresh cancelled.');
+        setActionProgressFlash('error', 'Refresh cancelled.');
+      } else {
+        showToast(`Refresh failed: ${err.message || 'Unknown error'}`, 'error');
+        setActionProgressFlash('error', `Refresh failed: ${err.message || 'Unknown error'}`);
+      }
     } finally {
+      refreshAbortController = null;
+      updateActionProgressChip();
       btn.disabled = false;
       btn.textContent = oldText;
     }
+  }
+
+  function cancelRefreshFromProgressChip() {
+    if (!refreshAbortController) return;
+    refreshAbortController.abort();
+    updateActionProgressChip();
   }
 
   function updateUploadControls(job) {
@@ -3570,6 +3784,64 @@
     showToast('Build in progress. Please wait until the download finishes.');
   }
 
+  function clearActionProgressFlash() {
+    actionProgressFlash = null;
+    if (actionProgressFlashTimer) {
+      clearTimeout(actionProgressFlashTimer);
+      actionProgressFlashTimer = null;
+    }
+    updateActionProgressChip();
+  }
+
+  function setActionProgressFlash(state, text, ttlMs = 2600) {
+    if (actionProgressFlashTimer) {
+      clearTimeout(actionProgressFlashTimer);
+      actionProgressFlashTimer = null;
+    }
+    actionProgressFlash = {
+      state: state || 'done',
+      text: String(text || ''),
+      expiresAt: Date.now() + Math.max(800, Number(ttlMs) || 2600),
+    };
+    if (actionProgressFlash.text) {
+      actionProgressFlashTimer = setTimeout(() => {
+        actionProgressFlash = null;
+        actionProgressFlashTimer = null;
+        updateActionProgressChip();
+      }, Math.max(800, Number(ttlMs) || 2600));
+    }
+    updateActionProgressChip();
+  }
+
+  function updateActionProgressChip() {
+    const chip = document.getElementById('action-progress-chip');
+    const textEl = document.getElementById('action-progress-text');
+    const cancelBtn = document.getElementById('action-progress-cancel');
+    if (!chip || !textEl || !cancelBtn) return;
+
+    let state = 'idle';
+    let text = 'No active tasks';
+    let canCancel = false;
+
+    if (refreshAbortController) {
+      state = 'running';
+      text = 'Refreshing clips from Twitch...';
+      canCancel = true;
+    } else if (downloadInProgressIds.size > 0) {
+      state = 'running';
+      const count = downloadInProgressIds.size;
+      text = `Preparing ${count} download${count === 1 ? '' : 's'}...`;
+    } else if (actionProgressFlash && actionProgressFlash.text && Date.now() <= (actionProgressFlash.expiresAt || 0)) {
+      state = actionProgressFlash.state || 'done';
+      text = actionProgressFlash.text;
+    }
+
+    chip.dataset.state = state;
+    textEl.textContent = text;
+    cancelBtn.style.display = canCancel ? 'inline-flex' : 'none';
+    cancelBtn.disabled = !canCancel;
+  }
+
   function buildCard(clip) {
     const card = document.createElement('div');
     card.className = `clip-card relative rounded-2xl border border-zinc-800 bg-zinc-950/85 overflow-hidden shadow-md shadow-black/30 hover:-translate-y-0.5 hover:shadow-lg hover:shadow-black/40 transition ${clip.approved ? 'ring-1 ring-emerald-500/40' : ''}`;
@@ -3759,10 +4031,12 @@
       setGlobalBuildLock(true);
       maybeShowBuildInProgressToast();
       showToast('This clip is already being prepared.');
+      updateActionProgressChip();
       return;
     }
 
     downloadInProgressIds.add(clipKey);
+    updateActionProgressChip();
     setDownloadButtonState(buttonEl, true);
     syncDownloadButtonsForClip(clipKey);
     setGlobalBuildLock(true);
@@ -3790,14 +4064,17 @@
       a.remove();
       URL.revokeObjectURL(url);
       showToast('Download started.');
+      setActionProgressFlash('done', 'Download is ready.');
       markOnboardingStep('downloadedClip', true);
     } catch (err) {
       showToast(`Download failed: ${err.message || 'Unknown error'}`, 'error');
+      setActionProgressFlash('error', `Download failed: ${err.message || 'Unknown error'}`);
     } finally {
       downloadInProgressIds.delete(clipKey);
       setDownloadButtonState(buttonEl, false);
       syncDownloadButtonsForClip(clipKey);
       setGlobalBuildLock(downloadInProgressIds.size > 0);
+      updateActionProgressChip();
     }
   }
 
@@ -4084,6 +4361,10 @@
     updateSplitOverflowMenuUI();
     renderSplitEditor();
     });
+    document.getElementById('split-zoom-nudge-in-btn')?.addEventListener('click', () => nudgeSplitZoomToolbar('in'));
+    document.getElementById('split-zoom-nudge-out-btn')?.addEventListener('click', () => nudgeSplitZoomToolbar('out'));
+    document.getElementById('split-zoom-center-btn')?.addEventListener('click', centerSplitZoomToolbar);
+    document.getElementById('split-zoom-reset-btn')?.addEventListener('click', resetSplitZoomToolbar);
     document.addEventListener('click', (e) => {
     const wrap = document.querySelector('.split-overflow');
     if (!splitOverflowMenuOpen || !wrap) return;
@@ -4404,6 +4685,79 @@
     };
   }
 
+  function getSplitZoomToolbarContext() {
+    const live = getActiveZoomSegmentContext();
+    if (live) return { ...live, source: 'live' };
+    if (selectedSplitSegmentIndex === null || !isSplitSegmentZoomActive(selectedSplitSegmentIndex)) return null;
+    return {
+      index: selectedSplitSegmentIndex,
+      layout: getSplitSegmentZoomLayout(selectedSplitSegmentIndex),
+      source: 'selected',
+    };
+  }
+
+  function updateSplitZoomToolbar(context = null) {
+    const wrap = document.getElementById('split-zoom-toolbar');
+    const titleEl = document.getElementById('split-zoom-toolbar-title');
+    const subEl = document.getElementById('split-zoom-toolbar-sub');
+    if (!wrap || !titleEl || !subEl) return;
+
+    if (!context) {
+      wrap.classList.remove('show');
+      return;
+    }
+
+    const layout = context.layout || { x: 0, y: 0, w: 1, h: 1 };
+    const zoomXPct = Math.round((clampSplitZoomLayoutPosition(layout.x, layout.w, 0) * 100) * 10) / 10;
+    const zoomYPct = Math.round((clampSplitZoomLayoutPosition(layout.y, layout.h, 0) * 100) * 10) / 10;
+    const zoomWPct = Math.round((clampSplitZoomLayoutDimension(layout.w, 1) * 100) * 10) / 10;
+    const zoomHPct = Math.round((clampSplitZoomLayoutDimension(layout.h, 1) * 100) * 10) / 10;
+    const liveHint = context.source === 'live' ? ' (playhead active)' : '';
+    titleEl.textContent = `Zoom part ${context.index + 1}${liveHint}`;
+    subEl.textContent = `Position X ${zoomXPct}% / Y ${zoomYPct}% | Size ${zoomWPct}% x ${zoomHPct}%`;
+    wrap.classList.add('show');
+  }
+
+  function nudgeSplitZoomToolbar(direction) {
+    const ctx = getSplitZoomToolbarContext();
+    if (!ctx) {
+      showToast('Move playhead onto a zoom part first.', 'error');
+      return;
+    }
+    const step = direction === 'in' ? -0.06 : 0.06;
+    const current = ctx.layout || { x: 0, y: 0, w: 1, h: 1 };
+    const nextW = clampSplitZoomLayoutDimension(current.w + step, current.w);
+    const nextH = clampSplitZoomLayoutDimension(current.h + step, current.h);
+    const centerX = current.x + (current.w / 2);
+    const centerY = current.y + (current.h / 2);
+    const nextX = clampSplitZoomLayoutPosition(centerX - (nextW / 2), nextW, current.x);
+    const nextY = clampSplitZoomLayoutPosition(centerY - (nextH / 2), nextH, current.y);
+    setSplitSegmentZoomLayout(ctx.index, { x: nextX, y: nextY, w: nextW, h: nextH });
+  }
+
+  function centerSplitZoomToolbar() {
+    const ctx = getSplitZoomToolbarContext();
+    if (!ctx) {
+      showToast('Move playhead onto a zoom part first.', 'error');
+      return;
+    }
+    const current = ctx.layout || { x: 0, y: 0, w: 1, h: 1 };
+    const nextW = clampSplitZoomLayoutDimension(current.w, 1);
+    const nextH = clampSplitZoomLayoutDimension(current.h, 1);
+    const centeredX = clampSplitZoomLayoutPosition((1 - nextW) / 2, nextW, current.x);
+    const centeredY = clampSplitZoomLayoutPosition((1 - nextH) / 2, nextH, current.y);
+    setSplitSegmentZoomLayout(ctx.index, { x: centeredX, y: centeredY, w: nextW, h: nextH });
+  }
+
+  function resetSplitZoomToolbar() {
+    const ctx = getSplitZoomToolbarContext();
+    if (!ctx) {
+      showToast('Move playhead onto a zoom part first.', 'error');
+      return;
+    }
+    setSplitSegmentZoomLayout(ctx.index, { x: 0, y: 0, w: 1, h: 1 });
+  }
+
   function getCropPreviewDuration() {
     const video = document.getElementById('crop-preview-media');
     const d = Number(video?.duration);
@@ -4561,6 +4915,7 @@
       rulerEl.innerHTML = '';
       trackEl.innerHTML = '';
       playheadEl.style.display = 'none';
+      updateSplitZoomToolbar(null);
       return;
     }
 
@@ -4570,6 +4925,7 @@
       rulerEl.innerHTML = '';
       trackEl.innerHTML = '';
       playheadEl.style.display = 'none';
+      updateSplitZoomToolbar(null);
       return;
     }
 
@@ -4632,6 +4988,9 @@
     if (selectedSplitSegmentIndex !== null && !segments.some(s => s.index === selectedSplitSegmentIndex)) {
       selectedSplitSegmentIndex = null;
     }
+
+    const toolbarCtx = getSplitZoomToolbarContext();
+    updateSplitZoomToolbar(toolbarCtx);
 
     if (segments.length === 1 && cropState.splitPoints.length === 0 && !(selectedSeg && selectedSegZoomed)) {
       emptyEl.textContent = '';
@@ -6361,6 +6720,7 @@
   setAuthMode('login');
   updateUploadControls(null);
   setGlobalBuildLock(false);
+  updateActionProgressChip();
   updateDashboardStatusRow();
   updateSetupGuide();
   setCropAutosaveStatus('idle');
