@@ -1,0 +1,19 @@
+@import url('https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700;800&display=swap');
+
+body {
+  font-family: 'Sora', 'Segoe UI', sans-serif;
+}
+
+.tools-menu {
+  transform-origin: top right;
+  opacity: 0;
+  transform: perspective(700px) rotateX(-11deg) translateY(-6px) scale(0.98);
+  pointer-events: none;
+  transition: opacity 170ms ease, transform 170ms ease;
+}
+
+.tools-menu.open {
+  opacity: 1;
+  transform: perspective(700px) rotateX(0deg) translateY(0) scale(1);
+  pointer-events: auto;
+}

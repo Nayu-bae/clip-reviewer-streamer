@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Clip Discovery - Clip-Reviewer</title>
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            twitch: { 700: '#772ce8', 600: '#9147ff' },
+            clip: { bg: '#0e0e10', panel: '#18181b', panel2: '#1f1f23', muted: '#adadb8', text: '#efeff1' },
+          },
+        },
+      },
+    };
+  </script>
+  <link rel="stylesheet" href="/tools/tool-page.css" />
+</head>
+<body class="min-h-screen bg-clip-bg text-clip-text">
+  <div class="pointer-events-none fixed inset-0 -z-10 overflow-hidden">
+    <div class="absolute -top-28 left-[-12rem] h-[30rem] w-[30rem] rounded-full bg-twitch-600/20 blur-3xl"></div>
+    <div class="absolute bottom-[-12rem] right-[-10rem] h-[26rem] w-[26rem] rounded-full bg-cyan-500/10 blur-3xl"></div>
+  </div>
+
+  <header class="sticky top-0 z-40 border-b border-white/10 bg-clip-bg/80 backdrop-blur">
+    <div class="mx-auto flex w-[min(1220px,94vw)] items-center justify-between gap-4 py-4">
+      <a href="/" class="inline-flex items-center gap-3 text-xl font-extrabold tracking-tight">
+        <img src="/pictures/logos/logo-concept-6-clapper-neon.svg" alt="Clip-Reviewer logo" class="h-8 w-8 rounded-lg border border-twitch-600/35 bg-twitch-600/15 object-contain p-1.5 shadow-[0_0_16px_rgba(145,71,255,0.35)]" />
+        Clip-Reviewer
+      </a>
+      <div class="flex items-center gap-3">
+        <div id="tools-dropdown" class="relative">
+          <button id="tools-toggle" type="button" aria-expanded="false" aria-controls="tools-menu" class="inline-flex items-center gap-2 rounded-full border border-white/15 bg-clip-panel2/80 px-4 py-2 text-sm font-semibold text-zinc-100 transition hover:border-twitch-600/70 hover:text-violet-200">
+            Tools
+            <svg class="h-3.5 w-3.5 opacity-80" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.17l3.71-3.94a.75.75 0 111.1 1.02l-4.25 4.52a.75.75 0 01-1.1 0L5.21 8.25a.75.75 0 01.02-1.04z" clip-rule="evenodd"/></svg>
+          </button>
+          <div id="tools-menu" role="menu" class="tools-menu absolute right-0 mt-2 w-[290px] rounded-2xl border border-white/12 bg-[#111118]/95 p-2.5 shadow-2xl">
+            <a class="block rounded-xl px-3 py-2 text-sm text-clip-muted hover:bg-twitch-600/16 hover:text-zinc-100" href="/tools/clip-discovery.html">Clip Discovery</a>
+            <a class="block rounded-xl px-3 py-2 text-sm text-clip-muted hover:bg-twitch-600/16 hover:text-zinc-100" href="/tools/approval-workflow.html">Approval Workflow</a>
+            <a class="block rounded-xl px-3 py-2 text-sm text-clip-muted hover:bg-twitch-600/16 hover:text-zinc-100" href="/tools/upload-edit-studio.html">Upload Edit Studio</a>
+            <a class="block rounded-xl px-3 py-2 text-sm text-clip-muted hover:bg-twitch-600/16 hover:text-zinc-100" href="/tools/split-zoom-timeline.html">Split + Zoom Timeline</a>
+            <a class="block rounded-xl px-3 py-2 text-sm text-clip-muted hover:bg-twitch-600/16 hover:text-zinc-100" href="/tools/tiktok-output-preview.html">TikTok Output Preview</a>
+            <a class="block rounded-xl px-3 py-2 text-sm text-clip-muted hover:bg-twitch-600/16 hover:text-zinc-100" href="/tools/bulk-upload-queue.html">Bulk Upload Queue</a>
+            <a class="block rounded-xl px-3 py-2 text-sm text-clip-muted hover:bg-twitch-600/16 hover:text-zinc-100" href="/tools/admin-streamer-management.html">Admin + Streamers</a>
+          </div>
+        </div>
+        <a href="/login" class="rounded-full border border-twitch-600/65 bg-gradient-to-r from-twitch-600 to-violet-600 px-4 py-2 text-sm font-extrabold text-white transition hover:brightness-110">Start for free today</a>
+      </div>
+    </div>
+  </header>
+
+  <main class="mx-auto w-[min(1100px,94vw)] py-10">
+    <p class="text-xs uppercase tracking-wide text-clip-muted"><a href="/" class="hover:text-zinc-200">Home</a> / Clip Discovery</p>
+    <h1 class="mt-2 text-3xl font-extrabold tracking-tight sm:text-4xl">Clip Discovery</h1>
+    <p class="mt-3 max-w-3xl text-sm leading-relaxed text-clip-muted sm:text-base">Clip Discovery is your entry point. It fetches clips from your linked streamers, groups them, and lets you quickly filter what should be reviewed or approved.</p>
+
+    <div class="mt-8 overflow-hidden rounded-2xl border border-white/10 bg-clip-panel shadow-2xl">
+      <img src="/pictures/tools/clip-discovery.svg" alt="Clip Discovery example" class="h-auto w-full" />
+    </div>
+
+    <section class="mt-8 grid gap-4 md:grid-cols-3">
+      <article class="rounded-2xl border border-white/10 bg-clip-panel/80 p-5">
+        <h2 class="text-lg font-bold">1. Link Streamers</h2>
+        <p class="mt-2 text-sm text-clip-muted">Add Twitch logins or broadcaster IDs in streamer management so Clip-Reviewer knows which channels to monitor.</p>
+      </article>
+      <article class="rounded-2xl border border-white/10 bg-clip-panel/80 p-5">
+        <h2 class="text-lg font-bold">2. Fetch from Twitch</h2>
+        <p class="mt-2 text-sm text-clip-muted">Run refresh to pull new clips. The dashboard updates stats and keeps your review queue up to date.</p>
+      </article>
+      <article class="rounded-2xl border border-white/10 bg-clip-panel/80 p-5">
+        <h2 class="text-lg font-bold">3. Filter Fast</h2>
+        <p class="mt-2 text-sm text-clip-muted">Switch between approved, pending, and sorted-out views or use time range filters to focus on what matters now.</p>
+      </article>
+    </section>
+
+    <section class="mt-8 rounded-2xl border border-white/10 bg-clip-panel/70 p-6">
+      <h2 class="text-xl font-bold">Example workflow</h2>
+      <ul class="mt-3 list-disc space-y-2 pl-5 text-sm leading-relaxed text-clip-muted">
+        <li>Add three streamers you actively edit for.</li>
+        <li>Refresh clips at the start of each review session.</li>
+        <li>Approve top clips and send them into edit and export flow.</li>
+      </ul>
+    </section>
+  </main>
+
+  <footer class="border-t border-white/10 px-4 py-6 text-center text-xs text-clip-muted">
+    <p><a class="text-zinc-200 hover:text-white" href="/terms.html">Terms of Service</a><span class="mx-2 opacity-50">•</span><a class="text-zinc-200 hover:text-white" href="/privacy.html">Privacy Policy</a></p>
+    <p class="mt-2">Clip-Reviewer is in no way associated with either Twitch or TikTok.</p>
+  </footer>
+  <script src="/tools/tool-page.js"></script>
+</body>
+</html>

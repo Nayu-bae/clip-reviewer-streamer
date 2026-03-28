@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="720" viewBox="0 0 1280 720" fill="none">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1280" y2="720" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#1E1B4B"/>
+      <stop offset="1" stop-color="#111827"/>
+    </linearGradient>
+  </defs>
+  <rect width="1280" height="720" fill="url(#bg)"/>
+  <rect x="80" y="88" width="1120" height="544" rx="26" fill="#18181B" stroke="#3F3F46"/>
+  <text x="124" y="146" fill="#E4E4E7" font-family="Segoe UI, Arial" font-size="34" font-weight="700">Split + Zoom Timeline</text>
+  <rect x="124" y="184" width="1032" height="326" rx="16" fill="#111827"/>
+  <rect x="124" y="534" width="1032" height="62" rx="14" fill="#0B1222" stroke="#3F3F46"/>
+  <rect x="152" y="550" width="280" height="30" rx="8" fill="#2563EB"/>
+  <rect x="432" y="550" width="250" height="30" rx="8" fill="#2563EB"/>
+  <rect x="682" y="550" width="180" height="30" rx="8" fill="#CA8A04"/>
+  <rect x="862" y="550" width="200" height="30" rx="8" fill="#BE123C"/>
+  <line x1="432" y1="540" x2="432" y2="590" stroke="#F59E0B" stroke-width="4"/>
+  <line x1="682" y1="540" x2="682" y2="590" stroke="#F59E0B" stroke-width="4"/>
+  <line x1="862" y1="540" x2="862" y2="590" stroke="#F59E0B" stroke-width="4"/>
+  <rect x="190" y="230" width="420" height="230" rx="12" fill="none" stroke="#FACC15" stroke-width="5"/>
+  <text x="212" y="266" fill="#FDE68A" font-family="Segoe UI, Arial" font-size="24" font-weight="700">Active zoom segment</text>
+  <rect x="640" y="230" width="420" height="230" rx="12" fill="#27272A"/>
+  <text x="664" y="266" fill="#A1A1AA" font-family="Segoe UI, Arial" font-size="24">Segment controls</text>
+  <text x="80" y="56" fill="#C4B5FD" font-family="Segoe UI, Arial" font-size="28" font-weight="700">Example Preview</text>
+</svg>

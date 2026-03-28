@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 980 220" fill="none">
+  <defs>
+    <linearGradient id="wm" x1="22" y1="16" x2="210" y2="204" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#9147ff"/>
+      <stop offset="1" stop-color="#772ce8"/>
+    </linearGradient>
+  </defs>
+
+  <rect x="12" y="12" width="196" height="196" rx="56" fill="#0e0e10"/>
+  <rect x="34" y="34" width="152" height="152" rx="46" fill="url(#wm)" opacity="0.24"/>
+
+  <rect x="58" y="58" width="104" height="104" rx="18" fill="#111115" stroke="#ddd6fe" stroke-width="8"/>
+  <path d="M82 111l20 20 36-38" stroke="#00b56a" stroke-width="11" stroke-linecap="round" stroke-linejoin="round"/>
+  <rect x="64" y="44" width="14" height="10" rx="3" fill="#efeff1"/>
+  <rect x="86" y="44" width="14" height="10" rx="3" fill="#efeff1"/>
+  <rect x="108" y="44" width="14" height="10" rx="3" fill="#efeff1"/>
+  <rect x="130" y="44" width="14" height="10" rx="3" fill="#efeff1"/>
+
+  <text x="242" y="104" fill="#efeff1" font-family="Segoe UI, Arial, sans-serif" font-size="64" font-weight="800" letter-spacing="-1.4">Clip-Reviewer</text>
+  <text x="244" y="156" fill="#adadb8" font-family="Segoe UI, Arial, sans-serif" font-size="28" font-weight="600">Review, edit, and export clips faster.</text>
+</svg>
+

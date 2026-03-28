@@ -1,0 +1,33 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="720" viewBox="0 0 1280 720" fill="none">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1280" y2="720" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#111827"/>
+      <stop offset="1" stop-color="#1E1B4B"/>
+    </linearGradient>
+  </defs>
+  <rect width="1280" height="720" fill="url(#bg)"/>
+  <rect x="84" y="84" width="1112" height="552" rx="26" fill="#18181B" stroke="#3F3F46"/>
+  <text x="126" y="146" fill="#E4E4E7" font-family="Segoe UI, Arial" font-size="34" font-weight="700">Approval Workflow</text>
+  <rect x="126" y="178" width="316" height="414" rx="16" fill="#27272A"/>
+  <rect x="482" y="178" width="316" height="414" rx="16" fill="#27272A"/>
+  <rect x="838" y="178" width="316" height="414" rx="16" fill="#27272A"/>
+  <text x="226" y="218" fill="#FBBF24" font-family="Segoe UI, Arial" font-size="24" font-weight="700">Pending</text>
+  <text x="574" y="218" fill="#34D399" font-family="Segoe UI, Arial" font-size="24" font-weight="700">Approved</text>
+  <text x="928" y="218" fill="#F97316" font-family="Segoe UI, Arial" font-size="24" font-weight="700">Sorted Out</text>
+  <g fill="#3F3F46">
+    <rect x="146" y="244" width="276" height="64" rx="12"/>
+    <rect x="146" y="324" width="276" height="64" rx="12"/>
+    <rect x="146" y="404" width="276" height="64" rx="12"/>
+    <rect x="502" y="244" width="276" height="64" rx="12"/>
+    <rect x="502" y="324" width="276" height="64" rx="12"/>
+    <rect x="858" y="244" width="276" height="64" rx="12"/>
+  </g>
+  <g>
+    <rect x="146" y="500" width="132" height="44" rx="22" fill="#00B56A"/>
+    <rect x="292" y="500" width="132" height="44" rx="22" fill="#E91916"/>
+    <rect x="502" y="500" width="132" height="44" rx="22" fill="#9147FF"/>
+    <rect x="648" y="500" width="132" height="44" rx="22" fill="#00B56A"/>
+    <rect x="858" y="500" width="276" height="44" rx="22" fill="#3F3F46"/>
+  </g>
+  <text x="84" y="56" fill="#C4B5FD" font-family="Segoe UI, Arial" font-size="28" font-weight="700">Example Preview</text>
+</svg>

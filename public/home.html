@@ -1,0 +1,139 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Clip-Reviewer</title>
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            twitch: { 700: '#772ce8', 600: '#9147ff' },
+            clip: {
+              bg: '#0e0e10',
+              panel: '#18181b',
+              panel2: '#1f1f23',
+              border: '#2a2a2e',
+              muted: '#adadb8',
+              text: '#efeff1',
+            },
+          },
+        },
+      },
+    };
+  </script>
+  <link rel="stylesheet" href="/tools/tool-page.css" />
+</head>
+<body class="min-h-screen bg-clip-bg text-clip-text">
+  <div class="pointer-events-none fixed inset-0 -z-10 overflow-hidden">
+    <div class="absolute -top-24 left-[-14rem] h-[34rem] w-[34rem] rounded-full bg-twitch-600/20 blur-3xl"></div>
+    <div class="absolute bottom-[-14rem] right-[-10rem] h-[30rem] w-[30rem] rounded-full bg-cyan-500/10 blur-3xl"></div>
+    <div class="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(145,71,255,0.12),transparent_52%),linear-gradient(180deg,#0a0a0c_0%,#0e0e10_100%)]"></div>
+  </div>
+
+  <header class="sticky top-0 z-40 border-b border-white/10 bg-clip-bg/80 backdrop-blur">
+    <div class="mx-auto flex w-[min(1220px,94vw)] items-center justify-between gap-4 py-4">
+      <a href="/" class="inline-flex items-center gap-3 text-xl font-extrabold tracking-tight">
+        <img src="/pictures/logos/logo-concept-6-clapper-neon.svg" alt="Clip-Reviewer logo" class="h-8 w-8 rounded-lg border border-twitch-600/35 bg-twitch-600/15 object-contain p-1.5 shadow-[0_0_16px_rgba(145,71,255,0.35)]" />
+        Clip-Reviewer
+      </a>
+      <div class="flex items-center gap-2 sm:gap-3">
+        <div id="tools-dropdown" class="relative">
+          <button id="tools-toggle" type="button" aria-expanded="false" aria-controls="tools-menu" class="inline-flex items-center gap-2 rounded-full border border-white/15 bg-clip-panel2/80 px-4 py-2 text-sm font-semibold text-zinc-100 transition hover:border-twitch-600/70 hover:text-violet-200">
+            Tools
+            <svg class="h-3.5 w-3.5 opacity-80" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.17l3.71-3.94a.75.75 0 111.1 1.02l-4.25 4.52a.75.75 0 01-1.1 0L5.21 8.25a.75.75 0 01.02-1.04z" clip-rule="evenodd"/></svg>
+          </button>
+          <div id="tools-menu" role="menu" class="tools-menu absolute right-0 mt-2 w-[290px] rounded-2xl border border-white/12 bg-[#111118]/95 p-2.5 shadow-2xl">
+            <a class="block rounded-xl px-3 py-2 text-sm text-clip-muted hover:bg-twitch-600/16 hover:text-zinc-100" href="/tools/clip-discovery.html">Clip Discovery</a>
+            <a class="block rounded-xl px-3 py-2 text-sm text-clip-muted hover:bg-twitch-600/16 hover:text-zinc-100" href="/tools/approval-workflow.html">Approval Workflow</a>
+            <a class="block rounded-xl px-3 py-2 text-sm text-clip-muted hover:bg-twitch-600/16 hover:text-zinc-100" href="/tools/upload-edit-studio.html">Upload Edit Studio</a>
+            <a class="block rounded-xl px-3 py-2 text-sm text-clip-muted hover:bg-twitch-600/16 hover:text-zinc-100" href="/tools/split-zoom-timeline.html">Split + Zoom Timeline</a>
+            <a class="block rounded-xl px-3 py-2 text-sm text-clip-muted hover:bg-twitch-600/16 hover:text-zinc-100" href="/tools/tiktok-output-preview.html">TikTok Output Preview</a>
+            <a class="block rounded-xl px-3 py-2 text-sm text-clip-muted hover:bg-twitch-600/16 hover:text-zinc-100" href="/tools/bulk-upload-queue.html">Bulk Upload Queue</a>
+            <a class="block rounded-xl px-3 py-2 text-sm text-clip-muted hover:bg-twitch-600/16 hover:text-zinc-100" href="/tools/admin-streamer-management.html">Admin + Streamers</a>
+          </div>
+        </div>
+        <a href="/login" class="inline-flex items-center justify-center rounded-full border border-twitch-600/65 bg-gradient-to-r from-twitch-600 to-violet-600 px-4 py-2 text-sm font-extrabold text-white shadow-[0_10px_28px_rgba(145,71,255,0.34)] transition hover:brightness-110">Start for free today</a>
+      </div>
+    </div>
+  </header>
+
+  <main class="mx-auto w-[min(1220px,94vw)]">
+    <section class="pt-16 pb-10">
+      <div class="rounded-3xl border border-white/10 bg-gradient-to-b from-clip-panel/90 to-[#141419]/92 p-8 shadow-2xl sm:p-10">
+        <p class="mb-4 inline-flex items-center rounded-full border border-cyan-400/30 bg-cyan-400/10 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-cyan-300">Twitch-to-TikTok workflow</p>
+        <h1 class="max-w-4xl text-3xl font-extrabold leading-tight tracking-tight sm:text-5xl">Super fast, super easy clip operations for your content pipeline.</h1>
+        <p class="mt-5 max-w-3xl text-sm leading-relaxed text-clip-muted sm:text-base">Clip-Reviewer helps you go from discovery to export with less friction: fetch clips, approve quickly, edit with precision, and ship with confidence.</p>
+        <div class="mt-7 flex flex-wrap gap-3">
+          <a href="/login" class="rounded-full border border-twitch-600/65 bg-twitch-600/22 px-4 py-2 text-sm font-bold text-violet-200 transition hover:bg-twitch-600/36">Start for free today</a>
+          <a href="#how-it-works" class="rounded-full border border-white/15 bg-white/5 px-4 py-2 text-sm font-semibold text-zinc-200 transition hover:border-white/25 hover:bg-white/10">How it works</a>
+        </div>
+      </div>
+    </section>
+
+    <section id="how-it-works" class="pb-14">
+      <div class="text-center">
+        <p class="text-sm font-semibold text-violet-300">How it works</p>
+        <h2 class="mt-2 text-3xl font-extrabold tracking-tight sm:text-5xl">From clip source to ready-to-post output.</h2>
+      </div>
+
+      <div class="relative mt-10 grid gap-10">
+        <div class="pointer-events-none absolute left-1/2 top-0 hidden h-full w-[2px] -translate-x-1/2 bg-gradient-to-b from-twitch-600/60 via-violet-400/25 to-cyan-400/10 lg:block"></div>
+
+        <article class="grid items-center gap-6 lg:grid-cols-2">
+          <div class="rounded-2xl border border-white/10 bg-clip-panel/80 p-3 shadow-xl">
+            <img src="/pictures/tools/clip-discovery.svg" alt="Step 1 clip discovery preview" class="h-auto w-full rounded-xl" />
+          </div>
+          <div class="relative rounded-2xl border border-white/10 bg-clip-panel/75 p-6">
+            <span class="absolute -left-4 top-6 hidden h-8 w-8 items-center justify-center rounded-full border border-twitch-600/70 bg-twitch-600/30 text-sm font-bold text-violet-100 lg:flex">1</span>
+            <h3 class="text-2xl font-bold">Upload your clip source</h3>
+            <p class="mt-3 text-sm leading-relaxed text-clip-muted">Connect streamer sources, refresh from Twitch, and collect the exact clips you want to process directly from your dashboard.</p>
+          </div>
+        </article>
+
+        <article class="grid items-center gap-6 lg:grid-cols-2">
+          <div class="relative order-2 rounded-2xl border border-white/10 bg-clip-panel/75 p-6 lg:order-1">
+            <span class="absolute -right-4 top-6 hidden h-8 w-8 items-center justify-center rounded-full border border-twitch-600/70 bg-twitch-600/30 text-sm font-bold text-violet-100 lg:flex">2</span>
+            <h3 class="text-2xl font-bold">Customize it</h3>
+            <p class="mt-3 text-sm leading-relaxed text-clip-muted">Use Upload Edit Studio and Split + Zoom Timeline to shape layout, pacing, and emphasis for each moment.</p>
+          </div>
+          <div class="order-1 rounded-2xl border border-white/10 bg-clip-panel/80 p-3 shadow-xl lg:order-2">
+            <img src="/pictures/tools/upload-edit-studio.svg" alt="Step 2 edit studio preview" class="h-auto w-full rounded-xl" />
+          </div>
+        </article>
+
+        <article class="grid items-center gap-6 lg:grid-cols-2">
+          <div class="rounded-2xl border border-white/10 bg-clip-panel/80 p-3 shadow-xl">
+            <img src="/pictures/tools/bulk-upload-queue.svg" alt="Step 3 export and upload preview" class="h-auto w-full rounded-xl" />
+          </div>
+          <div class="relative rounded-2xl border border-white/10 bg-clip-panel/75 p-6">
+            <span class="absolute -left-4 top-6 hidden h-8 w-8 items-center justify-center rounded-full border border-twitch-600/70 bg-twitch-600/30 text-sm font-bold text-violet-100 lg:flex">3</span>
+            <h3 class="text-2xl font-bold">Export or queue upload</h3>
+            <p class="mt-3 text-sm leading-relaxed text-clip-muted">Preview the final 9:16 composition, export MP4 locally, or push approved clips through the upload queue workflow.</p>
+          </div>
+        </article>
+      </div>
+    </section>
+
+    <section class="grid grid-cols-1 gap-4 pb-16 md:grid-cols-2">
+      <article class="rounded-2xl border border-white/10 bg-clip-panel/80 p-6 shadow-lg"><h3 class="text-lg font-bold">Clip Discovery</h3><p class="mt-2 text-sm text-clip-muted">Fetch and browse clips fast.</p><a href="/tools/clip-discovery.html" class="mt-4 inline-flex text-sm font-semibold text-violet-300 hover:text-violet-200">Learn more →</a></article>
+      <article class="rounded-2xl border border-white/10 bg-clip-panel/80 p-6 shadow-lg"><h3 class="text-lg font-bold">Approval Workflow</h3><p class="mt-2 text-sm text-clip-muted">Organize pending, approved, sorted-out.</p><a href="/tools/approval-workflow.html" class="mt-4 inline-flex text-sm font-semibold text-violet-300 hover:text-violet-200">Learn more →</a></article>
+      <article class="rounded-2xl border border-white/10 bg-clip-panel/80 p-6 shadow-lg"><h3 class="text-lg font-bold">Upload Edit Studio</h3><p class="mt-2 text-sm text-clip-muted">Precisely control camera/gameplay/third area.</p><a href="/tools/upload-edit-studio.html" class="mt-4 inline-flex text-sm font-semibold text-violet-300 hover:text-violet-200">Learn more →</a></article>
+      <article class="rounded-2xl border border-white/10 bg-clip-panel/80 p-6 shadow-lg"><h3 class="text-lg font-bold">Split + Zoom Timeline</h3><p class="mt-2 text-sm text-clip-muted">Cut dead time and emphasize key moments.</p><a href="/tools/split-zoom-timeline.html" class="mt-4 inline-flex text-sm font-semibold text-violet-300 hover:text-violet-200">Learn more →</a></article>
+      <article class="rounded-2xl border border-white/10 bg-clip-panel/80 p-6 shadow-lg"><h3 class="text-lg font-bold">TikTok Output Preview</h3><p class="mt-2 text-sm text-clip-muted">Validate the vertical result before export.</p><a href="/tools/tiktok-output-preview.html" class="mt-4 inline-flex text-sm font-semibold text-violet-300 hover:text-violet-200">Learn more →</a></article>
+      <article class="rounded-2xl border border-white/10 bg-clip-panel/80 p-6 shadow-lg"><h3 class="text-lg font-bold">Bulk Upload Queue</h3><p class="mt-2 text-sm text-clip-muted">Batch upload with pause, resume, and cancel.</p><a href="/tools/bulk-upload-queue.html" class="mt-4 inline-flex text-sm font-semibold text-violet-300 hover:text-violet-200">Learn more →</a></article>
+      <article class="rounded-2xl border border-white/10 bg-clip-panel/80 p-6 shadow-lg md:col-span-2"><h3 class="text-lg font-bold">Admin + Streamer Management</h3><p class="mt-2 text-sm text-clip-muted">Maintain streamer mappings and inspect system state.</p><a href="/tools/admin-streamer-management.html" class="mt-4 inline-flex text-sm font-semibold text-violet-300 hover:text-violet-200">Learn more →</a></article>
+    </section>
+  </main>
+
+  <footer class="border-t border-white/10 px-4 py-6 text-center text-xs text-clip-muted">
+    <p><a class="text-zinc-200 hover:text-white" href="/terms.html">Terms of Service</a><span class="mx-2 opacity-50">•</span><a class="text-zinc-200 hover:text-white" href="/privacy.html">Privacy Policy</a></p>
+    <p class="mt-2">Clip-Reviewer is in no way associated with either Twitch or TikTok.</p>
+  </footer>
+
+  <script src="/tools/tool-page.js"></script>
+</body>
+</html>

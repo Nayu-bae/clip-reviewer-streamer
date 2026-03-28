@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" fill="none">
+  <defs>
+    <linearGradient id="clapTop" x1="116" y1="100" x2="396" y2="196" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#A78BFA"/>
+      <stop offset="1" stop-color="#772CE8"/>
+    </linearGradient>
+    <linearGradient id="clapBody" x1="130" y1="176" x2="382" y2="400" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#1A1A22"/>
+      <stop offset="1" stop-color="#101016"/>
+    </linearGradient>
+    <linearGradient id="ring" x1="24" y1="24" x2="488" y2="488" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#9147FF"/>
+      <stop offset="1" stop-color="#4C1D95"/>
+    </linearGradient>
+  </defs>
+
+  <rect x="24" y="24" width="464" height="464" rx="124" fill="#0E0E10"/>
+  <rect x="24" y="24" width="464" height="464" rx="124" stroke="url(#ring)" stroke-width="8"/>
+
+  <rect x="116" y="98" width="280" height="84" rx="18" transform="rotate(-8 116 98)" fill="url(#clapTop)" stroke="#DDD6FE" stroke-width="8"/>
+  <rect x="100" y="170" width="312" height="232" rx="34" fill="url(#clapBody)" stroke="#C4B5FD" stroke-width="10"/>
+
+  <path d="M145 142l48 50" stroke="#F4F4F5" stroke-width="10" stroke-linecap="round" opacity=".92"/>
+  <path d="M205 132l48 50" stroke="#F4F4F5" stroke-width="10" stroke-linecap="round" opacity=".92"/>
+  <path d="M265 122l48 50" stroke="#F4F4F5" stroke-width="10" stroke-linecap="round" opacity=".92"/>
+  <path d="M325 114l48 50" stroke="#F4F4F5" stroke-width="10" stroke-linecap="round" opacity=".92"/>
+
+  <rect x="230" y="268" width="138" height="36" rx="18" fill="#27272A"/>
+  <rect x="230" y="318" width="104" height="24" rx="12" fill="#3F3F46"/>
+</svg>

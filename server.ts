@@ -2219,7 +2219,22 @@ app.use(
         },
     })
 );
-app.use(express.static(path.join(__dirname, 'public')));
+const PUBLIC_DIR = path.join(__dirname, 'public');
+const HOME_PAGE_FILE = path.join(PUBLIC_DIR, 'home.html');
+const APP_LOGIN_FILE = path.join(PUBLIC_DIR, 'index.html');
+app.use(express.static(PUBLIC_DIR, { index: false }));
+
+app.get('/', (_req: Request, res: Response) => {
+    res.sendFile(HOME_PAGE_FILE);
+});
+
+app.get('/login', (_req: Request, res: Response) => {
+    res.sendFile(APP_LOGIN_FILE);
+});
+
+app.get('/app', (_req: Request, res: Response) => {
+    res.sendFile(APP_LOGIN_FILE);
+});
 
 function requireAuth(req: Request, res: Response, next: NextFunction): void {
     if (req.session.authenticated && req.session.userId) {
