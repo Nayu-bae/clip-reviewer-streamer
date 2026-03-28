@@ -152,8 +152,8 @@
       background: rgba(24, 24, 27, 0.7);
       border-bottom: 1px solid rgba(255, 255, 255, 0.1);
       backdrop-filter: blur(10px);
-      padding: 0 24px;
-      height: 60px;
+      padding: 10px 24px;
+      min-height: 60px;
       display: flex;
       align-items: center;
       justify-content: space-between;
@@ -175,16 +175,43 @@
     header .right {
       display: flex;
       align-items: center;
-      gap: 14px;
+      gap: 10px;
+      flex-wrap: wrap;
+      justify-content: flex-end;
     }
 
     .approved-count {
-      background: linear-gradient(135deg, #10b981, #059669);
-      color: #fff;
-      font-size: 0.78rem;
+      border: 1px solid rgba(16, 185, 129, 0.58);
+      background: linear-gradient(135deg, rgba(16, 185, 129, 0.22), rgba(5, 150, 105, 0.28));
+      color: #bbf7d0;
+      font-size: 0.77rem;
       font-weight: 700;
-      padding: 3px 10px;
-      border-radius: 20px;
+      padding: 4px 10px;
+      border-radius: 999px;
+      white-space: nowrap;
+    }
+
+    .header-meta-group {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .header-meta-group .status-chip {
+      font-size: 0.74rem;
+      padding: 4px 9px;
+      background: rgba(24, 24, 27, 0.72);
+    }
+
+    .header-meta-group .status-chip strong {
+      color: #f4f4f5;
+      margin-left: 5px;
+    }
+
+    #navbar-username {
+      color: #ddd6fe;
+      font-weight: 600;
     }
 
     .btn-logout {
@@ -253,6 +280,130 @@
       overflow: hidden;
       text-overflow: ellipsis;
       white-space: nowrap;
+    }
+
+    .status-chip {
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 999px;
+      padding: 4px 10px;
+      font-size: 0.78rem;
+      color: #d4d4d8;
+      background: rgba(39, 39, 42, 0.64);
+      white-space: nowrap;
+    }
+
+    .status-chip strong {
+      color: #f4f4f5;
+      font-weight: 600;
+      margin-left: 6px;
+    }
+
+    .setup-guide {
+      margin: 14px 24px 0;
+      border: 1px solid rgba(139, 92, 246, 0.32);
+      border-radius: 12px;
+      background: linear-gradient(135deg, rgba(76, 29, 149, 0.2), rgba(24, 24, 27, 0.88));
+      box-shadow: 0 12px 34px rgba(0, 0, 0, 0.24);
+      padding: 12px;
+      display: grid;
+      gap: 10px;
+    }
+
+    .setup-guide.hidden {
+      display: none;
+    }
+
+    .setup-guide-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .setup-guide-header h3 {
+      font-size: 0.92rem;
+      font-weight: 700;
+    }
+
+    .setup-guide-progress {
+      font-size: 0.78rem;
+      color: #d4d4d8;
+    }
+
+    .setup-guide-grid {
+      display: grid;
+      gap: 8px;
+    }
+
+    .setup-step {
+      border: 1px solid rgba(255, 255, 255, 0.09);
+      border-radius: 10px;
+      background: rgba(24, 24, 27, 0.62);
+      padding: 8px 10px;
+      display: grid;
+      grid-template-columns: auto 1fr auto;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .setup-step-index {
+      width: 20px;
+      height: 20px;
+      border-radius: 999px;
+      border: 1px solid rgba(255, 255, 255, 0.24);
+      font-size: 0.72rem;
+      font-weight: 700;
+      color: #d4d4d8;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      background: rgba(63, 63, 70, 0.55);
+    }
+
+    .setup-step.done .setup-step-index {
+      color: #042014;
+      border-color: rgba(16, 185, 129, 0.92);
+      background: #34d399;
+    }
+
+    .setup-step-main {
+      min-width: 0;
+    }
+
+    .setup-step-title {
+      font-size: 0.83rem;
+      font-weight: 600;
+      color: #f4f4f5;
+    }
+
+    .setup-step-sub {
+      font-size: 0.74rem;
+      color: #a1a1aa;
+    }
+
+    .setup-step-action {
+      border: 1px solid rgba(196, 181, 253, 0.6);
+      border-radius: 8px;
+      background: rgba(109, 40, 217, 0.26);
+      color: #ede9fe;
+      font-size: 0.73rem;
+      font-weight: 700;
+      padding: 5px 10px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      white-space: nowrap;
+    }
+
+    .setup-step-action:hover {
+      border-color: rgba(196, 181, 253, 0.95);
+      color: #faf5ff;
+      background: rgba(124, 58, 237, 0.38);
+    }
+
+    .setup-step-action:disabled {
+      opacity: 0.45;
+      cursor: not-allowed;
     }
 
     /* ── Controls ──────────────────────────── */
@@ -1177,6 +1328,34 @@
       line-height: 1.5;
     }
 
+    .crop-autosave-status {
+      margin-top: 8px;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 8px;
+      padding: 7px 9px;
+      font-size: 0.76rem;
+      color: #d4d4d8;
+      background: rgba(39, 39, 42, 0.5);
+    }
+
+    .crop-autosave-status[data-state="saving"] {
+      border-color: rgba(250, 204, 21, 0.45);
+      color: #fde68a;
+      background: rgba(120, 53, 15, 0.3);
+    }
+
+    .crop-autosave-status[data-state="saved"] {
+      border-color: rgba(52, 211, 153, 0.45);
+      color: #a7f3d0;
+      background: rgba(6, 78, 59, 0.3);
+    }
+
+    .crop-autosave-status[data-state="error"] {
+      border-color: rgba(248, 113, 113, 0.5);
+      color: #fecaca;
+      background: rgba(127, 29, 29, 0.34);
+    }
+
     .output-preview-wrap {
       border: 1px solid var(--border);
       border-radius: 10px;
@@ -2071,8 +2250,12 @@
       Clip-Reviewer
     </div>
     <div class="right">
-      <div id="navbar-username" class="inline-flex items-center gap-1.5 rounded-full border border-zinc-700 bg-zinc-900/70 px-3 py-1 text-xs text-zinc-300">@-</div>
-      <div class="approved-count" id="approved-count">0 approved</div>
+      <div class="header-meta-group">
+        <div class="status-chip">Signed in<strong id="navbar-username">@-</strong></div>
+        <div class="status-chip">Streamers<strong id="status-streamers">0</strong></div>
+        <div class="status-chip">Last sync<strong id="status-last-sync">Never</strong></div>
+        <div class="approved-count" id="approved-count">0 approved</div>
+      </div>
       <div id="upload-status-chip" class="upload-status-chip">Upload queue idle</div>
       <button class="btn-header-upload" id="bulk-upload-btn">Start Upload</button>
       <button class="btn-header-control" id="upload-pause-btn" disabled>Pause</button>
@@ -2093,6 +2276,47 @@
       <button class="btn-logout" id="logout-btn">Logout</button>
     </div>
   </header>
+
+  <section id="setup-guide" class="setup-guide hidden" aria-live="polite">
+    <div class="setup-guide-header">
+      <h3>Quick Setup</h3>
+      <span id="setup-guide-progress" class="setup-guide-progress">0 / 4 complete</span>
+    </div>
+    <div class="setup-guide-grid">
+      <div class="setup-step" id="setup-step-streamer">
+        <span class="setup-step-index">1</span>
+        <div class="setup-step-main">
+          <div class="setup-step-title">Add at least one streamer</div>
+          <div class="setup-step-sub">Your dashboard pulls clips only for streamers linked to this account.</div>
+        </div>
+        <button id="setup-action-streamer" class="setup-step-action" type="button">Add</button>
+      </div>
+      <div class="setup-step" id="setup-step-refresh">
+        <span class="setup-step-index">2</span>
+        <div class="setup-step-main">
+          <div class="setup-step-title">Fetch clips from Twitch</div>
+          <div class="setup-step-sub">Run a refresh once your streamer list is saved.</div>
+        </div>
+        <button id="setup-action-refresh" class="setup-step-action" type="button">Fetch</button>
+      </div>
+      <div class="setup-step" id="setup-step-edit">
+        <span class="setup-step-index">3</span>
+        <div class="setup-step-main">
+          <div class="setup-step-title">Open your first edit</div>
+          <div class="setup-step-sub">Use the Edit button on an approved clip to configure layout.</div>
+        </div>
+        <button id="setup-action-edit" class="setup-step-action" type="button">Open Edit</button>
+      </div>
+      <div class="setup-step" id="setup-step-download">
+        <span class="setup-step-index">4</span>
+        <div class="setup-step-main">
+          <div class="setup-step-title">Export first cropped clip</div>
+          <div class="setup-step-sub">Generate a local MP4 to verify the final output.</div>
+        </div>
+        <button id="setup-action-download" class="setup-step-action" type="button">Export</button>
+      </div>
+    </div>
+  </section>
 
   <div class="controls">
     <label>Time range:</label>
@@ -2261,6 +2485,7 @@
         <div class="crop-group">
           <h4>Edit Instructions</h4>
           <p class="crop-help">Drag inside a box to move it. Drag an edge or corner handle to resize it. In zoom segments, hold Alt and use mouse wheel to resize quickly (Shift+wheel = width only, Ctrl+wheel = height only). Cyan box is camera source, orange box is gameplay source, green box is the third source area.</p>
+          <div id="crop-autosave-status" class="crop-autosave-status" data-state="idle">Autosave idle.</div>
           <div class="crop-toggle-row" id="cam-toggle-row">
             <span>Camera</span>
             <div id="cam-enabled-slider" class="cam-toggle-switch" tabindex="0" role="switch" aria-checked="true" aria-label="Camera toggle">
@@ -2340,7 +2565,6 @@
             <div id="output-center-guide-x" class="output-center-guide output-center-guide-x"></div>
             <div id="output-center-guide-y" class="output-center-guide output-center-guide-y"></div>
           </div>
-          <p class="preview-note">Drag camera/gameplay/third area directly on the preview. Camera and gameplay use horizontal resize handles, third area uses corner and edge handles. On zoom segments: Alt+wheel resizes, Shift+wheel adjusts width only, Ctrl+wheel adjusts height only.</p>
         </div>
         <div class="crop-actions">
           <button class="btn-secondary" id="crop-reset-btn">Reset</button>
@@ -2416,11 +2640,24 @@
   let activePlaybackClipId = null;
   let activePlaybackRequestToken = '';
   let uploadPollTimer = null;
+  let managedStreamerCount = 0;
+  let lastClipSyncAt = null;
   const downloadInProgressIds = new Set();
+  let cropAutosaveEnabled = false;
+  let cropAutosaveSaving = false;
+  let cropAutosaveQueued = false;
+  let cropAutosaveTimer = null;
+  let cropLastKnownFingerprint = '';
+  let cropLastSavedFingerprint = '';
 
   const DASHBOARD_PREFS_KEY = 'clipReviewer.dashboardPrefs.v1';
   const ADMIN_PREFS_KEY = 'clipReviewer.adminPrefs.v1';
   const BADGE_CENTER_SNAP_THRESHOLD = 0.015;
+  const ONBOARDING_PROGRESS_KEY_PREFIX = 'clipReviewer.onboardingProgress.v2.user.';
+  const ONBOARDING_PROGRESS_KEY_LEGACY = 'clipReviewer.onboardingProgress.v1';
+  const CROP_DRAFT_PREFIX = 'clipReviewer.cropDraft.v1.';
+  const CROP_AUTOSAVE_DEBOUNCE_MS = 900;
+  const CROP_AUTOSAVE_CHECK_INTERVAL_MS = 700;
 
   const DEFAULT_CROP = {
     camEnabled: true,
@@ -2481,6 +2718,161 @@
     }));
   }
 
+  function normalizeOnboardingProgress(raw) {
+    const source = raw && typeof raw === 'object' ? raw : {};
+    return {
+      openedEdit: !!source.openedEdit,
+      downloadedClip: !!source.downloadedClip,
+    };
+  }
+
+  function getOnboardingProgressKey(username) {
+    const normalized = String(username || '').trim().toLowerCase();
+    return `${ONBOARDING_PROGRESS_KEY_PREFIX}${encodeURIComponent(normalized || 'anon')}`;
+  }
+
+  function readJsonStorage(key) {
+    try {
+      const raw = localStorage.getItem(key);
+      if (!raw) return null;
+      return JSON.parse(raw);
+    } catch {
+      return null;
+    }
+  }
+
+  let onboardingProgress = normalizeOnboardingProgress({});
+
+  function loadOnboardingProgressForUser(username, options = {}) {
+    const allowLegacyMigration = !!options.allowLegacyMigration;
+    const userKey = getOnboardingProgressKey(username);
+    const userScoped = readJsonStorage(userKey);
+    if (userScoped && typeof userScoped === 'object') {
+      onboardingProgress = normalizeOnboardingProgress(userScoped);
+      return;
+    }
+
+    if (allowLegacyMigration) {
+      const legacyScoped = readJsonStorage(ONBOARDING_PROGRESS_KEY_LEGACY);
+      if (legacyScoped && typeof legacyScoped === 'object') {
+        onboardingProgress = normalizeOnboardingProgress(legacyScoped);
+        localStorage.setItem(userKey, JSON.stringify(onboardingProgress));
+        return;
+      }
+    }
+
+    onboardingProgress = normalizeOnboardingProgress({});
+  }
+
+  function saveOnboardingProgress() {
+    localStorage.setItem(getOnboardingProgressKey(currentUsername), JSON.stringify(onboardingProgress));
+  }
+
+  function markOnboardingStep(stepKey, done = true) {
+    if (!Object.prototype.hasOwnProperty.call(onboardingProgress, stepKey)) return;
+    if (onboardingProgress[stepKey] === !!done) return;
+    onboardingProgress[stepKey] = !!done;
+    saveOnboardingProgress();
+    updateSetupGuide();
+  }
+
+  function formatRelativeSyncLabel(iso) {
+    if (!iso) return 'Never';
+    const dt = new Date(iso);
+    if (Number.isNaN(dt.getTime())) return 'Never';
+    const deltaSec = Math.max(0, Math.floor((Date.now() - dt.getTime()) / 1000));
+    if (deltaSec < 8) return 'Just now';
+    if (deltaSec < 60) return `${deltaSec}s ago`;
+    const deltaMin = Math.floor(deltaSec / 60);
+    if (deltaMin < 60) return `${deltaMin}m ago`;
+    const deltaHour = Math.floor(deltaMin / 60);
+    if (deltaHour < 24) return `${deltaHour}h ago`;
+    return dt.toLocaleString([], {
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+  }
+
+  function updateDashboardStatusRow() {
+    const userEl = document.getElementById('navbar-username');
+    const streamerEl = document.getElementById('status-streamers');
+    const syncEl = document.getElementById('status-last-sync');
+    if (userEl) userEl.textContent = currentUsername ? `@${currentUsername}` : '@-';
+    if (streamerEl) streamerEl.textContent = String(Math.max(0, Number(managedStreamerCount) || 0));
+    if (syncEl) syncEl.textContent = formatRelativeSyncLabel(lastClipSyncAt);
+  }
+
+  function setSetupStepDone(stepId, done) {
+    const row = document.getElementById(stepId);
+    if (!row) return;
+    row.classList.toggle('done', !!done);
+  }
+
+  function getFirstEditableClip() {
+    const approved = allClips.find((clip) => clip.approved && !clip.sorted_out);
+    if (approved) return approved;
+    return allClips.find((clip) => !clip.sorted_out) || null;
+  }
+
+  function getFirstDownloadableClip() {
+    return allClips.find((clip) => clip.approved && !clip.sorted_out) || null;
+  }
+
+  function updateSetupGuide() {
+    const wrap = document.getElementById('setup-guide');
+    const progressEl = document.getElementById('setup-guide-progress');
+    if (!wrap || !progressEl) return;
+
+    const hasStreamer = managedStreamerCount > 0;
+    const hasFetchedClips = allClips.length > 0;
+    const openedEdit = !!onboardingProgress.openedEdit;
+    const exported = !!onboardingProgress.downloadedClip;
+
+    const completion = [hasStreamer, hasFetchedClips, openedEdit, exported].filter(Boolean).length;
+    progressEl.textContent = `${completion} / 4 complete`;
+
+    setSetupStepDone('setup-step-streamer', hasStreamer);
+    setSetupStepDone('setup-step-refresh', hasFetchedClips);
+    setSetupStepDone('setup-step-edit', openedEdit);
+    setSetupStepDone('setup-step-download', exported);
+
+    const actionStreamer = document.getElementById('setup-action-streamer');
+    const actionRefresh = document.getElementById('setup-action-refresh');
+    const actionEdit = document.getElementById('setup-action-edit');
+    const actionDownload = document.getElementById('setup-action-download');
+
+    const firstEditable = getFirstEditableClip();
+    const firstDownloadable = getFirstDownloadableClip();
+
+    if (actionStreamer) actionStreamer.disabled = false;
+    if (actionRefresh) actionRefresh.disabled = !hasStreamer;
+    if (actionEdit) actionEdit.disabled = !firstEditable;
+    if (actionDownload) actionDownload.disabled = !firstDownloadable;
+
+    if (completion >= 4) {
+      wrap.classList.add('hidden');
+    } else {
+      wrap.classList.remove('hidden');
+    }
+  }
+
+  async function refreshManagedStreamerCount() {
+    try {
+      const res = await fetch('/api/me/streamers');
+      const data = await res.json().catch(() => ({}));
+      if (res.ok) {
+        managedStreamerCount = Array.isArray(data.streamers) ? data.streamers.length : 0;
+      }
+    } catch {
+      // Keep existing value when request fails.
+    } finally {
+      updateDashboardStatusRow();
+      updateSetupGuide();
+    }
+  }
+
   function applyStoredPrefs() {
     const dashPrefs = readPrefs(DASHBOARD_PREFS_KEY, { currentPeriod: 30, currentFilter: 'all' });
     const periodOptions = new Set([30, 60, 365]);
@@ -2531,7 +2923,34 @@
     const el = document.getElementById('navbar-username');
     const safe = String(username || '').trim();
     el.textContent = safe ? `@${safe}` : '@-';
+    updateDashboardStatusRow();
   }
+
+  document.getElementById('setup-action-streamer')?.addEventListener('click', () => {
+    openAddStreamerModal();
+  });
+
+  document.getElementById('setup-action-refresh')?.addEventListener('click', () => {
+    void refreshClipsFromTwitch();
+  });
+
+  document.getElementById('setup-action-edit')?.addEventListener('click', () => {
+    const clip = getFirstEditableClip();
+    if (!clip) {
+      showToast('Approve a clip first, then open Edit.', 'error');
+      return;
+    }
+    void openCropModal(clip.id);
+  });
+
+  document.getElementById('setup-action-download')?.addEventListener('click', () => {
+    const clip = getFirstDownloadableClip();
+    if (!clip) {
+      showToast('Approve a clip first, then export it.', 'error');
+      return;
+    }
+    void downloadCroppedVideo(clip.id);
+  });
 
   // ── Login ────────────────────────────────────────────────────────────────
   function setAuthMode(mode) {
@@ -2569,10 +2988,14 @@
     const data = await r.json();
     if (data.authenticated) {
       currentUsername = String(data.username || '');
+      loadOnboardingProgressForUser(currentUsername, { allowLegacyMigration: !data.needsStreamerSetup });
       setNavbarUsername(currentUsername);
       needsStreamerSetup = !!data.needsStreamerSetup;
       showApp();
+      return;
     }
+    updateDashboardStatusRow();
+    updateSetupGuide();
   }
 
   document.getElementById('login-btn').addEventListener('click', submitAuth);
@@ -2607,6 +3030,7 @@
     if (r.ok) {
       const data = await r.json().catch(() => ({}));
       currentUsername = String(data.username || username || '');
+      loadOnboardingProgressForUser(currentUsername, { allowLegacyMigration: !data.needsStreamerSetup });
       setNavbarUsername(currentUsername);
       needsStreamerSetup = !!data.needsStreamerSetup;
       showApp();
@@ -2632,6 +3056,7 @@
     if (r.ok) {
       const data = await r.json().catch(() => ({}));
       currentUsername = String(data.username || username || '');
+      loadOnboardingProgressForUser(currentUsername, { allowLegacyMigration: false });
       setNavbarUsername(currentUsername);
       needsStreamerSetup = !!data.needsStreamerSetup;
       showApp();
@@ -2656,7 +3081,11 @@
     document.getElementById('add-streamer-modal').classList.add('hidden');
     document.getElementById('add-streamer-modal').classList.remove('flex');
     currentUsername = '';
+    loadOnboardingProgressForUser('', { allowLegacyMigration: false });
+    managedStreamerCount = 0;
+    lastClipSyncAt = null;
     setNavbarUsername('');
+    updateSetupGuide();
     setAuthMode('login');
   });
 
@@ -2665,6 +3094,9 @@
     document.getElementById('login-screen').style.display = 'none';
     document.getElementById('app-screen').style.display = 'block';
     document.body.classList.remove('login-view');
+    updateDashboardStatusRow();
+    updateSetupGuide();
+    void refreshManagedStreamerCount();
     restoreActiveUploadJob();
     if (needsStreamerSetup) {
       openStreamerSetupModal();
@@ -2732,6 +3164,9 @@
 
     const data = await res.json().catch(() => ({}));
     needsStreamerSetup = false;
+    managedStreamerCount = Array.isArray(data.streamers) ? data.streamers.length : managedStreamerCount;
+    updateDashboardStatusRow();
+    updateSetupGuide();
     closeStreamerSetupModal();
     if (Array.isArray(data.unresolved) && data.unresolved.length) {
       showToast(`Saved streamers. Could not resolve: ${data.unresolved.join(', ')}`, 'error');
@@ -2781,6 +3216,9 @@
       const res = await fetch('/api/me/streamers');
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data.error || 'Failed to load streamers');
+      managedStreamerCount = Array.isArray(data.streamers) ? data.streamers.length : 0;
+      updateDashboardStatusRow();
+      updateSetupGuide();
       renderManagedStreamers(data.streamers || []);
     } catch (err) {
       listEl.innerHTML = `<div class="rounded-lg border border-red-500/40 bg-red-950/20 px-3 py-2 text-red-300">${escHtml(err.message || 'Failed to load streamers')}</div>`;
@@ -2803,6 +3241,9 @@
       return;
     }
 
+    managedStreamerCount = Array.isArray(data.streamers) ? data.streamers.length : managedStreamerCount;
+    updateDashboardStatusRow();
+    updateSetupGuide();
     renderManagedStreamers(data.streamers || []);
     showToast(data.removedClips > 0 ? `Streamer removed. ${data.removedClips} clips removed.` : 'Streamer removed.');
     await loadClips();
@@ -2825,13 +3266,16 @@
       body: JSON.stringify({ streamer: input }),
     });
 
+    const data = await res.json().catch(() => ({}));
     if (!res.ok) {
-      const data = await res.json().catch(() => ({}));
       err.textContent = data.error || 'Failed to add streamer';
       err.classList.remove('hidden');
       return;
     }
 
+    managedStreamerCount = Array.isArray(data.streamers) ? data.streamers.length : managedStreamerCount;
+    updateDashboardStatusRow();
+    updateSetupGuide();
     document.getElementById('add-streamer-input').value = '';
     await loadManagedStreamers();
     showToast('Streamer added. Refreshing clips...');
@@ -2874,15 +3318,22 @@
     document.getElementById('clips-container').innerHTML = '';
     document.getElementById('empty').style.display = 'none';
     document.getElementById('stats-bar').textContent = 'Loading clips from database…';
+    let loadedOk = false;
 
     try {
       const r = await fetch(`/api/clips`);
       if (!r.ok) throw new Error('Failed');
       allClips = await r.json();
+      loadedOk = true;
     } catch {
       allClips = [];
     }
 
+    if (loadedOk) {
+      lastClipSyncAt = new Date().toISOString();
+    }
+    updateDashboardStatusRow();
+    updateSetupGuide();
     document.getElementById('loading').style.display = 'none';
     renderClips();
   }
@@ -3039,6 +3490,7 @@
     }
 
     document.getElementById('stats-bar').innerHTML = statsHtml;
+    updateSetupGuide();
 
     if (filtered.length === 0) {
       document.getElementById('empty').style.display = 'block';
@@ -3338,6 +3790,7 @@
       a.remove();
       URL.revokeObjectURL(url);
       showToast('Download started.');
+      markOnboardingStep('downloadedClip', true);
     } catch (err) {
       showToast(`Download failed: ${err.message || 'Unknown error'}`, 'error');
     } finally {
@@ -3405,6 +3858,7 @@
     // If filter is active and card no longer belongs, re-render
     if (currentFilter !== 'all') renderClips();
     renderClipPlayerModal();
+    updateSetupGuide();
   }
 
   // ── Sort out toggle ──────────────────────────────────────────────────────
@@ -3426,6 +3880,7 @@
     // Re-render based on current filter
     renderClips();
     renderClipPlayerModal();
+    updateSetupGuide();
   }
 
   // ── Crop modal ──────────────────────────────────────────────────────────
@@ -3709,6 +4164,7 @@
     stopOutputGameplayDrag();
     stopOutputThirdDrag();
     stopCropPreviewLoop();
+    resetCropAutosaveState();
     cropFallbackImage = null;
     activeCropClip = null;
     cropState = null;
@@ -4598,6 +5054,273 @@
     label.textContent = enabled ? 'On' : 'Off';
   }
 
+  function getCropDraftStorageKey(clipId) {
+    return `${CROP_DRAFT_PREFIX}${encodeURIComponent(String(clipId || ''))}`;
+  }
+
+  function readCropDraft(clipId) {
+    if (!clipId) return null;
+    try {
+      const raw = localStorage.getItem(getCropDraftStorageKey(clipId));
+      if (!raw) return null;
+      const parsed = JSON.parse(raw);
+      if (!parsed || typeof parsed !== 'object' || !parsed.payload || typeof parsed.payload !== 'object') {
+        return null;
+      }
+      return parsed;
+    } catch {
+      return null;
+    }
+  }
+
+  function writeCropDraft(clipId, payload, fingerprint) {
+    if (!clipId || !payload) return;
+    const draft = {
+      updatedAt: new Date().toISOString(),
+      fingerprint: String(fingerprint || ''),
+      payload,
+    };
+    localStorage.setItem(getCropDraftStorageKey(clipId), JSON.stringify(draft));
+  }
+
+  function setCropAutosaveStatus(state, text = '') {
+    const el = document.getElementById('crop-autosave-status');
+    if (!el) return;
+    const nextState = state || 'idle';
+    el.dataset.state = nextState;
+    if (text) {
+      el.textContent = text;
+      return;
+    }
+    if (nextState === 'saving') {
+      el.textContent = 'Saving edits...';
+      return;
+    }
+    if (nextState === 'saved') {
+      const clock = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+      el.textContent = `Saved at ${clock}`;
+      return;
+    }
+    if (nextState === 'error') {
+      el.textContent = 'Autosave failed. Your local draft is kept and will restore next time.';
+      return;
+    }
+    el.textContent = 'Autosave idle.';
+  }
+
+  function clearCropAutosaveTimer() {
+    if (cropAutosaveTimer) {
+      clearTimeout(cropAutosaveTimer);
+      cropAutosaveTimer = null;
+    }
+  }
+
+  function resetCropAutosaveState() {
+    cropAutosaveEnabled = false;
+    cropAutosaveSaving = false;
+    cropAutosaveQueued = false;
+    cropLastKnownFingerprint = '';
+    cropLastSavedFingerprint = '';
+    clearCropAutosaveTimer();
+    setCropAutosaveStatus('idle');
+  }
+
+  function buildCropSavePayload() {
+    if (!cropState) return null;
+    const normalizedSplitPoints = normalizeSplitPoints(cropState.splitPoints, getCropPreviewDuration());
+    return {
+      cam_x: cropState.cam.x,
+      cam_y: cropState.cam.y,
+      cam_w: cropState.cam.w,
+      cam_h: cropState.cam.h,
+      cam_enabled: cropState.camEnabled ? 1 : 0,
+      twitch_name_enabled: cropState.twitchNameEnabled ? 1 : 0,
+      third_area_enabled: cropState.thirdAreaEnabled ? 1 : 0,
+      twitch_name_x: cropState.twitchNamePos?.x ?? DEFAULT_CROP.twitchNamePos.x,
+      twitch_name_y: cropState.twitchNamePos?.y ?? DEFAULT_CROP.twitchNamePos.y,
+      gameplay_x: cropState.gameplay.x,
+      gameplay_y: cropState.gameplay.y,
+      gameplay_w: cropState.gameplay.w,
+      gameplay_h: cropState.gameplay.h,
+      third_x: cropState.third.x,
+      third_y: cropState.third.y,
+      third_w: cropState.third.w,
+      third_h: cropState.third.h,
+      cam_output_y: cropState.camOutput?.y ?? DEFAULT_CROP.camOutput.y,
+      cam_output_h: cropState.camOutput?.h ?? DEFAULT_CROP.camOutput.h,
+      gameplay_output_y: cropState.gameplayOutput?.y ?? DEFAULT_CROP.gameplayOutput.y,
+      gameplay_output_h: cropState.gameplayOutput?.h ?? DEFAULT_CROP.gameplayOutput.h,
+      third_output_x: cropState.thirdOutput?.x ?? DEFAULT_CROP.thirdOutput.x,
+      third_output_y: cropState.thirdOutput?.y ?? DEFAULT_CROP.thirdOutput.y,
+      third_output_w: cropState.thirdOutput?.w ?? DEFAULT_CROP.thirdOutput.w,
+      third_output_h: cropState.thirdOutput?.h ?? DEFAULT_CROP.thirdOutput.h,
+      split_points: normalizedSplitPoints,
+      split_deleted_segments: normalizeSplitDeletedSegments(
+        cropState.splitDeletedSegments,
+        normalizedSplitPoints.length + 1
+      ),
+      split_zoom_segments: normalizeSplitZoomSegments(
+        cropState.splitZoomSegments,
+        normalizedSplitPoints.length + 1
+      ),
+      split_zoom_layouts: normalizeSplitZoomLayouts(
+        cropState.splitZoomLayouts,
+        normalizedSplitPoints.length + 1
+      ),
+    };
+  }
+
+  function getCropPayloadFingerprint(payload) {
+    try {
+      return JSON.stringify(payload || {});
+    } catch {
+      return '';
+    }
+  }
+
+  function applyCropPayloadToCurrentState(payload) {
+    if (!cropState || !payload || typeof payload !== 'object') return;
+    cropState.camEnabled = Number(payload.cam_enabled ?? (cropState.camEnabled ? 1 : 0)) !== 0;
+    cropState.twitchNameEnabled = Number(payload.twitch_name_enabled ?? (cropState.twitchNameEnabled ? 1 : 0)) !== 0;
+    cropState.thirdAreaEnabled = Number(payload.third_area_enabled ?? (cropState.thirdAreaEnabled ? 1 : 0)) !== 0;
+    cropState.previewBordersEnabled = cropState.previewBordersEnabled !== false;
+    cropState.twitchNamePos = normalizeNamePos(
+      { x: payload.twitch_name_x, y: payload.twitch_name_y },
+      cropState.twitchNamePos || DEFAULT_CROP.twitchNamePos
+    );
+    cropState.cam = normalizeCrop(
+      { x: payload.cam_x, y: payload.cam_y, w: payload.cam_w, h: payload.cam_h },
+      cropState.cam || DEFAULT_CROP.cam
+    );
+    cropState.gameplay = normalizeCrop(
+      { x: payload.gameplay_x, y: payload.gameplay_y, w: payload.gameplay_w, h: payload.gameplay_h },
+      cropState.gameplay || DEFAULT_CROP.gameplay
+    );
+    cropState.third = normalizeCrop(
+      { x: payload.third_x, y: payload.third_y, w: payload.third_w, h: payload.third_h },
+      cropState.third || DEFAULT_CROP.third
+    );
+    cropState.camOutput = {
+      y: clamp01(payload.cam_output_y ?? cropState.camOutput?.y ?? DEFAULT_CROP.camOutput.y),
+      h: Math.max(0.05, Math.min(0.95, clamp01(payload.cam_output_h ?? cropState.camOutput?.h ?? DEFAULT_CROP.camOutput.h))),
+    };
+    cropState.gameplayOutput = {
+      y: clamp01(payload.gameplay_output_y ?? cropState.gameplayOutput?.y ?? DEFAULT_CROP.gameplayOutput.y),
+      h: Math.max(0.05, Math.min(0.95, clamp01(payload.gameplay_output_h ?? cropState.gameplayOutput?.h ?? DEFAULT_CROP.gameplayOutput.h))),
+    };
+    cropState.thirdOutput = normalizeCrop(
+      {
+        x: payload.third_output_x,
+        y: payload.third_output_y,
+        w: payload.third_output_w,
+        h: payload.third_output_h,
+      },
+      cropState.thirdOutput || DEFAULT_CROP.thirdOutput
+    );
+    cropState.splitPoints = normalizeSplitPoints(payload.split_points, null);
+    cropState.splitDeletedSegments = normalizeSplitDeletedSegments(payload.split_deleted_segments, null);
+    cropState.splitZoomSegments = normalizeSplitZoomSegments(payload.split_zoom_segments, null);
+    cropState.splitZoomLayouts = normalizeSplitZoomLayouts(payload.split_zoom_layouts, null);
+  }
+
+  function queueCropAutosave(immediate = false) {
+    if (!cropAutosaveEnabled || !activeCropClip || !cropState) return;
+    clearCropAutosaveTimer();
+    cropAutosaveTimer = setTimeout(() => {
+      void runCropAutosave();
+    }, immediate ? 160 : CROP_AUTOSAVE_DEBOUNCE_MS);
+  }
+
+  function observeCropStateForAutosave() {
+    if (!cropAutosaveEnabled || !activeCropClip || !cropState) return;
+    const payload = buildCropSavePayload();
+    if (!payload) return;
+    const fingerprint = getCropPayloadFingerprint(payload);
+    if (fingerprint === cropLastKnownFingerprint) return;
+    cropLastKnownFingerprint = fingerprint;
+    writeCropDraft(activeCropClip.id, payload, fingerprint);
+    if (fingerprint === cropLastSavedFingerprint) {
+      setCropAutosaveStatus('saved');
+      return;
+    }
+    setCropAutosaveStatus('saving');
+    queueCropAutosave(false);
+  }
+
+  async function runCropAutosave() {
+    if (!cropAutosaveEnabled || !activeCropClip || !cropState) return;
+    if (cropAutosaveSaving) {
+      cropAutosaveQueued = true;
+      return;
+    }
+    const payload = buildCropSavePayload();
+    if (!payload) return;
+    const fingerprint = getCropPayloadFingerprint(payload);
+    if (fingerprint === cropLastSavedFingerprint) {
+      setCropAutosaveStatus('saved');
+      return;
+    }
+    cropAutosaveSaving = true;
+    const ok = await persistCropSettings({
+      closeOnSuccess: false,
+      toastOnSuccess: false,
+      toastOnError: false,
+      fromAutosave: true,
+    });
+    cropAutosaveSaving = false;
+    if (!ok) {
+      setCropAutosaveStatus('error');
+    }
+    if (cropAutosaveQueued) {
+      cropAutosaveQueued = false;
+      queueCropAutosave(true);
+    }
+  }
+
+  async function persistCropSettings(options = {}) {
+    if (!activeCropClip || !cropState) return false;
+    const payload = buildCropSavePayload();
+    if (!payload) return false;
+
+    let res;
+    try {
+      res = await fetch(`/api/crop/${activeCropClip.id}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+    } catch {
+      if (options.toastOnError !== false) {
+        showToast('Could not save crop settings', 'error');
+      }
+      return false;
+    }
+
+    if (!res.ok) {
+      if (options.toastOnError !== false) {
+        showToast('Could not save crop settings', 'error');
+      }
+      return false;
+    }
+
+    const fingerprint = getCropPayloadFingerprint(payload);
+    cropLastSavedFingerprint = fingerprint;
+    cropLastKnownFingerprint = fingerprint;
+    Object.assign(activeCropClip, payload);
+    writeCropDraft(activeCropClip.id, payload, fingerprint);
+
+    if (options.fromAutosave) {
+      setCropAutosaveStatus('saved');
+    } else if (options.toastOnSuccess !== false) {
+      showToast('Edit saved. Ready for TikTok upload flow.');
+    }
+
+    if (options.closeOnSuccess) {
+      closeCropModal();
+    }
+    return true;
+  }
+
   async function openCropModal(clipId) {
     const clipKey = String(clipId || '');
     const clip = allClips.find(c => c.id === clipKey);
@@ -4605,6 +5328,8 @@
 
     // Ensure player modal media is fully torn down before opening the editor.
     closeClipPlayerModal();
+    resetCropAutosaveState();
+    markOnboardingStep('openedEdit', true);
 
     activeCropClip = clip;
     document.getElementById('crop-title').innerHTML = `
@@ -4708,9 +5433,33 @@
       // Keep local/default values if API read fails.
     }
 
+    const serverPayload = buildCropSavePayload();
+    const serverFingerprint = getCropPayloadFingerprint(serverPayload);
+    const draft = readCropDraft(clipKey);
+    const draftFingerprint = draft?.fingerprint || getCropPayloadFingerprint(draft?.payload);
+    let restoredDraft = false;
+    if (draft?.payload && draftFingerprint && draftFingerprint !== serverFingerprint) {
+      applyCropPayloadToCurrentState(draft.payload);
+      restoredDraft = true;
+    }
+
     updateCropBoxes();
     document.getElementById('crop-modal').classList.add('show');
     startCropPreviewLoop();
+    cropAutosaveEnabled = true;
+    const currentPayload = buildCropSavePayload();
+    const currentFingerprint = getCropPayloadFingerprint(currentPayload);
+    cropLastSavedFingerprint = serverFingerprint;
+    cropLastKnownFingerprint = currentFingerprint;
+    if (activeCropClip && currentPayload) {
+      writeCropDraft(activeCropClip.id, currentPayload, currentFingerprint);
+    }
+    if (restoredDraft && currentFingerprint !== serverFingerprint) {
+      setCropAutosaveStatus('saving', 'Recovered local draft. Saving now...');
+      queueCropAutosave(true);
+    } else {
+      setCropAutosaveStatus('saved');
+    }
   }
 
   function updateCropBoxes() {
@@ -5421,63 +6170,12 @@
   });
 
   async function saveCropSettings() {
-    if (!activeCropClip || !cropState) return;
-
-    const payload = {
-      cam_x: cropState.cam.x,
-      cam_y: cropState.cam.y,
-      cam_w: cropState.cam.w,
-      cam_h: cropState.cam.h,
-      cam_enabled: cropState.camEnabled ? 1 : 0,
-      twitch_name_enabled: cropState.twitchNameEnabled ? 1 : 0,
-      third_area_enabled: cropState.thirdAreaEnabled ? 1 : 0,
-      twitch_name_x: cropState.twitchNamePos?.x ?? DEFAULT_CROP.twitchNamePos.x,
-      twitch_name_y: cropState.twitchNamePos?.y ?? DEFAULT_CROP.twitchNamePos.y,
-      gameplay_x: cropState.gameplay.x,
-      gameplay_y: cropState.gameplay.y,
-      gameplay_w: cropState.gameplay.w,
-      gameplay_h: cropState.gameplay.h,
-      third_x: cropState.third.x,
-      third_y: cropState.third.y,
-      third_w: cropState.third.w,
-      third_h: cropState.third.h,
-      cam_output_y: cropState.camOutput?.y ?? DEFAULT_CROP.camOutput.y,
-      cam_output_h: cropState.camOutput?.h ?? DEFAULT_CROP.camOutput.h,
-      gameplay_output_y: cropState.gameplayOutput?.y ?? DEFAULT_CROP.gameplayOutput.y,
-      gameplay_output_h: cropState.gameplayOutput?.h ?? DEFAULT_CROP.gameplayOutput.h,
-      third_output_x: cropState.thirdOutput?.x ?? DEFAULT_CROP.thirdOutput.x,
-      third_output_y: cropState.thirdOutput?.y ?? DEFAULT_CROP.thirdOutput.y,
-      third_output_w: cropState.thirdOutput?.w ?? DEFAULT_CROP.thirdOutput.w,
-      third_output_h: cropState.thirdOutput?.h ?? DEFAULT_CROP.thirdOutput.h,
-      split_points: normalizeSplitPoints(cropState.splitPoints, getCropPreviewDuration()),
-      split_deleted_segments: normalizeSplitDeletedSegments(
-        cropState.splitDeletedSegments,
-        normalizeSplitPoints(cropState.splitPoints, getCropPreviewDuration()).length + 1
-      ),
-      split_zoom_segments: normalizeSplitZoomSegments(
-        cropState.splitZoomSegments,
-        normalizeSplitPoints(cropState.splitPoints, getCropPreviewDuration()).length + 1
-      ),
-      split_zoom_layouts: normalizeSplitZoomLayouts(
-        cropState.splitZoomLayouts,
-        normalizeSplitPoints(cropState.splitPoints, getCropPreviewDuration()).length + 1
-      ),
-    };
-
-    const res = await fetch(`/api/crop/${activeCropClip.id}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload),
+    await persistCropSettings({
+      closeOnSuccess: true,
+      toastOnSuccess: true,
+      toastOnError: true,
+      fromAutosave: false,
     });
-
-    if (!res.ok) {
-      showToast('Could not save crop settings', 'error');
-      return;
-    }
-
-    Object.assign(activeCropClip, payload);
-    showToast('Edit saved. Ready for TikTok upload flow.');
-    closeCropModal();
   }
 
   // ── Admin Modal ──────────────────────────────────────────────────────────
@@ -5659,9 +6357,15 @@
   // ── Boot ─────────────────────────────────────────────────────────────────
   document.body.classList.add('login-view');
   applyStoredPrefs();
+  loadOnboardingProgressForUser('', { allowLegacyMigration: false });
   setAuthMode('login');
   updateUploadControls(null);
   setGlobalBuildLock(false);
+  updateDashboardStatusRow();
+  updateSetupGuide();
+  setCropAutosaveStatus('idle');
+  setInterval(updateDashboardStatusRow, 30000);
+  setInterval(observeCropStateForAutosave, CROP_AUTOSAVE_CHECK_INTERVAL_MS);
   checkAuth();
 </script>
 
