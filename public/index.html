@@ -118,10 +118,45 @@
       transition: border-color 0.2s, box-shadow 0.2s, background 0.2s;
     }
 
+    #email-input,
+    #verification-code-input,
+    #resend-code-btn,
+    #verify-back-btn,
+    #forgot-password-btn,
+    #email-label,
+    #username-label,
+    #password-label,
+    #account-change-help {
+      display: none;
+    }
+
     .login-card input:focus {
       border-color: rgba(145, 71, 255, 0.75);
       box-shadow: 0 0 0 3px rgba(145, 71, 255, 0.2);
       background: rgba(39, 39, 42, 0.95);
+    }
+
+    .login-card .input-label {
+      display: block;
+      text-align: left;
+      color: #c4b5fd;
+      font-size: 0.78rem;
+      font-weight: 700;
+      letter-spacing: 0.02em;
+      margin: 2px 2px 6px;
+      text-transform: uppercase;
+    }
+
+    #account-change-help {
+      margin-top: 6px;
+      margin-bottom: 2px;
+      text-align: left;
+      color: #cbd5e1;
+      font-size: 0.8rem;
+      background: rgba(15, 23, 42, 0.45);
+      border: 1px solid rgba(148, 163, 184, 0.25);
+      border-radius: 10px;
+      padding: 8px 10px;
     }
 
     .login-card button {
@@ -141,6 +176,23 @@
     .login-card button:hover {
       filter: brightness(1.07);
       transform: translateY(-1px);
+    }
+
+    .login-card .btn-secondary {
+      margin-top: 10px;
+      background: rgba(24, 24, 27, 0.8);
+      border: 1px solid rgba(255, 255, 255, 0.18);
+      color: #d4d4d8;
+      box-shadow: none;
+      font-weight: 600;
+    }
+
+    .login-card .btn-secondary:hover {
+      border-color: rgba(145, 71, 255, 0.7);
+      color: #ede9fe;
+      background: rgba(76, 29, 149, 0.24);
+      filter: none;
+      transform: none;
     }
 
     .login-card .back-home-link {
@@ -170,6 +222,13 @@
       color: #f87171;
       font-size: 0.84rem;
       margin-top: 12px;
+      display: none;
+    }
+
+    #login-info {
+      color: #34d399;
+      font-size: 0.84rem;
+      margin-top: 10px;
       display: none;
     }
 
@@ -2449,12 +2508,22 @@
         <div id="auth-mode-register" class="px-3 py-2 text-center text-zinc-400">Register</div>
       </div>
     </div>
-    <input type="text" id="username-input" placeholder="Username" autofocus />
-    <input type="password" id="password-input" placeholder="Password" autofocus />
+    <label id="email-label" class="input-label" for="email-input">Email</label>
+    <input type="email" id="email-input" placeholder="Email" autocomplete="email" />
+    <label id="username-label" class="input-label" for="username-input">Username or Email</label>
+    <input type="text" id="username-input" placeholder="Username or email" autocomplete="username" autofocus />
+    <label id="password-label" class="input-label" for="password-input">Password</label>
+    <input type="password" id="password-input" placeholder="Password" autocomplete="current-password" />
+    <input type="text" id="verification-code-input" placeholder="6-digit verification code" inputmode="numeric" maxlength="6" autocomplete="one-time-code" />
     <button id="login-btn">Sign In</button>
+    <button id="resend-code-btn" class="btn-secondary" type="button">Resend code</button>
+    <button id="verify-back-btn" class="btn-secondary" type="button">Back to Sign In</button>
     <p id="auth-mode-hint" class="mt-3 text-xs text-zinc-400">New here? Switch to Register to create an account.</p>
+    <div id="account-change-help">You can update username, email, and password here. Leave any field unchanged if you do not want to update it.</div>
+    <button id="forgot-password-btn" class="btn-secondary" type="button">Forgot Password</button>
     <a href="/" class="back-home-link">Back to Homepage</a>
-    <div id="login-error">Incorrect username or password. Try again.</div>
+    <div id="login-info"></div>
+    <div id="login-error">Something went wrong. Please try again.</div>
   </div>
 </div>
 
@@ -2489,6 +2558,7 @@
         </svg>
         Add Streamer
       </button>
+      <button class="btn-logout" id="account-btn">Account</button>
       <button class="btn-logout" id="logout-btn">Logout</button>
     </div>
   </header>
@@ -2837,6 +2907,33 @@
   </div>
 </div>
 
+<!-- ══════════════════ ACCOUNT MODAL ══════════════════ -->
+<div id="account-modal" class="fixed inset-0 z-[1200] hidden items-center justify-center bg-black/70 px-4">
+  <div class="w-full max-w-md rounded-2xl border border-zinc-700 bg-zinc-900 p-5 shadow-2xl shadow-black/50">
+    <h3 class="text-lg font-semibold mb-1">Account Security</h3>
+    <p id="account-modal-email" class="text-sm text-zinc-400 mb-3">Loading account details...</p>
+    <p class="text-xs text-zinc-500 mb-3">We will email a one-time secure link where you can update username, email, and password.</p>
+    <div id="account-add-email-wrap" class="hidden rounded-xl border border-zinc-700 bg-zinc-950/60 p-3 mb-3">
+      <p class="text-xs text-zinc-400 mb-2">No email found on this account. Add one to receive verification.</p>
+      <input id="account-add-email-input" class="w-full rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm mb-2" placeholder="you@example.com" autocomplete="email" />
+      <button id="account-add-email-btn" class="w-full rounded-lg border border-emerald-500 bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-500">Add Email & Send Verification</button>
+    </div>
+    <div id="account-verify-wrap" class="hidden rounded-xl border border-amber-700/50 bg-amber-950/30 p-3 mb-3">
+      <p class="text-xs text-amber-200 mb-2">Email not verified yet. Enter the 6-digit code we sent to your inbox.</p>
+      <input id="account-verify-code-input" class="w-full rounded-lg border border-amber-700/60 bg-zinc-950 px-3 py-2 text-sm mb-2" placeholder="6-digit code" inputmode="numeric" maxlength="6" autocomplete="one-time-code" />
+      <div class="flex gap-2">
+        <button id="account-verify-btn" class="flex-1 rounded-lg border border-amber-500 bg-amber-600 px-4 py-2 text-sm font-semibold text-white hover:bg-amber-500">Verify Email</button>
+        <button id="account-verify-resend-btn" class="flex-1 rounded-lg border border-zinc-600 bg-zinc-800 px-4 py-2 text-sm font-semibold text-zinc-100 hover:bg-zinc-700">Resend Code</button>
+      </div>
+    </div>
+    <div class="mt-3 flex gap-2 justify-end">
+      <button id="account-close-btn" class="rounded-lg border border-zinc-700 px-3 py-2 text-sm text-zinc-300">Close</button>
+      <button id="account-send-link-btn" class="rounded-lg border border-violet-500 bg-violet-600 px-4 py-2 text-sm font-semibold text-white hover:bg-violet-500">Send Account Link</button>
+    </div>
+    <div id="account-modal-status" class="mt-2 text-sm text-zinc-300 hidden"></div>
+  </div>
+</div>
+
 <script>
   // ── State ───────────────────────────────────────────────────────────────
   let allClips = [];
@@ -2865,6 +2962,15 @@
   let adminSort = { key: 'created_at', dir: 'desc' };
   let currentUsername = '';
   let authMode = 'login';
+  let accountLinkToken = '';
+  let accountLinkPurpose = '';
+  let pendingVerificationUsername = '';
+  let pendingVerificationEmailMasked = '';
+  let verificationResendTimer = null;
+  let resendAvailableInSeconds = 0;
+  let accountModalEmailMasked = '';
+  let accountModalHasEmail = false;
+  let accountModalEmailVerified = true;
   let needsStreamerSetup = false;
   let activeUploadJobId = null;
   let activePlaybackClipId = null;
@@ -3222,15 +3328,177 @@
   });
 
   // ── Login ────────────────────────────────────────────────────────────────
+  function setAuthError(message = '') {
+    const errEl = document.getElementById('login-error');
+    const text = String(message || '').trim();
+    const infoEl = document.getElementById('login-info');
+    infoEl.style.display = 'none';
+    infoEl.textContent = '';
+    if (!text) {
+      errEl.style.display = 'none';
+      errEl.textContent = '';
+      return;
+    }
+    errEl.textContent = text;
+    errEl.style.display = 'block';
+  }
+
+  function setAuthInfo(message = '') {
+    const infoEl = document.getElementById('login-info');
+    const errEl = document.getElementById('login-error');
+    const text = String(message || '').trim();
+    errEl.style.display = 'none';
+    errEl.textContent = '';
+    if (!text) {
+      infoEl.style.display = 'none';
+      infoEl.textContent = '';
+      return;
+    }
+    infoEl.textContent = text;
+    infoEl.style.display = 'block';
+  }
+
+  function clearVerificationResendTimer() {
+    if (!verificationResendTimer) return;
+    clearInterval(verificationResendTimer);
+    verificationResendTimer = null;
+  }
+
+  function updateResendButton() {
+    const resendBtn = document.getElementById('resend-code-btn');
+    if (authMode !== 'verify') {
+      resendBtn.disabled = false;
+      resendBtn.textContent = 'Resend code';
+      return;
+    }
+    if (resendAvailableInSeconds > 0) {
+      resendBtn.disabled = true;
+      resendBtn.textContent = `Resend code (${resendAvailableInSeconds}s)`;
+      return;
+    }
+    resendBtn.disabled = false;
+    resendBtn.textContent = 'Resend code';
+  }
+
+  function startResendCountdown(seconds) {
+    clearVerificationResendTimer();
+    resendAvailableInSeconds = Math.max(0, Number(seconds || 0));
+    updateResendButton();
+    if (resendAvailableInSeconds <= 0) return;
+    verificationResendTimer = setInterval(() => {
+      resendAvailableInSeconds = Math.max(0, resendAvailableInSeconds - 1);
+      updateResendButton();
+      if (resendAvailableInSeconds <= 0) {
+        clearVerificationResendTimer();
+      }
+    }, 1000);
+  }
+
+  function enterVerificationMode(data = {}) {
+    const usernameInput = document.getElementById('username-input');
+    const passwordInput = document.getElementById('password-input');
+    const emailInput = document.getElementById('email-input');
+    const codeInput = document.getElementById('verification-code-input');
+    const hint = document.getElementById('auth-mode-hint');
+    const payloadUsername = String(data.username || '').trim().toLowerCase();
+    const payloadEmail = String(data.email || '').trim();
+
+    pendingVerificationUsername = payloadUsername || pendingVerificationUsername || String(usernameInput.value || '').trim().toLowerCase();
+    pendingVerificationEmailMasked = payloadEmail || pendingVerificationEmailMasked;
+    setAuthMode('verify');
+    codeInput.value = '';
+    passwordInput.value = '';
+    emailInput.value = '';
+    usernameInput.value = pendingVerificationUsername || '';
+    hint.textContent = pendingVerificationEmailMasked
+      ? `Enter the 6-digit code sent to ${pendingVerificationEmailMasked}.`
+      : 'Enter the 6-digit code we sent to your email.';
+    startResendCountdown(data.resendAvailableIn);
+    setAuthError(data.error || '');
+    codeInput.focus();
+  }
+
   function setAuthMode(mode) {
-    authMode = mode === 'register' ? 'register' : 'login';
+    authMode = ['login', 'register', 'verify', 'manage-link', 'reset-link'].includes(mode) ? mode : 'login';
     const loginModeBtn = document.getElementById('auth-mode-login');
     const registerModeBtn = document.getElementById('auth-mode-register');
     const slider = document.getElementById('auth-mode-slider');
+    const modeSwitch = document.getElementById('auth-mode-switch');
     const loginBtn = document.getElementById('login-btn');
+    const resendBtn = document.getElementById('resend-code-btn');
+    const verifyBackBtn = document.getElementById('verify-back-btn');
+    const forgotBtn = document.getElementById('forgot-password-btn');
+    const emailLabel = document.getElementById('email-label');
+    const usernameLabel = document.getElementById('username-label');
+    const passwordLabel = document.getElementById('password-label');
+    const accountHelp = document.getElementById('account-change-help');
     const hint = document.getElementById('auth-mode-hint');
-
+    const emailInput = document.getElementById('email-input');
+    const usernameInput = document.getElementById('username-input');
+    const passwordInput = document.getElementById('password-input');
+    const codeInput = document.getElementById('verification-code-input');
     const loginActive = authMode === 'login';
+    const registerActive = authMode === 'register';
+    const verifyActive = authMode === 'verify';
+    const manageLinkActive = authMode === 'manage-link';
+    const resetLinkActive = authMode === 'reset-link';
+    const specialLinkModeActive = manageLinkActive || resetLinkActive;
+    setAuthError('');
+
+    if (!verifyActive) {
+      clearVerificationResendTimer();
+      resendAvailableInSeconds = 0;
+    }
+
+    modeSwitch.style.display = verifyActive || specialLinkModeActive ? 'none' : 'block';
+    emailInput.style.display = registerActive || manageLinkActive ? 'block' : 'none';
+    usernameInput.style.display = verifyActive || resetLinkActive ? 'none' : 'block';
+    passwordInput.style.display = verifyActive ? 'none' : 'block';
+    emailLabel.style.display = registerActive || manageLinkActive ? 'block' : 'none';
+    usernameLabel.style.display = verifyActive || resetLinkActive ? 'none' : 'block';
+    passwordLabel.style.display = verifyActive ? 'none' : 'block';
+    accountHelp.style.display = manageLinkActive ? 'block' : 'none';
+    codeInput.style.display = verifyActive ? 'block' : 'none';
+    resendBtn.style.display = verifyActive ? 'block' : 'none';
+    verifyBackBtn.style.display = verifyActive || specialLinkModeActive ? 'block' : 'none';
+    forgotBtn.style.display = loginActive ? 'block' : 'none';
+    updateResendButton();
+
+    if (verifyActive) {
+      loginBtn.textContent = 'Verify Code';
+      verifyBackBtn.textContent = 'Back to Sign In';
+      usernameLabel.textContent = 'Username';
+      passwordLabel.textContent = 'Password';
+      hint.textContent = pendingVerificationEmailMasked
+        ? `Enter the 6-digit code sent to ${pendingVerificationEmailMasked}.`
+        : 'Enter the 6-digit code we sent to your email.';
+      return;
+    }
+
+    if (manageLinkActive) {
+      loginBtn.textContent = 'Save Account Changes';
+      verifyBackBtn.textContent = 'Back to Sign In';
+      emailLabel.textContent = 'New Email (Optional)';
+      usernameLabel.textContent = 'New Username (Optional)';
+      passwordLabel.textContent = 'New Password (Optional)';
+      usernameInput.placeholder = 'New username (optional)';
+      emailInput.placeholder = 'New email (optional)';
+      passwordInput.placeholder = 'New password (optional)';
+      passwordInput.autocomplete = 'new-password';
+      hint.textContent = 'Use this secure email link to update your username, email, or password.';
+      return;
+    }
+
+    if (resetLinkActive) {
+      loginBtn.textContent = 'Set New Password';
+      verifyBackBtn.textContent = 'Back to Sign In';
+      passwordLabel.textContent = 'New Password';
+      passwordInput.placeholder = 'New password';
+      passwordInput.autocomplete = 'new-password';
+      hint.textContent = 'Set a new password for your account.';
+      return;
+    }
+
     slider.style.transform = loginActive ? 'translateX(0%)' : 'translateX(100%)';
     loginModeBtn.classList.toggle('text-white', loginActive);
     loginModeBtn.classList.toggle('text-zinc-400', !loginActive);
@@ -3238,13 +3506,28 @@
     registerModeBtn.classList.toggle('text-white', !loginActive);
     registerModeBtn.classList.toggle('text-zinc-400', loginActive);
     registerModeBtn.classList.toggle('font-semibold', !loginActive);
+    emailLabel.textContent = 'Email';
+    usernameLabel.textContent = loginActive ? 'Username or Email' : 'Username';
+    passwordLabel.textContent = 'Password';
+    usernameInput.placeholder = loginActive ? 'Username or email' : 'Username';
+    emailInput.placeholder = 'Email';
+    passwordInput.placeholder = 'Password';
+    passwordInput.autocomplete = loginActive ? 'current-password' : 'new-password';
     loginBtn.textContent = loginActive ? 'Sign In' : 'Register';
     hint.textContent = loginActive
       ? 'New here? Switch to Register to create an account.'
-      : 'Create your account, then add your streamer list.';
+      : 'Register with email, username, and password. We will send a verification code.';
   }
 
   async function submitAuth() {
+    if (authMode === 'verify') {
+      await verifyEmailCode();
+      return;
+    }
+    if (authMode === 'manage-link' || authMode === 'reset-link') {
+      await submitAccountLinkChanges();
+      return;
+    }
     if (authMode === 'register') {
       await register();
       return;
@@ -3263,8 +3546,18 @@
       showApp();
       return;
     }
+    if (data.pendingVerification) {
+      enterVerificationMode(data);
+      return;
+    }
     updateDashboardStatusRow();
     updateSetupGuide();
+  }
+
+  async function bootAuth() {
+    const handledAccountLink = await initializeAccountLinkFromUrl();
+    if (handledAccountLink) return;
+    await checkAuth();
   }
 
   document.getElementById('login-btn').addEventListener('click', submitAuth);
@@ -3277,53 +3570,76 @@
     if (e.key === 'ArrowLeft') setAuthMode('login');
     if (e.key === 'ArrowRight') setAuthMode('register');
   });
+  document.getElementById('email-input').addEventListener('keydown', e => {
+    if (e.key === 'Enter') submitAuth();
+  });
   document.getElementById('username-input').addEventListener('keydown', e => {
     if (e.key === 'Enter') submitAuth();
   });
   document.getElementById('password-input').addEventListener('keydown', e => {
     if (e.key === 'Enter') submitAuth();
   });
+  document.getElementById('verification-code-input').addEventListener('keydown', e => {
+    if (e.key === 'Enter') submitAuth();
+  });
+  document.getElementById('resend-code-btn').addEventListener('click', () => {
+    void resendVerificationCode();
+  });
+  document.getElementById('verify-back-btn').addEventListener('click', () => {
+    void backToLoginFromVerification();
+  });
+  document.getElementById('forgot-password-btn').addEventListener('click', () => {
+    void requestPasswordReset();
+  });
 
   async function login() {
-    const username = document.getElementById('username-input').value;
+    const identifier = document.getElementById('username-input').value;
     const pw = document.getElementById('password-input').value;
-    const errEl = document.getElementById('login-error');
-    errEl.style.display = 'none';
+    setAuthError('');
 
     const r = await fetch('/api/login', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ username, password: pw }),
+      body: JSON.stringify({ identifier, password: pw }),
     });
 
     if (r.ok) {
       const data = await r.json().catch(() => ({}));
-      currentUsername = String(data.username || username || '');
+      currentUsername = String(data.username || identifier || '');
       loadOnboardingProgressForUser(currentUsername, { allowLegacyMigration: !data.needsStreamerSetup });
       setNavbarUsername(currentUsername);
       needsStreamerSetup = !!data.needsStreamerSetup;
       showApp();
-    } else {
-      errEl.style.display = 'block';
-      document.getElementById('username-input').value = '';
-      document.getElementById('password-input').value = '';
+      return;
     }
+
+    const err = await r.json().catch(() => ({}));
+    if (err.requiresEmailVerification) {
+      enterVerificationMode(err);
+      return;
+    }
+    setAuthError(err.error || 'Incorrect username/email or password. Try again.');
+    document.getElementById('password-input').value = '';
   }
 
   async function register() {
+    const email = document.getElementById('email-input').value;
     const username = document.getElementById('username-input').value;
     const pw = document.getElementById('password-input').value;
-    const errEl = document.getElementById('login-error');
-    errEl.style.display = 'none';
+    setAuthError('');
 
     const r = await fetch('/api/register', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ username, password: pw }),
+      body: JSON.stringify({ email, username, password: pw }),
     });
 
     if (r.ok) {
       const data = await r.json().catch(() => ({}));
+      if (data.requiresEmailVerification) {
+        enterVerificationMode(data);
+        return;
+      }
       currentUsername = String(data.username || username || '');
       loadOnboardingProgressForUser(currentUsername, { allowLegacyMigration: false });
       setNavbarUsername(currentUsername);
@@ -3333,8 +3649,228 @@
     }
 
     const err = await r.json().catch(() => ({}));
-    errEl.textContent = err.error || 'Registration failed';
-    errEl.style.display = 'block';
+    setAuthError(err.error || 'Registration failed');
+  }
+
+  async function verifyEmailCode() {
+    const code = String(document.getElementById('verification-code-input').value || '').trim();
+    setAuthError('');
+
+    const r = await fetch('/api/verify-email', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ code }),
+    });
+
+    if (r.ok) {
+      const data = await r.json().catch(() => ({}));
+      currentUsername = String(data.username || pendingVerificationUsername || '');
+      loadOnboardingProgressForUser(currentUsername, { allowLegacyMigration: !data.needsStreamerSetup });
+      setNavbarUsername(currentUsername);
+      needsStreamerSetup = !!data.needsStreamerSetup;
+      pendingVerificationUsername = '';
+      pendingVerificationEmailMasked = '';
+      clearVerificationResendTimer();
+      resendAvailableInSeconds = 0;
+      showApp();
+      return;
+    }
+
+    const err = await r.json().catch(() => ({}));
+    if (typeof err.resendAvailableIn === 'number') {
+      startResendCountdown(err.resendAvailableIn);
+    }
+    setAuthError(err.error || 'Verification failed');
+  }
+
+  async function resendVerificationCode() {
+    setAuthError('');
+    const r = await fetch('/api/resend-verification', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({}),
+    });
+
+    const data = await r.json().catch(() => ({}));
+    if (r.ok) {
+      if (data.email) pendingVerificationEmailMasked = String(data.email || '').trim();
+      startResendCountdown(data.resendAvailableIn);
+      setAuthError(`Verification code sent${pendingVerificationEmailMasked ? ` to ${pendingVerificationEmailMasked}` : ''}.`);
+      return;
+    }
+    if (typeof data.resendAvailableIn === 'number') {
+      startResendCountdown(data.resendAvailableIn);
+    }
+    setAuthError(data.error || 'Could not resend verification code.');
+  }
+
+  async function requestPasswordReset() {
+    const identifier = String(document.getElementById('username-input').value || '').trim();
+    if (!identifier) {
+      setAuthError('Enter your username or email first, then click Forgot Password.');
+      return;
+    }
+    setAuthError('');
+    const r = await fetch('/api/forgot-password/request', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ identifier }),
+    });
+    const data = await r.json().catch(() => ({}));
+    if (!r.ok) {
+      setAuthError(data.error || 'Could not start password reset. Please try again.');
+      return;
+    }
+    setAuthInfo('If an account matches that identifier, a password-reset link has been sent.');
+  }
+
+  async function initializeAccountLinkFromUrl() {
+    const clearAccountTokenParam = (nextPath = null) => {
+      const u = new URL(window.location.href);
+      if (u.searchParams.has('account_token')) u.searchParams.delete('account_token');
+      if (u.searchParams.has('token')) u.searchParams.delete('token');
+      if (nextPath) u.pathname = nextPath;
+      history.replaceState({}, '', u.toString());
+    };
+    const url = new URL(window.location.href);
+    const normalizedPath = String(url.pathname || '').toLowerCase();
+    const isResetPath = normalizedPath === '/reset-password' || normalizedPath === '/reset-passowrd';
+    const isManagePath = normalizedPath === '/account-security';
+    const token = String(url.searchParams.get('token') || url.searchParams.get('account_token') || '').trim();
+    if (!token) {
+      if (!isResetPath && !isManagePath) return false;
+      setAuthMode('login');
+      setAuthError('This secure link is incomplete. Please request a new email link.');
+      clearAccountTokenParam('/login');
+      return true;
+    }
+
+    setAuthError('');
+    setAuthInfo('');
+    const r = await fetch(`/api/account/link/meta?token=${encodeURIComponent(token)}`);
+    const data = await r.json().catch(() => ({}));
+    if (!r.ok || !data.valid) {
+      accountLinkToken = '';
+      accountLinkPurpose = '';
+      setAuthMode('login');
+      setAuthError(data.error || 'This account link is invalid or expired.');
+      clearAccountTokenParam('/login');
+      return true;
+    }
+
+    accountLinkToken = token;
+    accountLinkPurpose = String(data.purpose || '');
+    pendingVerificationUsername = '';
+    pendingVerificationEmailMasked = '';
+    document.getElementById('verification-code-input').value = '';
+    document.getElementById('password-input').value = '';
+
+    if (accountLinkPurpose === 'reset_password') {
+      if (isManagePath) {
+        setAuthMode('login');
+        setAuthError('This is a password-reset link. Please use the reset-password link from your email.');
+        clearAccountTokenParam('/login');
+        return true;
+      }
+      document.getElementById('email-input').value = '';
+      document.getElementById('username-input').value = '';
+      setAuthMode('reset-link');
+      setAuthInfo('This secure link lets you set a new password.');
+      document.getElementById('password-input').focus();
+      return true;
+    }
+
+    if (accountLinkPurpose === 'manage_account') {
+      if (isResetPath) {
+        setAuthMode('login');
+        setAuthError('This is an account-change link. Please open the account-security link from your email.');
+        clearAccountTokenParam('/login');
+        return true;
+      }
+      document.getElementById('email-input').value = String(data.email || '').trim();
+      document.getElementById('username-input').value = String(data.username || '').trim();
+      setAuthMode('manage-link');
+      setAuthInfo('Use this secure link to update your account details.');
+      document.getElementById('password-input').focus();
+      return true;
+    }
+
+    accountLinkToken = '';
+    accountLinkPurpose = '';
+    setAuthMode('login');
+    setAuthError('Unsupported account link type.');
+    clearAccountTokenParam('/login');
+    return true;
+  }
+
+  async function submitAccountLinkChanges() {
+    if (!accountLinkToken || !accountLinkPurpose) {
+      setAuthError('This account link is missing or expired. Request a new one.');
+      return;
+    }
+
+    const payload = {
+      token: accountLinkToken,
+      username: authMode === 'manage-link' ? String(document.getElementById('username-input').value || '').trim() : '',
+      email: authMode === 'manage-link' ? String(document.getElementById('email-input').value || '').trim() : '',
+      newPassword: String(document.getElementById('password-input').value || ''),
+    };
+
+    setAuthError('');
+    setAuthInfo('');
+    const r = await fetch('/api/account/link/complete', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    const data = await r.json().catch(() => ({}));
+    if (!r.ok) {
+      setAuthError(data.error || 'Could not apply account changes.');
+      return;
+    }
+
+    accountLinkToken = '';
+    accountLinkPurpose = '';
+    document.getElementById('password-input').value = '';
+    setAuthMode('login');
+    setAuthInfo(data.message || 'Account updated successfully. Please sign in.');
+    const u = new URL(window.location.href);
+    if (u.searchParams.has('account_token')) u.searchParams.delete('account_token');
+    if (u.searchParams.has('token')) u.searchParams.delete('token');
+    if (u.pathname !== '/login') u.pathname = '/login';
+    history.replaceState({}, '', u.toString());
+  }
+
+  function clearAccountLinkUrlState() {
+    const u = new URL(window.location.href);
+    if (u.searchParams.has('account_token')) u.searchParams.delete('account_token');
+    if (u.searchParams.has('token')) u.searchParams.delete('token');
+    if (u.pathname === '/reset-password' || u.pathname === '/reset-passowrd' || u.pathname === '/account-security') {
+      u.pathname = '/login';
+    }
+    history.replaceState({}, '', u.toString());
+  }
+
+  async function backToLoginFromVerification() {
+    try {
+      await fetch('/api/logout', { method: 'POST' });
+    } catch {
+      // Session may already be gone; continue local reset.
+    }
+    pendingVerificationUsername = '';
+    pendingVerificationEmailMasked = '';
+    clearVerificationResendTimer();
+    resendAvailableInSeconds = 0;
+    accountLinkToken = '';
+    accountLinkPurpose = '';
+    document.getElementById('email-input').value = '';
+    document.getElementById('username-input').value = '';
+    document.getElementById('verification-code-input').value = '';
+    document.getElementById('password-input').value = '';
+    setAuthMode('login');
+    setAuthInfo('');
+    clearAccountLinkUrlState();
+    document.getElementById('username-input').focus();
   }
 
   // ── Logout ───────────────────────────────────────────────────────────────
@@ -3391,10 +3927,234 @@
     document.getElementById('add-streamer-input').value = '';
   }
 
+  function openAccountModal() {
+    const modal = document.getElementById('account-modal');
+    const status = document.getElementById('account-modal-status');
+    const emailEl = document.getElementById('account-modal-email');
+    const addEmailWrap = document.getElementById('account-add-email-wrap');
+    const addEmailInput = document.getElementById('account-add-email-input');
+    const verifyWrap = document.getElementById('account-verify-wrap');
+    const verifyCodeInput = document.getElementById('account-verify-code-input');
+    const verifyResendBtn = document.getElementById('account-verify-resend-btn');
+    const sendLinkBtn = document.getElementById('account-send-link-btn');
+    status.classList.add('hidden');
+    status.textContent = '';
+    emailEl.textContent = 'Loading account details...';
+    addEmailWrap.classList.add('hidden');
+    verifyWrap.classList.add('hidden');
+    addEmailInput.value = '';
+    verifyCodeInput.value = '';
+    verifyResendBtn.textContent = 'Resend Code';
+    verifyResendBtn.disabled = false;
+    sendLinkBtn.disabled = false;
+    modal.classList.remove('hidden');
+    modal.classList.add('flex');
+    void loadAccountModalDetails();
+  }
+
+  function closeAccountModal() {
+    const modal = document.getElementById('account-modal');
+    modal.classList.add('hidden');
+    modal.classList.remove('flex');
+  }
+
+  async function loadAccountModalDetails() {
+    const emailEl = document.getElementById('account-modal-email');
+    const addEmailWrap = document.getElementById('account-add-email-wrap');
+    const verifyWrap = document.getElementById('account-verify-wrap');
+    const sendLinkBtn = document.getElementById('account-send-link-btn');
+    try {
+      const r = await fetch('/api/me/account');
+      const data = await r.json().catch(() => ({}));
+      if (!r.ok) throw new Error(data.error || 'Could not load account details.');
+      accountModalEmailMasked = String(data.emailMasked || '').trim();
+      accountModalHasEmail = Boolean(String(data.email || '').trim());
+      accountModalEmailVerified = !!data.emailVerified;
+      const username = String(data.username || '').trim();
+      if (accountModalHasEmail) {
+        emailEl.textContent = accountModalEmailVerified
+          ? `Signed in as @${username}. Email verified (${accountModalEmailMasked}).`
+          : `Signed in as @${username}. Email pending verification (${accountModalEmailMasked}).`;
+        addEmailWrap.classList.add('hidden');
+        verifyWrap.classList.toggle('hidden', accountModalEmailVerified);
+        sendLinkBtn.disabled = !accountModalEmailVerified;
+      } else {
+        emailEl.textContent = `Signed in as @${username}. No email found on this account.`;
+        addEmailWrap.classList.remove('hidden');
+        verifyWrap.classList.add('hidden');
+        sendLinkBtn.disabled = true;
+      }
+    } catch (err) {
+      emailEl.textContent = err instanceof Error ? err.message : 'Could not load account details.';
+      addEmailWrap.classList.add('hidden');
+      verifyWrap.classList.add('hidden');
+      sendLinkBtn.disabled = true;
+    }
+  }
+
+  async function sendAccountManageLink() {
+    const status = document.getElementById('account-modal-status');
+    if (!accountModalHasEmail) {
+      status.textContent = 'Add an email first, then send the account link.';
+      status.classList.remove('hidden');
+      return;
+    }
+    if (!accountModalEmailVerified) {
+      status.textContent = 'Verify your email first, then send the account link.';
+      status.classList.remove('hidden');
+      return;
+    }
+    status.classList.add('hidden');
+    status.textContent = '';
+
+    const r = await fetch('/api/account/send-manage-link', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({}),
+    });
+    const data = await r.json().catch(() => ({}));
+    if (!r.ok) {
+      status.textContent = data.error || 'Could not send account link.';
+      status.classList.remove('hidden');
+      return;
+    }
+    const emailMasked = String(data.email || accountModalEmailMasked || '').trim();
+    status.textContent = emailMasked
+      ? `Secure account link sent to ${emailMasked}.`
+      : 'Secure account link sent. Check your inbox.';
+    status.classList.remove('hidden');
+  }
+
+  async function addAccountEmailAndSendVerification() {
+    const status = document.getElementById('account-modal-status');
+    const addEmailInput = document.getElementById('account-add-email-input');
+    const email = String(addEmailInput.value || '').trim();
+    status.classList.add('hidden');
+    status.textContent = '';
+    if (!email) {
+      status.textContent = 'Please enter an email address.';
+      status.classList.remove('hidden');
+      return;
+    }
+
+    const r = await fetch('/api/account/add-email', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email }),
+    });
+    const data = await r.json().catch(() => ({}));
+    if (!r.ok) {
+      status.textContent = data.error || 'Could not add email.';
+      status.classList.remove('hidden');
+      return;
+    }
+
+    accountModalEmailMasked = String(data.email || '').trim();
+    accountModalHasEmail = true;
+    accountModalEmailVerified = false;
+    addEmailInput.value = '';
+    status.textContent = data.message || `Verification sent to ${accountModalEmailMasked}.`;
+    status.classList.remove('hidden');
+    await loadAccountModalDetails();
+  }
+
+  async function verifyAccountEmailInModal() {
+    const status = document.getElementById('account-modal-status');
+    const codeInput = document.getElementById('account-verify-code-input');
+    const code = String(codeInput.value || '').trim();
+    status.classList.add('hidden');
+    status.textContent = '';
+    if (!/^\d{6}$/.test(code)) {
+      status.textContent = 'Enter a valid 6-digit verification code.';
+      status.classList.remove('hidden');
+      return;
+    }
+
+    const r = await fetch('/api/account/verify-email', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ code }),
+    });
+    const data = await r.json().catch(() => ({}));
+    if (!r.ok) {
+      status.textContent = data.error || 'Could not verify email.';
+      status.classList.remove('hidden');
+      return;
+    }
+
+    accountModalEmailVerified = true;
+    codeInput.value = '';
+    status.textContent = data.message || 'Email verified successfully.';
+    status.classList.remove('hidden');
+    await loadAccountModalDetails();
+  }
+
+  async function resendAccountEmailVerification() {
+    const status = document.getElementById('account-modal-status');
+    const resendBtn = document.getElementById('account-verify-resend-btn');
+    status.classList.add('hidden');
+    status.textContent = '';
+
+    const r = await fetch('/api/account/resend-email-verification', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({}),
+    });
+    const data = await r.json().catch(() => ({}));
+    if (!r.ok) {
+      status.textContent = data.error || 'Could not resend verification code.';
+      status.classList.remove('hidden');
+      return;
+    }
+
+    accountModalEmailVerified = false;
+    status.textContent = data.message || 'Verification code sent.';
+    status.classList.remove('hidden');
+    const waitSeconds = Number(data.resendAvailableIn || 0);
+    if (waitSeconds > 0) {
+      let left = waitSeconds;
+      resendBtn.disabled = true;
+      resendBtn.textContent = `Resend (${left}s)`;
+      const timer = setInterval(() => {
+        left -= 1;
+        if (left <= 0) {
+          clearInterval(timer);
+          resendBtn.disabled = false;
+          resendBtn.textContent = 'Resend Code';
+          return;
+        }
+        resendBtn.textContent = `Resend (${left}s)`;
+      }, 1000);
+    }
+  }
+
   document.getElementById('manage-streamers-btn').addEventListener('click', openAddStreamerModal);
+  document.getElementById('account-btn').addEventListener('click', openAccountModal);
   document.getElementById('add-streamer-cancel').addEventListener('click', closeAddStreamerModal);
+  document.getElementById('account-close-btn').addEventListener('click', closeAccountModal);
+  document.getElementById('account-send-link-btn').addEventListener('click', () => {
+    void sendAccountManageLink();
+  });
+  document.getElementById('account-add-email-btn').addEventListener('click', () => {
+    void addAccountEmailAndSendVerification();
+  });
+  document.getElementById('account-add-email-input').addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') void addAccountEmailAndSendVerification();
+  });
+  document.getElementById('account-verify-btn').addEventListener('click', () => {
+    void verifyAccountEmailInModal();
+  });
+  document.getElementById('account-verify-resend-btn').addEventListener('click', () => {
+    void resendAccountEmailVerification();
+  });
+  document.getElementById('account-verify-code-input').addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') void verifyAccountEmailInModal();
+  });
   document.getElementById('add-streamer-modal').addEventListener('click', (e) => {
     if (e.target.id === 'add-streamer-modal') closeAddStreamerModal();
+  });
+  document.getElementById('account-modal').addEventListener('click', (e) => {
+    if (e.target.id === 'account-modal') closeAccountModal();
   });
 
   document.getElementById('streamer-setup-save').addEventListener('click', async () => {
@@ -4030,13 +4790,22 @@
     document.getElementById('app-screen').style.display = 'none';
     document.getElementById('login-screen').style.display = 'flex';
     document.body.classList.add('login-view');
+    document.getElementById('email-input').value = '';
     document.getElementById('username-input').value = '';
     document.getElementById('password-input').value = '';
+    document.getElementById('verification-code-input').value = '';
     document.getElementById('streamer-setup-modal').classList.add('hidden');
     document.getElementById('streamer-setup-modal').classList.remove('flex');
     document.getElementById('add-streamer-modal').classList.add('hidden');
     document.getElementById('add-streamer-modal').classList.remove('flex');
+    document.getElementById('account-modal').classList.add('hidden');
+    document.getElementById('account-modal').classList.remove('flex');
     currentUsername = '';
+    pendingVerificationUsername = '';
+    pendingVerificationEmailMasked = '';
+    clearVerificationResendTimer();
+    resendAvailableInSeconds = 0;
+    setAuthError('');
     loadOnboardingProgressForUser('', { allowLegacyMigration: false });
     managedStreamerCount = 0;
     lastClipSyncAt = null;
@@ -6873,7 +7642,7 @@
   setCropAutosaveStatus('idle');
   setInterval(updateDashboardStatusRow, 30000);
   setInterval(observeCropStateForAutosave, CROP_AUTOSAVE_CHECK_INTERVAL_MS);
-  checkAuth();
+  void bootAuth();
 </script>
 
 <div id="build-lock-overlay" aria-hidden="true" title="Build in progress"></div>

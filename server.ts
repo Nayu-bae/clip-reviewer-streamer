@@ -6,7 +6,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { spawn } from 'child_process';
 import { randomUUID } from 'crypto';
-import { randomBytes, scryptSync, timingSafeEqual } from 'crypto';
+import { createHash, randomBytes, randomInt, scryptSync, timingSafeEqual } from 'crypto';
 import { pipeline } from 'stream/promises';
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const { DatabaseSync } = require('node:sqlite');
@@ -43,6 +43,15 @@ const TIKTOK_CLIENT_KEY = process.env.TIKTOK_CLIENT_KEY || process.env.TIKTOK_CL
 const TIKTOK_CLIENT_SECRET = process.env.TIKTOK_CLIENT_SECRET || '';
 const TIKTOK_LOGIN_REDIRECT_URI = process.env.TIKTOK_LOGIN_REDIRECT_URI || '';
 const TIKTOK_PRIVACY_LEVEL = process.env.TIKTOK_PRIVACY_LEVEL || 'SELF_ONLY';
+const RESEND_API_KEY = process.env.RESEND_API_KEY || '';
+const MAIL_FROM = process.env.MAIL_FROM || '';
+const APP_BASE_URL = String(process.env.APP_BASE_URL || '').replace(/\/+$/g, '');
+const EMAIL_VERIFICATION_SECRET = process.env.EMAIL_VERIFICATION_SECRET || SESSION_SECRET;
+const EMAIL_VERIFICATION_CODE_TTL_MINUTES = Math.max(1, Math.floor(getPositiveNumberEnv('EMAIL_VERIFICATION_CODE_TTL_MINUTES', 10)));
+const EMAIL_VERIFICATION_MAX_ATTEMPTS = Math.max(1, Math.floor(getPositiveNumberEnv('EMAIL_VERIFICATION_MAX_ATTEMPTS', 5)));
+const EMAIL_VERIFICATION_RESEND_COOLDOWN_SECONDS = Math.max(1, Math.floor(getPositiveNumberEnv('EMAIL_VERIFICATION_RESEND_COOLDOWN_SECONDS', 60)));
+const ACCOUNT_MANAGE_LINK_TTL_MINUTES = Math.max(5, Math.floor(getPositiveNumberEnv('ACCOUNT_MANAGE_LINK_TTL_MINUTES', 30)));
+const PASSWORD_RESET_LINK_TTL_MINUTES = Math.max(5, Math.floor(getPositiveNumberEnv('PASSWORD_RESET_LINK_TTL_MINUTES', 30)));
 const VIDEO_WORK_DIR = path.join(__dirname, 'tmp', 'videos');
 const TWITCH_LOGO_RELATIVE_PATH = path.join('pictures', 'twitchLogo.png');
 const YTDLP_BIN = process.env.YTDLP_BIN || 'yt-dlp';
@@ -156,6 +165,36 @@ interface UploadJobState extends UploadJobSnapshot {
 interface UserRow {
     id: number;
     username: string;
+    email: string | null;
+    email_verified: number;
+    email_verified_at: string | null;
+    password_hash: string;
+}
+
+interface EmailVerificationCodeRow {
+    user_id: number;
+    code_hash: string;
+    expires_at: string;
+    attempts: number;
+    last_sent_at: string;
+    created_at: string;
+}
+
+interface AccountActionTokenRow {
+    id: number;
+    user_id: number;
+    purpose: string;
+    token_hash: string;
+    expires_at: string;
+    used_at: string | null;
+    created_at: string;
+}
+
+interface AccountActionTokenWithUserRow extends AccountActionTokenRow {
+    username: string;
+    email: string | null;
+    email_verified: number;
+    email_verified_at: string | null;
     password_hash: string;
 }
 
@@ -169,6 +208,9 @@ declare module 'express-session' {
         authenticated: boolean;
         userId?: number;
         username?: string;
+        pendingVerificationUserId?: number;
+        pendingVerificationEmail?: string;
+        pendingVerificationUsername?: string;
     }
 }
 
@@ -211,8 +253,36 @@ db.exec(`
     CREATE TABLE IF NOT EXISTS users (
         id            INTEGER PRIMARY KEY AUTOINCREMENT,
         username      TEXT NOT NULL UNIQUE,
+        email         TEXT UNIQUE,
+        email_verified INTEGER NOT NULL DEFAULT 0,
+        email_verified_at TEXT,
         password_hash TEXT NOT NULL,
         created_at    TEXT NOT NULL
+    )
+`);
+
+db.exec(`
+    CREATE TABLE IF NOT EXISTS email_verification_codes (
+        user_id     INTEGER PRIMARY KEY,
+        code_hash   TEXT NOT NULL,
+        expires_at  TEXT NOT NULL,
+        attempts    INTEGER NOT NULL DEFAULT 0,
+        last_sent_at TEXT NOT NULL,
+        created_at  TEXT NOT NULL,
+        FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
+    )
+`);
+
+db.exec(`
+    CREATE TABLE IF NOT EXISTS account_action_tokens (
+        id         INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id    INTEGER NOT NULL,
+        purpose    TEXT NOT NULL,
+        token_hash TEXT NOT NULL UNIQUE,
+        expires_at TEXT NOT NULL,
+        used_at    TEXT,
+        created_at TEXT NOT NULL,
+        FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
     )
 `);
 
@@ -313,6 +383,13 @@ addColumnIfMissing('ALTER TABLE user_clip_state ADD COLUMN split_points_json TEX
 addColumnIfMissing('ALTER TABLE user_clip_state ADD COLUMN split_deleted_segments_json TEXT');
 addColumnIfMissing('ALTER TABLE user_clip_state ADD COLUMN split_zoom_segments_json TEXT');
 addColumnIfMissing('ALTER TABLE user_clip_state ADD COLUMN split_zoom_layouts_json TEXT');
+addColumnIfMissing('ALTER TABLE users ADD COLUMN email TEXT');
+addColumnIfMissing('ALTER TABLE users ADD COLUMN email_verified INTEGER NOT NULL DEFAULT 0');
+addColumnIfMissing('ALTER TABLE users ADD COLUMN email_verified_at TEXT');
+db.exec('CREATE UNIQUE INDEX IF NOT EXISTS users_email_unique_nocase ON users(email COLLATE NOCASE) WHERE email IS NOT NULL AND email <> \'\'');
+db.exec('CREATE INDEX IF NOT EXISTS email_verification_codes_expires_idx ON email_verification_codes(expires_at)');
+db.exec('CREATE INDEX IF NOT EXISTS account_action_tokens_expires_idx ON account_action_tokens(expires_at)');
+db.exec('CREATE INDEX IF NOT EXISTS account_action_tokens_user_idx ON account_action_tokens(user_id)');
 
 function hashPassword(plain: string): string {
     const salt = randomBytes(16).toString('hex');
@@ -329,24 +406,342 @@ function verifyPassword(plain: string, stored: string): boolean {
     return expected.length === actual.length && timingSafeEqual(expected, actual);
 }
 
+function normalizeEmail(email: string): string {
+    return String(email || '').trim().toLowerCase();
+}
+
+function normalizeAuthIdentifier(identifier: string): string {
+    return String(identifier || '').trim().toLowerCase();
+}
+
+function isValidEmail(email: string): boolean {
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+}
+
+function maskEmail(email: string): string {
+    const normalized = normalizeEmail(email);
+    const [localPart, domainPart] = normalized.split('@');
+    if (!localPart || !domainPart) return '';
+    const visibleLocal = localPart.length <= 2 ? `${localPart[0] || '*'}*` : `${localPart.slice(0, 2)}***`;
+    const domainSegments = domainPart.split('.');
+    if (domainSegments.length < 2) return `${visibleLocal}@***`;
+    const tld = domainSegments.pop() || '';
+    const host = domainSegments.join('.');
+    const maskedHost = host.length <= 2 ? `${host[0] || '*'}*` : `${host.slice(0, 2)}***`;
+    return `${visibleLocal}@${maskedHost}.${tld}`;
+}
+
 function getUserByUsername(username: string): UserRow | undefined {
-    return db.prepare('SELECT id, username, password_hash FROM users WHERE username = $username')
+    return db.prepare(`
+        SELECT id, username, email, COALESCE(email_verified, 0) AS email_verified, email_verified_at, password_hash
+        FROM users
+        WHERE lower(username) = lower($username)
+        LIMIT 1
+    `)
         .get({ $username: username }) as UserRow | undefined;
 }
 
+function getUserByEmail(email: string): UserRow | undefined {
+    return db.prepare(`
+        SELECT id, username, email, COALESCE(email_verified, 0) AS email_verified, email_verified_at, password_hash
+        FROM users
+        WHERE lower(email) = lower($email)
+        LIMIT 1
+    `)
+        .get({ $email: email }) as UserRow | undefined;
+}
+
+function getUserByIdentifier(identifier: string): UserRow | undefined {
+    const normalized = normalizeAuthIdentifier(identifier);
+    if (!normalized) return undefined;
+    if (normalized.includes('@')) return getUserByEmail(normalized);
+    return getUserByUsername(normalized);
+}
+
 function getUserById(userId: number): UserRow | undefined {
-    return db.prepare('SELECT id, username, password_hash FROM users WHERE id = $id')
+    return db.prepare('SELECT id, username, email, COALESCE(email_verified, 0) AS email_verified, email_verified_at, password_hash FROM users WHERE id = $id')
         .get({ $id: userId }) as UserRow | undefined;
 }
 
-function createUser(username: string, password: string): number {
+function clearPendingVerificationSession(req: Request): void {
+    delete req.session.pendingVerificationUserId;
+    delete req.session.pendingVerificationEmail;
+    delete req.session.pendingVerificationUsername;
+}
+
+function setPendingVerificationSession(req: Request, user: UserRow): void {
+    req.session.authenticated = false;
+    delete req.session.userId;
+    delete req.session.username;
+    req.session.pendingVerificationUserId = user.id;
+    req.session.pendingVerificationEmail = user.email || '';
+    req.session.pendingVerificationUsername = user.username;
+}
+
+function markEmailVerified(userId: number): void {
     const now = new Date().toISOString();
-    const result = db.prepare('INSERT INTO users (username, password_hash, created_at) VALUES ($username, $hash, $created_at)').run({
+    db.prepare('UPDATE users SET email_verified = 1, email_verified_at = $now WHERE id = $id').run({
+        $id: userId,
+        $now: now,
+    });
+}
+
+function isEmailVerified(user: UserRow): boolean {
+    return !user.email || user.email_verified === 1;
+}
+
+function createUser(username: string, password: string, email?: string): number {
+    const now = new Date().toISOString();
+    const normalizedEmail = normalizeEmail(email || '');
+    const needsEmailVerification = normalizedEmail.length > 0;
+    const result = db.prepare(`
+        INSERT INTO users (username, email, email_verified, email_verified_at, password_hash, created_at)
+        VALUES ($username, $email, $email_verified, $email_verified_at, $hash, $created_at)
+    `).run({
         $username: username,
+        $email: normalizedEmail || null,
+        $email_verified: needsEmailVerification ? 0 : 1,
+        $email_verified_at: needsEmailVerification ? null : now,
         $hash: hashPassword(password),
         $created_at: now,
     });
     return Number(result.lastInsertRowid);
+}
+
+function isEmailDeliveryConfigured(): boolean {
+    return Boolean(RESEND_API_KEY && MAIL_FROM);
+}
+
+function hashVerificationCode(userId: number, code: string): string {
+    return createHash('sha256').update(`${EMAIL_VERIFICATION_SECRET}:${userId}:${code}`).digest('hex');
+}
+
+function safeEqualHash(leftHex: string, rightHex: string): boolean {
+    try {
+        const left = Buffer.from(String(leftHex || ''), 'hex');
+        const right = Buffer.from(String(rightHex || ''), 'hex');
+        return left.length > 0 && left.length === right.length && timingSafeEqual(left, right);
+    } catch {
+        return false;
+    }
+}
+
+function generateVerificationCode(): string {
+    return String(randomInt(0, 1000000)).padStart(6, '0');
+}
+
+function pruneExpiredVerificationCodes(): void {
+    db.prepare('DELETE FROM email_verification_codes WHERE expires_at <= $now').run({
+        $now: new Date().toISOString(),
+    });
+}
+
+function getVerificationCodeRow(userId: number): EmailVerificationCodeRow | undefined {
+    return db.prepare(`
+        SELECT user_id, code_hash, expires_at, attempts, last_sent_at, created_at
+        FROM email_verification_codes
+        WHERE user_id = $user_id
+        LIMIT 1
+    `).get({ $user_id: userId }) as EmailVerificationCodeRow | undefined;
+}
+
+function saveVerificationCode(userId: number, code: string): void {
+    const now = new Date();
+    const expiresAt = new Date(now.getTime() + EMAIL_VERIFICATION_CODE_TTL_MINUTES * 60 * 1000);
+    db.prepare(`
+        INSERT INTO email_verification_codes (user_id, code_hash, expires_at, attempts, last_sent_at, created_at)
+        VALUES ($user_id, $code_hash, $expires_at, 0, $last_sent_at, $created_at)
+        ON CONFLICT(user_id) DO UPDATE SET
+            code_hash = excluded.code_hash,
+            expires_at = excluded.expires_at,
+            attempts = 0,
+            last_sent_at = excluded.last_sent_at,
+            created_at = excluded.created_at
+    `).run({
+        $user_id: userId,
+        $code_hash: hashVerificationCode(userId, code),
+        $expires_at: expiresAt.toISOString(),
+        $last_sent_at: now.toISOString(),
+        $created_at: now.toISOString(),
+    });
+}
+
+function incrementVerificationAttempts(userId: number): number {
+    db.prepare('UPDATE email_verification_codes SET attempts = attempts + 1 WHERE user_id = $user_id').run({
+        $user_id: userId,
+    });
+    const row = getVerificationCodeRow(userId);
+    return Number(row?.attempts || 0);
+}
+
+function clearVerificationCode(userId: number): void {
+    db.prepare('DELETE FROM email_verification_codes WHERE user_id = $user_id').run({
+        $user_id: userId,
+    });
+}
+
+function getResendAvailableInSeconds(userId: number): number {
+    const row = getVerificationCodeRow(userId);
+    if (!row?.last_sent_at) return 0;
+    const lastSentAtMs = Date.parse(String(row.last_sent_at));
+    if (!Number.isFinite(lastSentAtMs)) return 0;
+    const elapsedSeconds = Math.floor((Date.now() - lastSentAtMs) / 1000);
+    return Math.max(0, EMAIL_VERIFICATION_RESEND_COOLDOWN_SECONDS - elapsedSeconds);
+}
+
+async function sendVerificationCodeEmail(user: UserRow, code: string): Promise<void> {
+    if (!isEmailDeliveryConfigured()) {
+        throw new Error('Email verification is not configured. Set RESEND_API_KEY and MAIL_FROM.');
+    }
+    if (!user.email) {
+        throw new Error('User is missing an email address.');
+    }
+
+    const subject = 'Verify your Clip-Reviewer account';
+    const baseText = [
+        `Hi ${user.username},`,
+        '',
+        `Your Clip-Reviewer verification code is: ${code}`,
+        '',
+        `This code expires in ${EMAIL_VERIFICATION_CODE_TTL_MINUTES} minute(s).`,
+    ];
+    const withLink = APP_BASE_URL ? `${baseText.join('\n')}\n\nSign in: ${APP_BASE_URL}/login` : baseText.join('\n');
+
+    const response = await axios.post('https://api.resend.com/emails', {
+        from: MAIL_FROM,
+        to: [user.email],
+        subject,
+        text: withLink,
+        html: `
+            <p>Hi ${user.username},</p>
+            <p>Your Clip-Reviewer verification code is:</p>
+            <p style="font-size: 24px; font-weight: 700; letter-spacing: 4px;">${code}</p>
+            <p>This code expires in ${EMAIL_VERIFICATION_CODE_TTL_MINUTES} minute(s).</p>
+            ${APP_BASE_URL ? `<p><a href="${APP_BASE_URL}/login">Open Clip-Reviewer</a></p>` : ''}
+        `,
+    }, {
+        headers: {
+            Authorization: `Bearer ${RESEND_API_KEY}`,
+            'Content-Type': 'application/json',
+        },
+        validateStatus: () => true,
+    });
+
+    if (response.status < 200 || response.status >= 300) {
+        const msg = typeof response.data === 'string'
+            ? response.data
+            : JSON.stringify(response.data || {});
+        throw new Error(`Resend API error (${response.status}): ${msg}`);
+    }
+}
+
+async function issueVerificationCode(user: UserRow, enforceCooldown: boolean): Promise<{ sent: boolean; resendAvailableIn: number }> {
+    pruneExpiredVerificationCodes();
+    const cooldown = getResendAvailableInSeconds(user.id);
+    if (enforceCooldown && cooldown > 0) {
+        return { sent: false, resendAvailableIn: cooldown };
+    }
+
+    const code = generateVerificationCode();
+    await sendVerificationCodeEmail(user, code);
+    saveVerificationCode(user.id, code);
+    return { sent: true, resendAvailableIn: EMAIL_VERIFICATION_RESEND_COOLDOWN_SECONDS };
+}
+
+function getAppBaseUrl(): string {
+    return APP_BASE_URL || `http://localhost:${PORT}`;
+}
+
+function hashAccountActionToken(rawToken: string): string {
+    return createHash('sha256').update(`${EMAIL_VERIFICATION_SECRET}:account_action:${rawToken}`).digest('hex');
+}
+
+function pruneExpiredAccountActionTokens(): void {
+    db.prepare('DELETE FROM account_action_tokens WHERE expires_at <= $now OR used_at IS NOT NULL').run({
+        $now: new Date().toISOString(),
+    });
+}
+
+function createAccountActionToken(userId: number, purpose: 'manage_account' | 'reset_password', ttlMinutes: number): string {
+    const token = randomBytes(32).toString('hex');
+    const now = new Date();
+    const expiresAt = new Date(now.getTime() + ttlMinutes * 60 * 1000);
+    db.prepare(`
+        INSERT INTO account_action_tokens (user_id, purpose, token_hash, expires_at, created_at)
+        VALUES ($user_id, $purpose, $token_hash, $expires_at, $created_at)
+    `).run({
+        $user_id: userId,
+        $purpose: purpose,
+        $token_hash: hashAccountActionToken(token),
+        $expires_at: expiresAt.toISOString(),
+        $created_at: now.toISOString(),
+    });
+    return token;
+}
+
+function getAccountActionTokenRow(rawToken: string): AccountActionTokenWithUserRow | undefined {
+    const tokenHash = hashAccountActionToken(rawToken);
+    return db.prepare(`
+        SELECT
+            t.id, t.user_id, t.purpose, t.token_hash, t.expires_at, t.used_at, t.created_at,
+            u.username, u.email, COALESCE(u.email_verified, 0) AS email_verified, u.email_verified_at, u.password_hash
+        FROM account_action_tokens t
+        JOIN users u ON u.id = t.user_id
+        WHERE t.token_hash = $token_hash
+          AND t.used_at IS NULL
+          AND t.expires_at > $now
+        LIMIT 1
+    `).get({
+        $token_hash: tokenHash,
+        $now: new Date().toISOString(),
+    }) as AccountActionTokenWithUserRow | undefined;
+}
+
+function markAccountActionTokenUsed(tokenId: number): void {
+    db.prepare('UPDATE account_action_tokens SET used_at = $used_at WHERE id = $id').run({
+        $id: tokenId,
+        $used_at: new Date().toISOString(),
+    });
+}
+
+async function sendAccountActionLinkEmail(user: UserRow, purpose: 'manage_account' | 'reset_password', rawToken: string): Promise<void> {
+    if (!isEmailDeliveryConfigured()) {
+        throw new Error('Email links require RESEND_API_KEY and MAIL_FROM.');
+    }
+    if (!user.email) {
+        throw new Error('User is missing an email address.');
+    }
+    const linkPath = purpose === 'reset_password' ? '/reset-password' : '/account-security';
+    const link = `${getAppBaseUrl()}${linkPath}?token=${encodeURIComponent(rawToken)}`;
+    const isReset = purpose === 'reset_password';
+    const subject = isReset ? 'Reset your Clip-Reviewer password' : 'Secure link to manage your Clip-Reviewer account';
+    const text = isReset
+        ? `Hi ${user.username},\n\nUse this secure link to reset your password:\n${link}\n\nThis link expires in ${PASSWORD_RESET_LINK_TTL_MINUTES} minute(s).`
+        : `Hi ${user.username},\n\nUse this secure link to update your account details (username, email, password):\n${link}\n\nThis link expires in ${ACCOUNT_MANAGE_LINK_TTL_MINUTES} minute(s).`;
+    const html = isReset
+        ? `<p>Hi ${user.username},</p><p>Use this secure link to reset your password:</p><p><a href="${link}">${link}</a></p><p>This link expires in ${PASSWORD_RESET_LINK_TTL_MINUTES} minute(s).</p>`
+        : `<p>Hi ${user.username},</p><p>Use this secure link to update your account details (username, email, password):</p><p><a href="${link}">${link}</a></p><p>This link expires in ${ACCOUNT_MANAGE_LINK_TTL_MINUTES} minute(s).</p>`;
+
+    const response = await axios.post('https://api.resend.com/emails', {
+        from: MAIL_FROM,
+        to: [user.email],
+        subject,
+        text,
+        html,
+    }, {
+        headers: {
+            Authorization: `Bearer ${RESEND_API_KEY}`,
+            'Content-Type': 'application/json',
+        },
+        validateStatus: () => true,
+    });
+
+    if (response.status < 200 || response.status >= 300) {
+        const msg = typeof response.data === 'string'
+            ? response.data
+            : JSON.stringify(response.data || {});
+        throw new Error(`Resend API error (${response.status}): ${msg}`);
+    }
 }
 
 function listUserStreamerIds(userId: number): string[] {
@@ -684,6 +1079,18 @@ function validateEnvironment(): void {
     }
     if (IS_PRODUCTION && SESSION_SECRET === 'twitch-clips-secret-2026') {
         throw new Error('SESSION_SECRET must be set in production.');
+    }
+    if (!isEmailDeliveryConfigured()) {
+        console.warn('⚠️  Email verification requires RESEND_API_KEY and MAIL_FROM. Registration is disabled until configured.');
+    }
+    if (MAIL_FROM && !isValidEmail(MAIL_FROM)) {
+        console.warn('⚠️  MAIL_FROM does not look like a valid email address.');
+    }
+    if (!APP_BASE_URL) {
+        console.warn('⚠️  APP_BASE_URL is not set. Email links will default to localhost URLs.');
+    }
+    if (APP_BASE_URL && !/^https?:\/\//i.test(APP_BASE_URL)) {
+        console.warn('⚠️  APP_BASE_URL should start with http:// or https://');
     }
 }
 
@@ -2219,7 +2626,14 @@ app.use(
         },
     })
 );
-const PUBLIC_DIR = path.join(__dirname, 'public');
+function resolvePublicDir(): string {
+    const localPublicDir = path.join(__dirname, 'public');
+    const repoPublicDir = path.resolve(__dirname, '..', 'public');
+    if (fs.existsSync(repoPublicDir)) return repoPublicDir;
+    return localPublicDir;
+}
+
+const PUBLIC_DIR = resolvePublicDir();
 const HOME_PAGE_FILE = path.join(PUBLIC_DIR, 'home.html');
 const APP_LOGIN_FILE = path.join(PUBLIC_DIR, 'index.html');
 app.use(express.static(PUBLIC_DIR, { index: false }));
@@ -2229,6 +2643,18 @@ app.get('/', (_req: Request, res: Response) => {
 });
 
 app.get('/login', (_req: Request, res: Response) => {
+    res.sendFile(APP_LOGIN_FILE);
+});
+
+app.get('/reset-password', (_req: Request, res: Response) => {
+    res.sendFile(APP_LOGIN_FILE);
+});
+
+app.get('/reset-passowrd', (_req: Request, res: Response) => {
+    res.sendFile(APP_LOGIN_FILE);
+});
+
+app.get('/account-security', (_req: Request, res: Response) => {
     res.sendFile(APP_LOGIN_FILE);
 });
 
@@ -2250,29 +2676,65 @@ function getRequiredUserId(req: Request): number {
 
 // ── Auth routes ────────────────────────────────────────────────────────────
 
-app.post('/api/login', (req: Request, res: Response) => {
-    const { username, password } = req.body as { username?: string; password?: string };
-    const normalized = String(username || '').trim().toLowerCase();
+app.post('/api/login', async (req: Request, res: Response) => {
+    const { identifier, username, password } = req.body as { identifier?: string; username?: string; password?: string };
+    const normalizedIdentifier = normalizeAuthIdentifier(String(identifier || username || ''));
     const pw = String(password || '');
-    const user = normalized ? getUserByUsername(normalized) : undefined;
+    const user = normalizedIdentifier ? getUserByIdentifier(normalizedIdentifier) : undefined;
     if (!user || !verifyPassword(pw, user.password_hash)) {
         res.status(401).json({ error: 'Invalid credentials' });
+        return;
+    }
+
+    if (!isEmailVerified(user)) {
+        setPendingVerificationSession(req, user);
+        try {
+            const verification = await issueVerificationCode(user, true);
+            res.status(403).json({
+                error: verification.sent
+                    ? 'Email verification required. We sent a new code.'
+                    : 'Email verification required. Please enter your latest code.',
+                requiresEmailVerification: true,
+                email: maskEmail(user.email || ''),
+                username: user.username,
+                resendAvailableIn: verification.resendAvailableIn,
+            });
+        } catch (err) {
+            console.error('Failed to send verification code during login:', err);
+            res.status(502).json({
+                error: 'Email verification is required, but sending the code failed. Please retry in a moment.',
+                requiresEmailVerification: true,
+                email: maskEmail(user.email || ''),
+                username: user.username,
+                resendAvailableIn: getResendAvailableInSeconds(user.id),
+            });
+        }
         return;
     }
 
     req.session.authenticated = true;
     req.session.userId = user.id;
     req.session.username = user.username;
+    clearPendingVerificationSession(req);
     const hasStreamers = listUserStreamerIds(user.id).length > 0;
     res.json({ success: true, username: user.username, needsStreamerSetup: !hasStreamers });
 });
 
-app.post('/api/register', (req: Request, res: Response) => {
-    const { username, password } = req.body as { username?: string; password?: string };
-    const normalized = String(username || '').trim().toLowerCase();
+app.post('/api/register', async (req: Request, res: Response) => {
+    const { email, username, password } = req.body as { email?: string; username?: string; password?: string };
+    const normalizedUsername = String(username || '').trim().toLowerCase();
+    const normalizedEmail = normalizeEmail(email || '');
     const pw = String(password || '');
 
-    if (!/^[a-z0-9_]{3,32}$/.test(normalized)) {
+    if (!isEmailDeliveryConfigured()) {
+        res.status(503).json({ error: 'Email delivery is not configured. Set RESEND_API_KEY and MAIL_FROM.' });
+        return;
+    }
+    if (!isValidEmail(normalizedEmail)) {
+        res.status(400).json({ error: 'Please enter a valid email address' });
+        return;
+    }
+    if (!/^[a-z0-9_]{3,32}$/.test(normalizedUsername)) {
         res.status(400).json({ error: 'Username must be 3-32 chars: a-z, 0-9, _' });
         return;
     }
@@ -2280,21 +2742,188 @@ app.post('/api/register', (req: Request, res: Response) => {
         res.status(400).json({ error: 'Password must be at least 8 characters long' });
         return;
     }
-    if (getUserByUsername(normalized)) {
+    if (getUserByUsername(normalizedUsername)) {
         res.status(409).json({ error: 'Username already exists' });
         return;
     }
+    if (getUserByEmail(normalizedEmail)) {
+        res.status(409).json({ error: 'Email already in use' });
+        return;
+    }
 
-    const userId = createUser(normalized, pw);
+    let userId = 0;
+    try {
+        userId = createUser(normalizedUsername, pw, normalizedEmail);
+        const user = getUserById(userId);
+        if (!user) {
+            throw new Error('Failed to create user');
+        }
+
+        const verification = await issueVerificationCode(user, false);
+        setPendingVerificationSession(req, user);
+        res.status(201).json({
+            success: true,
+            requiresEmailVerification: true,
+            username: user.username,
+            email: maskEmail(user.email || normalizedEmail),
+            resendAvailableIn: verification.resendAvailableIn,
+        });
+    } catch (err) {
+        const message = err instanceof Error ? err.message : String(err);
+        if (/UNIQUE constraint failed/i.test(message)) {
+            res.status(409).json({ error: 'Username or email already exists' });
+            return;
+        }
+        if (userId > 0) {
+            clearVerificationCode(userId);
+            db.prepare('DELETE FROM users WHERE id = $id').run({ $id: userId });
+        }
+        clearPendingVerificationSession(req);
+        console.error('Registration failed:', err);
+        res.status(502).json({ error: 'Could not send verification email. Please try again.' });
+    }
+});
+
+app.post('/api/verify-email', (req: Request, res: Response) => {
+    const pendingUserId = Number(req.session.pendingVerificationUserId || 0);
+    if (!pendingUserId) {
+        res.status(401).json({ error: 'No pending verification found. Please sign in again.' });
+        return;
+    }
+
+    const code = String((req.body as { code?: string }).code || '').trim();
+    if (!/^\d{6}$/.test(code)) {
+        res.status(400).json({ error: 'Verification code must be 6 digits' });
+        return;
+    }
+
+    const user = getUserById(pendingUserId);
+    if (!user || !user.email) {
+        clearPendingVerificationSession(req);
+        clearVerificationCode(pendingUserId);
+        res.status(400).json({ error: 'Verification session is no longer valid. Please sign in again.' });
+        return;
+    }
+    if (isEmailVerified(user)) {
+        req.session.authenticated = true;
+        req.session.userId = user.id;
+        req.session.username = user.username;
+        clearPendingVerificationSession(req);
+        clearVerificationCode(user.id);
+        const hasStreamers = listUserStreamerIds(user.id).length > 0;
+        res.json({ success: true, username: user.username, needsStreamerSetup: !hasStreamers });
+        return;
+    }
+
+    pruneExpiredVerificationCodes();
+    const row = getVerificationCodeRow(user.id);
+    if (!row) {
+        res.status(400).json({ error: 'Verification code expired. Please request a new code.' });
+        return;
+    }
+
+    if (new Date(row.expires_at).getTime() <= Date.now()) {
+        clearVerificationCode(user.id);
+        res.status(400).json({ error: 'Verification code expired. Please request a new code.' });
+        return;
+    }
+
+    if (Number(row.attempts || 0) >= EMAIL_VERIFICATION_MAX_ATTEMPTS) {
+        clearVerificationCode(user.id);
+        res.status(429).json({
+            error: 'Too many failed attempts. Request a new code.',
+            resendAvailableIn: getResendAvailableInSeconds(user.id),
+        });
+        return;
+    }
+
+    const expectedHash = hashVerificationCode(user.id, code);
+    if (!safeEqualHash(row.code_hash, expectedHash)) {
+        const attempts = incrementVerificationAttempts(user.id);
+        const attemptsLeft = Math.max(0, EMAIL_VERIFICATION_MAX_ATTEMPTS - attempts);
+        if (attemptsLeft === 0) {
+            clearVerificationCode(user.id);
+            res.status(429).json({
+                error: 'Too many failed attempts. Request a new code.',
+                resendAvailableIn: getResendAvailableInSeconds(user.id),
+            });
+            return;
+        }
+        res.status(400).json({
+            error: `Invalid code. ${attemptsLeft} attempt(s) remaining.`,
+            attemptsRemaining: attemptsLeft,
+        });
+        return;
+    }
+
+    markEmailVerified(user.id);
+    clearVerificationCode(user.id);
     req.session.authenticated = true;
-    req.session.userId = userId;
-    req.session.username = normalized;
-    res.status(201).json({ success: true, username: normalized, needsStreamerSetup: true });
+    req.session.userId = user.id;
+    req.session.username = user.username;
+    clearPendingVerificationSession(req);
+    const hasStreamers = listUserStreamerIds(user.id).length > 0;
+    res.json({ success: true, username: user.username, needsStreamerSetup: !hasStreamers });
+});
+
+app.post('/api/resend-verification', async (req: Request, res: Response) => {
+    const pendingUserId = Number(req.session.pendingVerificationUserId || 0);
+    if (!pendingUserId) {
+        res.status(401).json({ error: 'No pending verification found. Please sign in again.' });
+        return;
+    }
+
+    const user = getUserById(pendingUserId);
+    if (!user || !user.email) {
+        clearPendingVerificationSession(req);
+        clearVerificationCode(pendingUserId);
+        res.status(400).json({ error: 'Verification session is no longer valid. Please sign in again.' });
+        return;
+    }
+    if (isEmailVerified(user)) {
+        res.status(400).json({ error: 'Email is already verified' });
+        return;
+    }
+
+    try {
+        const verification = await issueVerificationCode(user, true);
+        if (!verification.sent) {
+            res.status(429).json({
+                error: 'Please wait before requesting another code.',
+                resendAvailableIn: verification.resendAvailableIn,
+            });
+            return;
+        }
+        res.json({
+            success: true,
+            email: maskEmail(user.email),
+            resendAvailableIn: verification.resendAvailableIn,
+        });
+    } catch (err) {
+        console.error('Failed to resend verification code:', err);
+        res.status(502).json({ error: 'Failed to send verification email. Please try again.' });
+    }
 });
 
 app.get('/api/auth', (req: Request, res: Response) => {
     const userId = req.session.userId;
     if (!req.session.authenticated || !userId) {
+        const pendingUserId = Number(req.session.pendingVerificationUserId || 0);
+        if (pendingUserId) {
+            const pendingUser = getUserById(pendingUserId);
+            if (pendingUser && pendingUser.email && !isEmailVerified(pendingUser)) {
+                res.json({
+                    authenticated: false,
+                    pendingVerification: true,
+                    username: pendingUser.username,
+                    email: maskEmail(pendingUser.email),
+                    resendAvailableIn: getResendAvailableInSeconds(pendingUser.id),
+                });
+                return;
+            }
+            clearPendingVerificationSession(req);
+            clearVerificationCode(pendingUserId);
+        }
         res.json({ authenticated: false });
         return;
     }
@@ -2310,7 +2939,383 @@ app.get('/api/auth', (req: Request, res: Response) => {
     res.json({ authenticated: true, username: user.username, needsStreamerSetup: !hasStreamers });
 });
 
+app.get('/api/me/account', requireAuth, (req: Request, res: Response) => {
+    const user = getUserById(getRequiredUserId(req));
+    if (!user) {
+        res.status(404).json({ error: 'User not found' });
+        return;
+    }
+    res.json({
+        username: user.username,
+        email: user.email || '',
+        emailMasked: maskEmail(user.email || ''),
+        emailVerified: isEmailVerified(user),
+    });
+});
+
+app.post('/api/account/add-email', requireAuth, async (req: Request, res: Response) => {
+    if (!isEmailDeliveryConfigured()) {
+        res.status(503).json({ error: 'Email delivery is not configured. Set RESEND_API_KEY and MAIL_FROM.' });
+        return;
+    }
+    const userId = getRequiredUserId(req);
+    const user = getUserById(userId);
+    if (!user) {
+        res.status(404).json({ error: 'User not found' });
+        return;
+    }
+    if (String(user.email || '').trim()) {
+        res.status(400).json({ error: 'Account already has an email. Use the account link flow for updates.' });
+        return;
+    }
+
+    const { email } = req.body as { email?: string };
+    const normalizedEmail = normalizeEmail(email || '');
+    if (!isValidEmail(normalizedEmail)) {
+        res.status(400).json({ error: 'Please enter a valid email address' });
+        return;
+    }
+    const existing = getUserByEmail(normalizedEmail);
+    if (existing && existing.id !== user.id) {
+        res.status(409).json({ error: 'Email already in use' });
+        return;
+    }
+
+    db.prepare(`
+        UPDATE users
+        SET email = $email, email_verified = 0, email_verified_at = NULL
+        WHERE id = $id
+    `).run({
+        $id: user.id,
+        $email: normalizedEmail,
+    });
+
+    const updatedUser = getUserById(user.id);
+    if (!updatedUser || !updatedUser.email) {
+        res.status(500).json({ error: 'Could not save email. Please try again.' });
+        return;
+    }
+
+    try {
+        const verification = await issueVerificationCode(updatedUser, false);
+        res.json({
+            success: true,
+            email: maskEmail(updatedUser.email),
+            emailVerified: false,
+            needsEmailVerification: true,
+            resendAvailableIn: verification.resendAvailableIn,
+            message: 'Email saved. Verification code sent.',
+        });
+    } catch (err) {
+        console.error('Failed to send verification after adding email:', err);
+        db.prepare('UPDATE users SET email = NULL, email_verified = 0, email_verified_at = NULL WHERE id = $id').run({
+            $id: user.id,
+        });
+        clearVerificationCode(user.id);
+        res.status(502).json({ error: 'Could not send verification email. Email was not saved.' });
+    }
+});
+
+app.post('/api/account/verify-email', requireAuth, (req: Request, res: Response) => {
+    const user = getUserById(getRequiredUserId(req));
+    if (!user || !user.email) {
+        res.status(400).json({ error: 'No email found on this account.' });
+        return;
+    }
+    if (isEmailVerified(user)) {
+        res.json({ success: true, email: maskEmail(user.email), emailVerified: true });
+        return;
+    }
+
+    const code = String((req.body as { code?: string }).code || '').trim();
+    if (!/^\d{6}$/.test(code)) {
+        res.status(400).json({ error: 'Verification code must be 6 digits' });
+        return;
+    }
+
+    pruneExpiredVerificationCodes();
+    const row = getVerificationCodeRow(user.id);
+    if (!row) {
+        res.status(400).json({ error: 'Verification code expired. Request a new code.' });
+        return;
+    }
+    if (new Date(row.expires_at).getTime() <= Date.now()) {
+        clearVerificationCode(user.id);
+        res.status(400).json({ error: 'Verification code expired. Request a new code.' });
+        return;
+    }
+    if (Number(row.attempts || 0) >= EMAIL_VERIFICATION_MAX_ATTEMPTS) {
+        clearVerificationCode(user.id);
+        res.status(429).json({ error: 'Too many failed attempts. Request a new code.' });
+        return;
+    }
+
+    const expectedHash = hashVerificationCode(user.id, code);
+    if (!safeEqualHash(row.code_hash, expectedHash)) {
+        const attempts = incrementVerificationAttempts(user.id);
+        const attemptsLeft = Math.max(0, EMAIL_VERIFICATION_MAX_ATTEMPTS - attempts);
+        if (attemptsLeft === 0) {
+            clearVerificationCode(user.id);
+            res.status(429).json({ error: 'Too many failed attempts. Request a new code.' });
+            return;
+        }
+        res.status(400).json({ error: `Invalid code. ${attemptsLeft} attempt(s) remaining.` });
+        return;
+    }
+
+    markEmailVerified(user.id);
+    clearVerificationCode(user.id);
+    res.json({ success: true, email: maskEmail(user.email), emailVerified: true, message: 'Email verified successfully.' });
+});
+
+app.post('/api/account/resend-email-verification', requireAuth, async (req: Request, res: Response) => {
+    const user = getUserById(getRequiredUserId(req));
+    if (!user || !user.email) {
+        res.status(400).json({ error: 'No email found on this account.' });
+        return;
+    }
+    if (isEmailVerified(user)) {
+        res.status(400).json({ error: 'Email is already verified.' });
+        return;
+    }
+
+    try {
+        const verification = await issueVerificationCode(user, true);
+        if (!verification.sent) {
+            res.status(429).json({
+                error: 'Please wait before requesting another code.',
+                resendAvailableIn: verification.resendAvailableIn,
+            });
+            return;
+        }
+        res.json({
+            success: true,
+            email: maskEmail(user.email),
+            emailVerified: false,
+            resendAvailableIn: verification.resendAvailableIn,
+            message: 'Verification code sent.',
+        });
+    } catch (err) {
+        console.error('Failed to resend account email verification:', err);
+        res.status(502).json({ error: 'Could not send verification email. Please try again.' });
+    }
+});
+
+app.post('/api/account/send-manage-link', requireAuth, async (req: Request, res: Response) => {
+    if (!isEmailDeliveryConfigured()) {
+        res.status(503).json({ error: 'Email delivery is not configured. Set RESEND_API_KEY and MAIL_FROM.' });
+        return;
+    }
+    const user = getUserById(getRequiredUserId(req));
+    if (!user || !user.email) {
+        res.status(400).json({ error: 'Your account has no email on file.' });
+        return;
+    }
+
+    try {
+        pruneExpiredAccountActionTokens();
+        const token = createAccountActionToken(user.id, 'manage_account', ACCOUNT_MANAGE_LINK_TTL_MINUTES);
+        await sendAccountActionLinkEmail(user, 'manage_account', token);
+        res.json({ success: true, email: maskEmail(user.email) });
+    } catch (err) {
+        console.error('Failed to send account manage link:', err);
+        res.status(502).json({ error: 'Could not send account link email. Please try again.' });
+    }
+});
+
+app.post('/api/forgot-password/request', async (req: Request, res: Response) => {
+    if (!isEmailDeliveryConfigured()) {
+        res.status(503).json({ error: 'Email delivery is not configured. Set RESEND_API_KEY and MAIL_FROM.' });
+        return;
+    }
+
+    const { identifier, email } = req.body as { identifier?: string; email?: string };
+    const normalizedIdentifier = normalizeAuthIdentifier(String(identifier || email || ''));
+    if (!normalizedIdentifier) {
+        res.json({ success: true });
+        return;
+    }
+
+    const user = getUserByIdentifier(normalizedIdentifier);
+    if (!user || !user.email) {
+        // Intentionally generic response to avoid account enumeration.
+        res.json({ success: true });
+        return;
+    }
+
+    try {
+        pruneExpiredAccountActionTokens();
+        const token = createAccountActionToken(user.id, 'reset_password', PASSWORD_RESET_LINK_TTL_MINUTES);
+        await sendAccountActionLinkEmail(user, 'reset_password', token);
+    } catch (err) {
+        console.error('Failed to send forgot-password link:', err);
+    }
+
+    // Always generic success to avoid revealing account existence.
+    res.json({ success: true });
+});
+
+app.get('/api/account/link/meta', (req: Request, res: Response) => {
+    const rawToken = String(req.query.token || '').trim();
+    if (!rawToken) {
+        res.status(400).json({ error: 'Missing account link token.' });
+        return;
+    }
+    pruneExpiredAccountActionTokens();
+    const tokenRow = getAccountActionTokenRow(rawToken);
+    if (!tokenRow) {
+        res.status(400).json({ error: 'This link is invalid or expired.' });
+        return;
+    }
+
+    res.json({
+        valid: true,
+        purpose: tokenRow.purpose,
+        username: tokenRow.username,
+        email: tokenRow.email || '',
+        emailMasked: maskEmail(tokenRow.email || ''),
+        expiresAt: tokenRow.expires_at,
+    });
+});
+
+app.post('/api/account/link/complete', async (req: Request, res: Response) => {
+    const { token, username, email, newPassword } = req.body as {
+        token?: string;
+        username?: string;
+        email?: string;
+        newPassword?: string;
+    };
+    const rawToken = String(token || '').trim();
+    if (!rawToken) {
+        res.status(400).json({ error: 'Missing account link token.' });
+        return;
+    }
+
+    pruneExpiredAccountActionTokens();
+    const tokenRow = getAccountActionTokenRow(rawToken);
+    if (!tokenRow) {
+        res.status(400).json({ error: 'This link is invalid or expired.' });
+        return;
+    }
+
+    if (tokenRow.purpose === 'reset_password') {
+        const nextPassword = String(newPassword || '');
+        if (nextPassword.length < 8) {
+            res.status(400).json({ error: 'Password must be at least 8 characters long' });
+            return;
+        }
+        db.exec('BEGIN');
+        try {
+            db.prepare('UPDATE users SET password_hash = $hash WHERE id = $id').run({
+                $hash: hashPassword(nextPassword),
+                $id: tokenRow.user_id,
+            });
+            markAccountActionTokenUsed(tokenRow.id);
+            db.exec('COMMIT');
+            res.json({ success: true, message: 'Password updated. You can now sign in with your new password.' });
+        } catch (err) {
+            db.exec('ROLLBACK');
+            console.error('Failed to apply password reset:', err);
+            res.status(500).json({ error: 'Could not update password right now. Please try again.' });
+        }
+        return;
+    }
+
+    if (tokenRow.purpose !== 'manage_account') {
+        res.status(400).json({ error: 'Unsupported account link type.' });
+        return;
+    }
+
+    const normalizedUsernameInput = String(username || '').trim().toLowerCase();
+    const normalizedEmailInput = normalizeEmail(email || '');
+    const nextPassword = String(newPassword || '');
+    const hasUsernameChange = normalizedUsernameInput.length > 0 && normalizedUsernameInput !== tokenRow.username;
+    const hasEmailChange = normalizedEmailInput.length > 0 && normalizedEmailInput !== normalizeEmail(tokenRow.email || '');
+    const hasPasswordChange = nextPassword.length > 0;
+
+    if (!hasUsernameChange && !hasEmailChange && !hasPasswordChange) {
+        res.status(400).json({ error: 'No changes detected. Enter at least one new value.' });
+        return;
+    }
+    if (hasUsernameChange && !/^[a-z0-9_]{3,32}$/.test(normalizedUsernameInput)) {
+        res.status(400).json({ error: 'Username must be 3-32 chars: a-z, 0-9, _' });
+        return;
+    }
+    if (hasEmailChange && !isValidEmail(normalizedEmailInput)) {
+        res.status(400).json({ error: 'Please enter a valid email address' });
+        return;
+    }
+    if (hasPasswordChange && nextPassword.length < 8) {
+        res.status(400).json({ error: 'Password must be at least 8 characters long' });
+        return;
+    }
+
+    if (hasUsernameChange) {
+        const existing = getUserByUsername(normalizedUsernameInput);
+        if (existing && existing.id !== tokenRow.user_id) {
+            res.status(409).json({ error: 'Username already exists' });
+            return;
+        }
+    }
+    if (hasEmailChange) {
+        const existing = getUserByEmail(normalizedEmailInput);
+        if (existing && existing.id !== tokenRow.user_id) {
+            res.status(409).json({ error: 'Email already in use' });
+            return;
+        }
+    }
+
+    db.exec('BEGIN');
+    try {
+        db.prepare(`
+            UPDATE users
+            SET
+                username = CASE WHEN $username_change = 1 THEN $username ELSE username END,
+                email = CASE WHEN $email_change = 1 THEN $email ELSE email END,
+                email_verified = CASE WHEN $email_change = 1 THEN 0 ELSE email_verified END,
+                email_verified_at = CASE WHEN $email_change = 1 THEN NULL ELSE email_verified_at END,
+                password_hash = CASE WHEN $password_change = 1 THEN $password_hash ELSE password_hash END
+            WHERE id = $id
+        `).run({
+            $id: tokenRow.user_id,
+            $username_change: hasUsernameChange ? 1 : 0,
+            $username: normalizedUsernameInput,
+            $email_change: hasEmailChange ? 1 : 0,
+            $email: normalizedEmailInput,
+            $password_change: hasPasswordChange ? 1 : 0,
+            $password_hash: hasPasswordChange ? hashPassword(nextPassword) : '',
+        });
+        markAccountActionTokenUsed(tokenRow.id);
+        db.exec('COMMIT');
+    } catch (err) {
+        db.exec('ROLLBACK');
+        console.error('Failed to apply account-link changes:', err);
+        res.status(500).json({ error: 'Could not update account right now. Please try again.' });
+        return;
+    }
+
+    if (hasEmailChange) {
+        try {
+            const updatedUser = getUserById(tokenRow.user_id);
+            if (updatedUser && updatedUser.email) {
+                await issueVerificationCode(updatedUser, false);
+            }
+        } catch (err) {
+            console.error('Failed to send verification after email change:', err);
+        }
+    }
+
+    res.json({
+        success: true,
+        message: hasEmailChange
+            ? 'Account updated. Verify your new email at next sign-in using the code we sent.'
+            : 'Account updated successfully.',
+        requiresEmailVerification: hasEmailChange,
+    });
+});
+
 app.post('/api/logout', (req: Request, res: Response) => {
+    clearPendingVerificationSession(req);
     req.session.destroy(() => {});
     res.json({ success: true });
 });
@@ -3131,6 +4136,7 @@ app.listen(PORT, () => {
     validateEnvironment();
     console.log(`✅  Server running at http://localhost:${PORT}`);
     console.log(`🗄️  Database: ${DB_PATH}`);
+    console.log(`🧩  Public assets: ${PUBLIC_DIR}`);
     console.log('👥  Multi-user mode enabled: each account manages its own streamer list.');
     console.log(`🧰  Twitch fetch config: lookback=${TWITCH_CLIPS_LOOKBACK_DAYS} days, max_pages=${TWITCH_CLIPS_MAX_PAGES}, page_size=${TWITCH_CLIPS_PAGE_SIZE}`);
     console.log(`🔎  Clip visibility filter: min_views=${MIN_CLIP_VIEWS}`);
