@@ -38,18 +38,21 @@ A full-stack web application designed for streamers and editors to efficiently b
     npm install
     ```
 
-3.  **Configure Environment Variables:**
-    Create a `.env` file in the root directory and add your credentials:
-    ```env
-    PORT=3000
-    TWITCH_CLIENT_ID=your_id
-    TWITCH_CLIENT_SECRET=your_secret
-    TIKTOK_CLIENT_KEY=your_id
-    TIKTOK_CLIENT_SECRET=your_secret
-    YTDLP_BIN=yt-dlp
-    # Optional config
-    MIN_CLIP_VIEWS=10
-    TWITCH_CLIPS_LOOKBACK_DAYS=90
+   3.  **Configure Environment Variables:**
+       Create a `.env` file in the root directory and add your credentials:
+       ```env
+       PORT=3000
+       TWITCH_CLIENT_ID=your_id
+       TWITCH_CLIENT_SECRET=your_secret
+       TIKTOK_CLIENT_KEY=your_id
+       TIKTOK_CLIENT_SECRET=your_secret
+       YTDLP_BIN=yt-dlp
+       # Optional config
+       MIN_CLIP_VIEWS=10
+       TWITCH_CLIPS_LOOKBACK_DAYS=90
+       EMAIL_API_KEY=your_email_api_key
+       MAIL_FROM=no-reply@email.address.com
+       APP_BASE_URL=https://baseurl.com
     ```
 
 4.  **Run the application:**
