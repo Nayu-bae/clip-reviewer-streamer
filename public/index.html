@@ -547,11 +547,8 @@
     }
 
     .app-sidebar header .header-meta-group,
-    .app-sidebar header #upload-status-chip,
     .app-sidebar header #bulk-upload-btn,
-    .app-sidebar header #upload-pause-btn,
-    .app-sidebar header #upload-resume-btn,
-    .app-sidebar header #upload-cancel-btn {
+    .app-sidebar header #upload-extra-controls {
       grid-column: 1 / -1;
     }
 
@@ -564,8 +561,6 @@
     }
 
     .app-sidebar header .status-chip,
-    .app-sidebar header .approved-count,
-    .app-sidebar header #upload-status-chip,
     .app-sidebar header .btn-header-upload,
     .app-sidebar header .btn-header-control {
       width: 100%;
@@ -579,8 +574,7 @@
       line-height: 1;
     }
 
-    .app-sidebar header .status-chip,
-    .app-sidebar header #upload-status-chip {
+    .app-sidebar header .status-chip {
       justify-content: space-between;
       border: 1px solid rgba(110, 126, 177, 0.26);
       background: linear-gradient(180deg, rgba(24, 28, 39, 0.84), rgba(17, 21, 31, 0.92));
@@ -596,25 +590,28 @@
       font-size: 0.9rem;
     }
 
-    .app-sidebar header .approved-count {
-      justify-content: flex-start;
-      border: 1px solid rgba(16, 185, 129, 0.56);
-      background: linear-gradient(180deg, rgba(6, 78, 59, 0.62), rgba(6, 95, 70, 0.42));
-      color: #a7f3d0;
-      font-size: 0.9rem;
-      font-weight: 700;
-    }
-
-    .app-sidebar header #upload-status-chip {
-      max-width: none;
+    .app-sidebar-bottom #upload-status-chip {
+      width: 100%;
+      min-height: 38px;
+      border-radius: 14px;
+      padding: 0 11px;
+      display: inline-flex;
+      align-items: center;
+      line-height: 1;
       justify-content: flex-start;
       gap: 8px;
+      border: 1px solid rgba(110, 126, 177, 0.26);
+      background: linear-gradient(180deg, rgba(24, 28, 39, 0.84), rgba(17, 21, 31, 0.92));
+      color: #c7d0e2;
+      font-size: 0.84rem;
+      font-weight: 500;
+      max-width: none;
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
     }
 
-    .app-sidebar header #upload-status-chip::before {
+    .app-sidebar #upload-status-chip::before {
       content: '';
       width: 8px;
       height: 8px;
@@ -624,25 +621,25 @@
       flex: 0 0 auto;
     }
 
-    .app-sidebar header #upload-status-chip[data-state="running"]::before {
+    .app-sidebar #upload-status-chip[data-state="running"]::before {
       background: #5f78ff;
       box-shadow: 0 0 10px rgba(77, 91, 255, 0.9);
       animation: action-progress-pulse 1.2s ease-in-out infinite;
     }
 
-    .app-sidebar header #upload-status-chip[data-state="paused"]::before {
+    .app-sidebar #upload-status-chip[data-state="paused"]::before {
       background: #fbbf24;
       box-shadow: 0 0 8px rgba(251, 191, 36, 0.66);
       animation: none;
     }
 
-    .app-sidebar header #upload-status-chip[data-state="done"]::before {
+    .app-sidebar #upload-status-chip[data-state="done"]::before {
       background: #34d399;
       box-shadow: 0 0 8px rgba(52, 211, 153, 0.72);
       animation: none;
     }
 
-    .app-sidebar header #upload-status-chip[data-state="error"]::before {
+    .app-sidebar #upload-status-chip[data-state="error"]::before {
       background: #f87171;
       box-shadow: 0 0 8px rgba(248, 113, 113, 0.66);
       animation: none;
@@ -670,6 +667,24 @@
       cursor: not-allowed;
     }
 
+    .app-sidebar header .upload-extra-controls {
+      display: grid;
+      gap: 8px;
+      overflow: hidden;
+      max-height: 0;
+      opacity: 0;
+      transform: translateY(-6px);
+      pointer-events: none;
+      transition: max-height 0.26s ease, opacity 0.2s ease, transform 0.22s ease;
+    }
+
+    .app-sidebar header .upload-extra-controls.open {
+      max-height: 160px;
+      opacity: 1;
+      transform: translateY(0);
+      pointer-events: auto;
+    }
+
     .app-sidebar header .btn-header-upload {
       justify-content: flex-start;
       text-align: left;
@@ -682,13 +697,12 @@
       filter: none;
     }
 
-    .app-sidebar header .status-chip:hover,
-    .app-sidebar header #upload-status-chip:hover {
+    .app-sidebar header .status-chip:hover {
       border-color: rgba(110, 126, 177, 0.42);
     }
 
-    .app-sidebar header .approved-count:hover {
-      border-color: rgba(16, 185, 129, 0.82);
+    .app-sidebar-bottom #upload-status-chip:hover {
+      border-color: rgba(110, 126, 177, 0.42);
     }
 
     .app-sidebar header .btn-header-upload:hover {
@@ -888,6 +902,84 @@
 
     .app-sidebar .setup-step-index {
       border-radius: 999px;
+    }
+
+    .session-progress-card {
+      margin: 10px 12px 2px;
+      border: 1px solid rgba(110, 126, 177, 0.26);
+      border-radius: 14px;
+      background: linear-gradient(180deg, rgba(18, 23, 36, 0.9), rgba(12, 16, 26, 0.96));
+      padding: 10px;
+      display: grid;
+      gap: 8px;
+      position: sticky;
+      top: 8px;
+      z-index: 4;
+      box-shadow: 0 8px 20px rgba(0, 0, 0, 0.28);
+    }
+
+    .session-progress-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+    }
+
+    .session-progress-title {
+      font-size: 0.77rem;
+      font-weight: 700;
+      letter-spacing: 0.01em;
+      color: #e4ebff;
+      text-transform: uppercase;
+    }
+
+    .session-progress-time {
+      font-size: 0.72rem;
+      color: #93a0bd;
+      white-space: nowrap;
+    }
+
+    .session-progress-stats {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+      font-size: 0.76rem;
+      color: #a5b1cb;
+    }
+
+    .session-progress-stats strong {
+      color: #f2f6ff;
+      font-size: 0.84rem;
+      margin-right: 3px;
+    }
+
+    .session-progress-bar {
+      height: 7px;
+      border-radius: 999px;
+      border: 1px solid rgba(110, 126, 177, 0.28);
+      background: rgba(12, 17, 28, 0.9);
+      overflow: hidden;
+      display: flex;
+    }
+
+    .session-progress-bar-seg {
+      height: 100%;
+      width: 0%;
+      transition: width 0.2s ease;
+    }
+
+    .session-progress-bar-seg.approved {
+      background: linear-gradient(90deg, rgba(16, 185, 129, 0.95), rgba(52, 211, 153, 0.9));
+    }
+
+    .session-progress-bar-seg.sorted {
+      background: linear-gradient(90deg, rgba(245, 158, 11, 0.95), rgba(251, 191, 36, 0.9));
+    }
+
+    .session-progress-note {
+      font-size: 0.72rem;
+      color: #8290ae;
     }
 
     .setup-guide.hidden {
@@ -2024,6 +2116,66 @@
       overflow: hidden;
       text-overflow: ellipsis;
       white-space: nowrap;
+    }
+
+    .clip-player-header-actions {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .clip-player-nav-count {
+      font-size: 0.76rem;
+      color: #9dadcd;
+      border: 1px solid rgba(110, 126, 177, 0.28);
+      border-radius: 999px;
+      padding: 4px 9px;
+      background: rgba(17, 22, 34, 0.82);
+      min-width: 56px;
+      text-align: center;
+      white-space: nowrap;
+    }
+
+    .clip-player-nav-btn {
+      position: fixed;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 36px;
+      height: 36px;
+      border-radius: 999px;
+      border: 1px solid rgba(110, 126, 177, 0.44);
+      background: rgba(9, 13, 22, 0.72);
+      color: #e8edff;
+      font-size: 1.15rem;
+      line-height: 1;
+      font-weight: 700;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 3;
+      transition: border-color 0.2s ease, background 0.2s ease, color 0.2s ease, transform 0.2s ease;
+    }
+
+    .clip-player-nav-btn:hover:not(:disabled) {
+      border-color: rgba(110, 126, 177, 0.86);
+      background: rgba(29, 40, 68, 0.9);
+      color: #ffffff;
+      transform: translateY(-50%) scale(1.04);
+    }
+
+    .clip-player-nav-btn:disabled {
+      opacity: 0.45;
+      cursor: not-allowed;
+      transform: translateY(-50%);
+    }
+
+    .clip-player-nav-btn.prev {
+      left: max(12px, calc(50% - min(47vw, 430px) - 54px));
+    }
+
+    .clip-player-nav-btn.next {
+      right: max(12px, calc(50% - min(47vw, 430px) - 54px));
     }
 
     /* ── Crop Modal ────────────────────────────── */
@@ -3213,16 +3365,16 @@
             <button id="sidebar-toggle-btn" class="sidebar-toggle-btn" type="button" aria-label="Collapse sidebar" title="Collapse sidebar">⟨</button>
           </div>
           <div class="right">
+            <button class="btn-header-upload" id="bulk-upload-btn">Start Upload</button>
+            <div id="upload-extra-controls" class="upload-extra-controls" aria-hidden="true">
+              <button class="btn-header-control" id="upload-pause-btn" disabled>Pause</button>
+              <button class="btn-header-control" id="upload-resume-btn" disabled>Resume</button>
+              <button class="btn-header-control" id="upload-cancel-btn" disabled>Cancel</button>
+            </div>
             <div class="header-meta-group">
               <div class="status-chip">Streamers<strong id="status-streamers">0</strong></div>
               <div class="status-chip">Last sync<strong id="status-last-sync">Never</strong></div>
-              <div class="approved-count" id="approved-count">0 approved</div>
             </div>
-            <div id="upload-status-chip" class="upload-status-chip">Upload queue idle</div>
-            <button class="btn-header-upload" id="bulk-upload-btn">Start Upload</button>
-            <button class="btn-header-control" id="upload-pause-btn" disabled>Pause</button>
-            <button class="btn-header-control" id="upload-resume-btn" disabled>Resume</button>
-            <button class="btn-header-control" id="upload-cancel-btn" disabled>Cancel</button>
           </div>
         </header>
 
@@ -3266,9 +3418,27 @@
             </div>
           </div>
         </section>
+
+        <section id="session-progress-card" class="session-progress-card" aria-live="polite">
+          <div class="session-progress-head">
+            <span class="session-progress-title">Session Progress</span>
+            <span id="session-progress-time" class="session-progress-time">Started now</span>
+          </div>
+          <div class="session-progress-stats">
+            <span><strong id="session-reviewed-count">0</strong> reviewed</span>
+            <span><strong id="session-approved-count">0</strong> approved</span>
+            <span><strong id="session-sorted-count">0</strong> sorted out</span>
+          </div>
+          <div id="session-progress-bar" class="session-progress-bar" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" aria-label="Session progress breakdown">
+            <span id="session-progress-approved-bar" class="session-progress-bar-seg approved"></span>
+            <span id="session-progress-sorted-bar" class="session-progress-bar-seg sorted"></span>
+          </div>
+          <div id="session-progress-note" class="session-progress-note">Approve or sort clips to build progress in this session.</div>
+        </section>
       </div>
 
       <div class="app-sidebar-bottom">
+        <div id="upload-status-chip" class="upload-status-chip">Upload queue idle</div>
         <div class="sidebar-admin-row">
           <button class="btn-logout inline-flex items-center gap-1.5" id="admin-btn">
             <svg class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
@@ -3364,10 +3534,15 @@
         <span class="clip-player-title-dot"></span>
         <span id="clip-player-title-text" class="clip-player-title-text">Clip Preview</span>
       </h2>
-      <button class="admin-close-btn" id="clip-player-close-btn">✕</button>
+      <div class="clip-player-header-actions">
+        <span id="clip-player-nav-count" class="clip-player-nav-count">1 / 1</span>
+        <button class="admin-close-btn" id="clip-player-close-btn">✕</button>
+      </div>
     </div>
     <div id="clip-player-meta" class="clip-player-meta"></div>
     <div class="clip-player-video-wrap">
+      <button id="clip-player-prev-btn" class="clip-player-nav-btn prev" type="button" aria-label="Previous clip">‹</button>
+      <button id="clip-player-next-btn" class="clip-player-nav-btn next" type="button" aria-label="Next clip">›</button>
       <video id="clip-player-video" controls playsinline preload="metadata"></video>
       <div id="clip-player-status" class="clip-player-status">
         <div class="spinner"></div>
@@ -3676,6 +3851,7 @@
   let needsStreamerSetup = false;
   let activeUploadJobId = null;
   let activePlaybackClipId = null;
+  let visibleClipIds = [];
   let activePlaybackRequestToken = '';
   let uploadPollTimer = null;
   let refreshAbortController = null;
@@ -3691,10 +3867,15 @@
   let cropAutosaveTimer = null;
   let cropLastKnownFingerprint = '';
   let cropLastSavedFingerprint = '';
+  let sessionProgressStartedAt = null;
+  let sessionReviewedIds = new Set();
+  let sessionApprovedIds = new Set();
+  let sessionSortedIds = new Set();
 
   const DASHBOARD_PREFS_KEY = 'clipReviewer.dashboardPrefs.v1';
   const ADMIN_PREFS_KEY = 'clipReviewer.adminPrefs.v1';
   const SIDEBAR_COLLAPSE_KEY = 'clipReviewer.sidebarCollapsed.v1';
+  const SESSION_PROGRESS_KEY_PREFIX = 'clipReviewer.sessionProgress.v1.user.';
   const BADGE_CENTER_SNAP_THRESHOLD = 0.015;
   const ONBOARDING_PROGRESS_KEY_PREFIX = 'clipReviewer.onboardingProgress.v2.user.';
   const ONBOARDING_PROGRESS_KEY_LEGACY = 'clipReviewer.onboardingProgress.v1';
@@ -3891,6 +4072,146 @@
     });
   }
 
+  function getSessionProgressStorageKey() {
+    const username = String(currentUsername || '').trim().toLowerCase();
+    if (!username) return '';
+    return `${SESSION_PROGRESS_KEY_PREFIX}${encodeURIComponent(username)}`;
+  }
+
+  function buildDefaultSessionProgressState() {
+    return {
+      startedAt: new Date().toISOString(),
+      reviewedIds: [],
+      approvedIds: [],
+      sortedIds: [],
+    };
+  }
+
+  function applySessionProgressState(rawState) {
+    const source = rawState && typeof rawState === 'object' ? rawState : {};
+    const reviewedIds = Array.isArray(source.reviewedIds) ? source.reviewedIds : [];
+    const approvedIds = Array.isArray(source.approvedIds) ? source.approvedIds : [];
+    const sortedIds = Array.isArray(source.sortedIds) ? source.sortedIds : [];
+    const startedAtRaw = String(source.startedAt || '').trim();
+    const startedAtValid = !Number.isNaN(new Date(startedAtRaw).getTime());
+
+    sessionProgressStartedAt = startedAtValid ? startedAtRaw : new Date().toISOString();
+    sessionReviewedIds = new Set(reviewedIds.map((id) => String(id || '').trim()).filter(Boolean));
+    sessionApprovedIds = new Set(approvedIds.map((id) => String(id || '').trim()).filter(Boolean));
+    sessionSortedIds = new Set(sortedIds.map((id) => String(id || '').trim()).filter(Boolean));
+  }
+
+  function serializeSessionProgressState() {
+    return {
+      startedAt: sessionProgressStartedAt || new Date().toISOString(),
+      reviewedIds: Array.from(sessionReviewedIds),
+      approvedIds: Array.from(sessionApprovedIds),
+      sortedIds: Array.from(sessionSortedIds),
+    };
+  }
+
+  function saveSessionProgressState() {
+    const key = getSessionProgressStorageKey();
+    if (!key) return;
+    try {
+      sessionStorage.setItem(key, JSON.stringify(serializeSessionProgressState()));
+    } catch {
+      // Keep in-memory progress if storage is unavailable.
+    }
+  }
+
+  function loadSessionProgressState() {
+    const fallback = buildDefaultSessionProgressState();
+    const key = getSessionProgressStorageKey();
+    if (!key) {
+      applySessionProgressState(fallback);
+      updateSessionProgressCard();
+      return;
+    }
+
+    try {
+      const raw = sessionStorage.getItem(key);
+      if (!raw) {
+        applySessionProgressState(fallback);
+        saveSessionProgressState();
+        updateSessionProgressCard();
+        return;
+      }
+      const parsed = JSON.parse(raw);
+      applySessionProgressState(parsed);
+    } catch {
+      applySessionProgressState(fallback);
+    }
+    updateSessionProgressCard();
+  }
+
+  function recordSessionProgressAction(clipId, actionType, isActive) {
+    const id = String(clipId || '').trim();
+    if (!id) return;
+    sessionReviewedIds.add(id);
+
+    if (actionType === 'approved') {
+      if (isActive) sessionApprovedIds.add(id);
+      else sessionApprovedIds.delete(id);
+      if (isActive) sessionSortedIds.delete(id);
+    } else if (actionType === 'sorted') {
+      if (isActive) sessionSortedIds.add(id);
+      else sessionSortedIds.delete(id);
+      if (isActive) sessionApprovedIds.delete(id);
+    }
+
+    saveSessionProgressState();
+    updateSessionProgressCard();
+  }
+
+  function formatSessionElapsedLabel(startedAtIso) {
+    if (!startedAtIso) return 'Started now';
+    const dt = new Date(startedAtIso);
+    if (Number.isNaN(dt.getTime())) return 'Started now';
+    const deltaSec = Math.max(0, Math.floor((Date.now() - dt.getTime()) / 1000));
+    if (deltaSec < 30) return 'Started now';
+    if (deltaSec < 60) return `Started ${deltaSec}s ago`;
+    const deltaMin = Math.floor(deltaSec / 60);
+    if (deltaMin < 60) return `Started ${deltaMin}m ago`;
+    const deltaHour = Math.floor(deltaMin / 60);
+    if (deltaHour < 24) return `Started ${deltaHour}h ago`;
+    return `Started ${dt.toLocaleDateString([], { month: 'short', day: 'numeric' })}`;
+  }
+
+  function updateSessionProgressCard() {
+    const reviewedEl = document.getElementById('session-reviewed-count');
+    const approvedEl = document.getElementById('session-approved-count');
+    const sortedEl = document.getElementById('session-sorted-count');
+    const timeEl = document.getElementById('session-progress-time');
+    const approvedBar = document.getElementById('session-progress-approved-bar');
+    const sortedBar = document.getElementById('session-progress-sorted-bar');
+    const progressBar = document.getElementById('session-progress-bar');
+    const noteEl = document.getElementById('session-progress-note');
+    if (!reviewedEl || !approvedEl || !sortedEl || !timeEl || !approvedBar || !sortedBar || !progressBar || !noteEl) return;
+
+    const reviewed = sessionReviewedIds.size;
+    const approved = sessionApprovedIds.size;
+    const sorted = sessionSortedIds.size;
+    const activeBase = Math.max(1, reviewed);
+    const approvedPct = Math.max(0, Math.min(100, (approved / activeBase) * 100));
+    const sortedPct = Math.max(0, Math.min(100 - approvedPct, (sorted / activeBase) * 100));
+
+    reviewedEl.textContent = String(reviewed);
+    approvedEl.textContent = String(approved);
+    sortedEl.textContent = String(sorted);
+    timeEl.textContent = formatSessionElapsedLabel(sessionProgressStartedAt);
+
+    approvedBar.style.width = `${approvedPct}%`;
+    sortedBar.style.width = `${sortedPct}%`;
+    progressBar.setAttribute('aria-valuenow', String(Math.round(approvedPct + sortedPct)));
+
+    if (reviewed === 0) {
+      noteEl.textContent = 'Approve or sort clips to build progress in this session.';
+    } else {
+      noteEl.textContent = `Reviewed ${reviewed} clip${reviewed === 1 ? '' : 's'} this session.`;
+    }
+  }
+
   function normalizeOnboardingProgress(raw) {
     const source = raw && typeof raw === 'object' ? raw : {};
     return {
@@ -3976,6 +4297,7 @@
     if (streamerEl) streamerEl.textContent = String(Math.max(0, Number(managedStreamerCount) || 0));
     if (syncEl) syncEl.textContent = formatRelativeSyncLabel(lastClipSyncAt);
     updateSidebarProfileCard();
+    updateSessionProgressCard();
   }
 
   function setSetupStepDone(stepId, done) {
@@ -4666,6 +4988,8 @@
     document.getElementById('username-input').value = '';
     document.getElementById('verification-code-input').value = '';
     document.getElementById('password-input').value = '';
+    applySessionProgressState(buildDefaultSessionProgressState());
+    updateSessionProgressCard();
     setAuthMode('login');
     setAuthInfo('');
     clearAccountLinkUrlState();
@@ -4682,6 +5006,7 @@
     document.getElementById('login-screen').style.display = 'none';
     document.getElementById('app-screen').style.display = 'block';
     document.body.classList.remove('login-view');
+    loadSessionProgressState();
     setSidebarProfileMenu(false);
     clearDashboardState();
     updateDashboardStatusRow();
@@ -5276,6 +5601,7 @@
     const pauseBtn = document.getElementById('upload-pause-btn');
     const resumeBtn = document.getElementById('upload-resume-btn');
     const cancelBtn = document.getElementById('upload-cancel-btn');
+    const extraControls = document.getElementById('upload-extra-controls');
 
     if (!job) {
       statusEl.textContent = 'Upload queue idle';
@@ -5285,6 +5611,10 @@
       pauseBtn.disabled = true;
       resumeBtn.disabled = true;
       cancelBtn.disabled = true;
+      if (extraControls) {
+        extraControls.classList.remove('open');
+        extraControls.setAttribute('aria-hidden', 'true');
+      }
       return;
     }
 
@@ -5311,6 +5641,10 @@
     pauseBtn.disabled = job.status !== 'running';
     resumeBtn.disabled = job.status !== 'paused';
     cancelBtn.disabled = !active;
+    if (extraControls) {
+      extraControls.classList.toggle('open', active);
+      extraControls.setAttribute('aria-hidden', active ? 'false' : 'true');
+    }
   }
 
   function stopUploadPolling() {
@@ -5396,7 +5730,8 @@
       .filter(c => c.sorted_out)
       .sort(sortClipsPerStreamer);
 
-    document.getElementById('approved-count').textContent = `${allApproved.length} approved`;
+    const approvedCountEl = document.getElementById('approved-count');
+    if (approvedCountEl) approvedCountEl.textContent = `${allApproved.length} approved`;
 
     let filtered;
     let statsHtml;
@@ -5415,10 +5750,12 @@
       statsHtml = `Showing <strong>${filtered.length}</strong> clips &nbsp;·&nbsp; <strong>${periodFiltered.filter(c => c.approved).length}</strong> approved &nbsp;·&nbsp; <strong>${periodFiltered.filter(c => !c.approved).length}</strong> pending`;
     }
 
+    visibleClipIds = filtered.map((clip) => String(clip.id || '')).filter(Boolean);
     document.getElementById('stats-bar').innerHTML = statsHtml;
     updateSetupGuide();
 
     if (filtered.length === 0) {
+      visibleClipIds = [];
       document.getElementById('empty').style.display = dashboardStateCard ? 'none' : 'block';
       return;
     }
@@ -5627,6 +5964,8 @@
     managedStreamerCount = 0;
     lastClipSyncAt = null;
     sidebarProfileEmailMasked = '';
+    applySessionProgressState(buildDefaultSessionProgressState());
+    updateSessionProgressCard();
     setSidebarProfileMenu(false);
     setNavbarUsername('');
     updateSetupGuide();
@@ -5712,6 +6051,31 @@
     `;
   }
 
+  function getPlaybackClipSequence() {
+    const fromVisible = Array.isArray(visibleClipIds) ? visibleClipIds.map((id) => String(id || '')).filter(Boolean) : [];
+    if (fromVisible.length > 0) return fromVisible;
+    return [...allClips].sort(sortClipsPerStreamer).map((clip) => String(clip.id || '')).filter(Boolean);
+  }
+
+  function getPlaybackPosition() {
+    const sequence = getPlaybackClipSequence();
+    const activeId = String(activePlaybackClipId || '');
+    const index = sequence.indexOf(activeId);
+    return { sequence, index };
+  }
+
+  function navigateClipPlayback(offset) {
+    const step = Number(offset);
+    if (!Number.isFinite(step) || step === 0 || !activePlaybackClipId) return;
+    const { sequence, index } = getPlaybackPosition();
+    if (!sequence.length || index < 0) return;
+    const nextIndex = index + (step > 0 ? 1 : -1);
+    if (nextIndex < 0 || nextIndex >= sequence.length) return;
+    activePlaybackClipId = sequence[nextIndex];
+    activePlaybackRequestToken = '';
+    renderClipPlayerModal();
+  }
+
   function openClipPlayerModal(clipId) {
     activePlaybackClipId = String(clipId || '');
     activePlaybackRequestToken = '';
@@ -5754,10 +6118,16 @@
   function closeClipPlayerModal() {
     const modal = document.getElementById('clip-player-modal');
     const video = document.getElementById('clip-player-video');
+    const prevBtn = document.getElementById('clip-player-prev-btn');
+    const nextBtn = document.getElementById('clip-player-next-btn');
+    const countEl = document.getElementById('clip-player-nav-count');
     activePlaybackClipId = null;
     activePlaybackRequestToken = '';
     modal.classList.remove('show');
     setClipPlayerStatus('hidden');
+    if (prevBtn) prevBtn.disabled = true;
+    if (nextBtn) nextBtn.disabled = true;
+    if (countEl) countEl.textContent = '1 / 1';
     try {
       video.pause();
       video.removeAttribute('src');
@@ -5782,6 +6152,18 @@
     const metaEl = document.getElementById('clip-player-meta');
     const actionsEl = document.getElementById('clip-player-actions');
     const videoEl = document.getElementById('clip-player-video');
+    const prevBtn = document.getElementById('clip-player-prev-btn');
+    const nextBtn = document.getElementById('clip-player-next-btn');
+    const countEl = document.getElementById('clip-player-nav-count');
+    const { sequence, index } = getPlaybackPosition();
+    const total = Math.max(1, sequence.length);
+    const current = index >= 0 ? (index + 1) : 1;
+    const hasPrev = index > 0;
+    const hasNext = index >= 0 && index < (sequence.length - 1);
+
+    if (countEl) countEl.textContent = `${current} / ${total}`;
+    if (prevBtn) prevBtn.disabled = !hasPrev;
+    if (nextBtn) nextBtn.disabled = !hasNext;
 
     titleEl.textContent = clip.title || 'Clip Preview';
     metaEl.innerHTML = `
@@ -5916,8 +6298,10 @@
     await fetch(`/api/approve/${clipId}`, { method });
 
     // Update local state
+    const nextApproved = !currentlyApproved;
     const clip = allClips.find(c => c.id === clipId);
-    if (clip) clip.approved = !currentlyApproved;
+    if (clip) clip.approved = nextApproved;
+    recordSessionProgressAction(clipId, 'approved', nextApproved);
 
     // Replace card in place
     const oldCard = document.getElementById(`card-${clipId}`);
@@ -5932,7 +6316,8 @@
     cutoff.setDate(cutoff.getDate() - currentPeriod);
     const periodFiltered = activeClips.filter(c => new Date(c.created_at) >= cutoff);
     const allApproved = activeClips.filter(c => c.approved);
-    document.getElementById('approved-count').textContent = `${allApproved.length} approved`;
+    const approvedCountEl = document.getElementById('approved-count');
+    if (approvedCountEl) approvedCountEl.textContent = `${allApproved.length} approved`;
 
     const stats = document.getElementById('stats-bar');
     if (currentFilter === 'approved') {
@@ -5956,8 +6341,10 @@
     await fetch(`/api/sortout/${clipId}`, { method });
 
     // Update local state
+    const nextSortedOut = !currentlySortedOut;
     const clip = allClips.find(c => c.id === clipId);
-    if (clip) clip.sorted_out = !currentlySortedOut;
+    if (clip) clip.sorted_out = nextSortedOut;
+    recordSessionProgressAction(clipId, 'sorted', nextSortedOut);
 
     // Replace card in place
     const oldCard = document.getElementById(`card-${clipId}`);
@@ -8193,6 +8580,8 @@
   document.getElementById('crop-preview-media').addEventListener('seeked', handleCropPreviewMediaReady);
 
   document.getElementById('clip-player-close-btn').addEventListener('click', closeClipPlayerModal);
+  document.getElementById('clip-player-prev-btn').addEventListener('click', () => navigateClipPlayback(-1));
+  document.getElementById('clip-player-next-btn').addEventListener('click', () => navigateClipPlayback(1));
   document.getElementById('clip-player-retry-btn').addEventListener('click', retryClipPlayerVideo);
   document.getElementById('clip-player-modal').addEventListener('click', (e) => {
     if (e.target.id === 'clip-player-modal') closeClipPlayerModal();
