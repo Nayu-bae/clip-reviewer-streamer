@@ -42,25 +42,186 @@
     };
   </script>
   <style>
-    .home-pro-btn {
-      border: 1px solid rgba(141, 155, 255, 0.82);
-      border-radius: 14px;
-      background: linear-gradient(180deg, #5f6cff 0%, #4959f8 48%, #3444d2 100%);
-      color: #eef2ff !important;
-      box-shadow:
+    :root {
+      --ui-btn-bg: linear-gradient(180deg, rgba(24, 28, 39, 0.84), rgba(17, 21, 31, 0.92));
+      --ui-btn-border: rgba(110, 126, 177, 0.3);
+      --ui-btn-text: #d6deec;
+      --brand-btn-bg: linear-gradient(90deg, rgba(23, 28, 40, 0.92) 0%, rgba(46, 58, 170, 0.58) 100%);
+      --brand-btn-border: rgba(110, 126, 177, 0.78);
+      --brand-btn-shadow:
+        0 0 0 1px rgba(170, 182, 255, 0.22) inset,
+        0 0 12px rgba(77, 91, 255, 0.22);
+      --brand-btn-shadow-hover:
+        0 0 0 1px rgba(170, 182, 255, 0.26) inset,
+        0 0 14px rgba(77, 91, 255, 0.3);
+      --cta-bright-bg: linear-gradient(180deg, #5f6cff 0%, #4959f8 48%, #3444d2 100%);
+      --cta-bright-border: rgba(141, 155, 255, 0.82);
+      --cta-bright-shadow:
         0 0 0 1px rgba(255, 255, 255, 0.14) inset,
         0 10px 24px rgba(63, 78, 202, 0.52),
         0 0 18px rgba(77, 91, 255, 0.42);
-      transition: filter 0.2s ease, transform 0.18s ease, box-shadow 0.2s ease;
-    }
-
-    .home-pro-btn:hover {
-      filter: brightness(1.08);
-      transform: translateY(-1px);
-      box-shadow:
+      --cta-bright-shadow-hover:
         0 0 0 1px rgba(255, 255, 255, 0.2) inset,
         0 12px 28px rgba(63, 78, 202, 0.58),
         0 0 20px rgba(77, 91, 255, 0.5);
+    }
+
+    .home-pro-btn {
+      border: 1px solid var(--ui-btn-border);
+      border-radius: 14px;
+      background: var(--ui-btn-bg);
+      color: var(--ui-btn-text) !important;
+      box-shadow: none;
+      transition: filter 0.2s ease, transform 0.18s ease, box-shadow 0.2s ease;
+    }
+
+    .home-pro-btn::after {
+      content: none !important;
+      display: none !important;
+    }
+
+    .home-pro-btn:hover {
+      filter: brightness(1.03);
+      transform: none;
+      border-color: var(--brand-btn-border);
+      background: var(--brand-btn-bg);
+      color: #eef2ff !important;
+      box-shadow: var(--brand-btn-shadow-hover);
+    }
+
+    .home-pro-btn.home-cta-bright {
+      border-color: var(--cta-bright-border);
+      background: var(--cta-bright-bg);
+      color: #eef2ff !important;
+      box-shadow: var(--cta-bright-shadow);
+    }
+
+    .home-pro-btn.home-cta-bright:hover {
+      filter: brightness(1.08);
+      transform: translateY(-1px);
+      border-color: var(--cta-bright-border);
+      background: var(--cta-bright-bg);
+      color: #eef2ff !important;
+      box-shadow: var(--cta-bright-shadow-hover);
+    }
+
+    .home-tools-dropdown {
+      position: relative;
+      flex: 0 0 auto;
+    }
+
+    .home-tools-dropdown::after {
+      content: '';
+      position: absolute;
+      left: 0;
+      right: 0;
+      top: 100%;
+      height: 12px;
+    }
+
+    #tools-toggle {
+      min-height: 40px;
+      min-width: 118px;
+      justify-content: space-between;
+    }
+
+    .home-tools-menu {
+      position: absolute;
+      right: 0;
+      top: calc(100% + 10px);
+      width: min(840px, calc(100vw - 24px));
+      border-radius: 18px;
+      border: 1px solid rgba(110, 126, 177, 0.32);
+      background:
+        radial-gradient(110% 120% at 100% 0%, rgba(77, 91, 255, 0.14), transparent 58%),
+        linear-gradient(180deg, rgba(15, 19, 30, 0.98), rgba(11, 14, 22, 0.98));
+      box-shadow:
+        0 24px 54px rgba(0, 0, 0, 0.48),
+        0 0 0 1px rgba(170, 182, 255, 0.05) inset;
+      padding: 14px;
+      display: grid;
+      gap: 10px;
+      opacity: 0;
+      pointer-events: none;
+      transform: translateY(-6px);
+      transition: opacity 0.16s ease, transform 0.2s ease;
+      z-index: 120;
+    }
+
+    .home-tools-dropdown:hover .home-tools-menu,
+    .home-tools-dropdown:focus-within .home-tools-menu,
+    .home-tools-menu.open {
+      opacity: 1;
+      pointer-events: auto;
+      transform: translateY(0);
+    }
+
+    .home-tools-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+    }
+
+    .home-tools-item {
+      display: grid;
+      grid-template-columns: 40px minmax(0, 1fr);
+      gap: 10px;
+      align-items: flex-start;
+      border-radius: 14px;
+      border: 1px solid rgba(110, 126, 177, 0.2);
+      background: linear-gradient(180deg, rgba(22, 27, 40, 0.7), rgba(15, 19, 30, 0.78));
+      padding: 12px;
+      text-decoration: none;
+      transition: border-color 0.2s ease, background 0.2s ease, box-shadow 0.2s ease;
+    }
+
+    .home-tools-item:hover {
+      border-color: rgba(110, 126, 177, 0.72);
+      background: linear-gradient(90deg, rgba(24, 30, 44, 0.92) 0%, rgba(45, 57, 163, 0.52) 100%);
+      box-shadow: 0 0 0 1px rgba(170, 182, 255, 0.16) inset, 0 0 12px rgba(77, 91, 255, 0.22);
+    }
+
+    .home-tools-item-icon {
+      width: 40px;
+      height: 40px;
+      border-radius: 12px;
+      border: 1px solid rgba(110, 126, 177, 0.34);
+      background: linear-gradient(180deg, rgba(24, 28, 39, 0.86), rgba(17, 21, 31, 0.94));
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      color: #cfd8f6;
+      box-shadow: 0 0 10px rgba(77, 91, 255, 0.16);
+      flex: 0 0 auto;
+    }
+
+    .home-tools-item-icon svg {
+      width: 20px;
+      height: 20px;
+      stroke: currentColor;
+      stroke-width: 1.8;
+      fill: none;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+
+    .home-tools-item-copy {
+      min-width: 0;
+      display: grid;
+      gap: 3px;
+    }
+
+    .home-tools-item-title {
+      color: #f3f6ff;
+      font-size: 1rem;
+      font-weight: 700;
+      line-height: 1.2;
+    }
+
+    .home-tools-item-desc {
+      color: #9ca9c7;
+      font-size: 0.9rem;
+      line-height: 1.4;
     }
 
     .cookie-consent {
@@ -142,19 +303,36 @@
     }
 
     .cookie-btn.accept {
-      border-color: rgba(141, 155, 255, 0.82);
-      background: linear-gradient(180deg, #5f6cff 0%, #4959f8 48%, #3444d2 100%);
-      color: #eef2ff;
-      box-shadow:
-        0 0 0 1px rgba(255, 255, 255, 0.12) inset,
-        0 8px 20px rgba(63, 78, 202, 0.48);
+      border-color: var(--ui-btn-border);
+      background: var(--ui-btn-bg);
+      color: var(--ui-btn-text);
+      box-shadow: none;
+    }
+
+    .cookie-btn.accept::after {
+      content: none !important;
+      display: none !important;
     }
 
     .cookie-btn.accept:hover {
-      filter: brightness(1.06);
+      filter: brightness(1.03);
+      border-color: var(--brand-btn-border);
+      background: var(--brand-btn-bg);
+      color: #eef2ff;
+      box-shadow: var(--brand-btn-shadow-hover);
     }
 
     @media (max-width: 640px) {
+      .home-tools-menu {
+        width: min(600px, calc(100vw - 20px));
+        right: -8px;
+        padding: 10px;
+      }
+
+      .home-tools-grid {
+        grid-template-columns: 1fr;
+      }
+
       .cookie-consent {
         left: 12px;
         right: 12px;
@@ -192,22 +370,80 @@
         Clip-Reviewer
       </a>
       <div class="flex items-center gap-2 sm:gap-3">
-        <div id="tools-dropdown" class="relative">
+        <div id="tools-dropdown" class="home-tools-dropdown">
           <button id="tools-toggle" type="button" aria-expanded="false" aria-controls="tools-menu" class="inline-flex items-center gap-2 rounded-full border border-white/15 bg-clip-panel2/80 px-4 py-2 text-sm font-semibold text-zinc-100 transition hover:border-twitch-600/70 hover:text-indigo-200">
             Tools
             <svg class="h-3.5 w-3.5 opacity-80" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.17l3.71-3.94a.75.75 0 111.1 1.02l-4.25 4.52a.75.75 0 01-1.1 0L5.21 8.25a.75.75 0 01.02-1.04z" clip-rule="evenodd"/></svg>
           </button>
-          <div id="tools-menu" role="menu" class="tools-menu absolute right-0 mt-2 w-[290px] rounded-2xl border border-white/12 bg-[#111118]/95 p-2.5 shadow-2xl">
-            <a class="block rounded-xl px-3 py-2 text-sm text-clip-muted hover:bg-twitch-600/16 hover:text-zinc-100" href="/tools/clip-discovery.html">Clip Discovery</a>
-            <a class="block rounded-xl px-3 py-2 text-sm text-clip-muted hover:bg-twitch-600/16 hover:text-zinc-100" href="/tools/approval-workflow.html">Approval Workflow</a>
-            <a class="block rounded-xl px-3 py-2 text-sm text-clip-muted hover:bg-twitch-600/16 hover:text-zinc-100" href="/tools/upload-edit-studio.html">Upload Edit Studio</a>
-            <a class="block rounded-xl px-3 py-2 text-sm text-clip-muted hover:bg-twitch-600/16 hover:text-zinc-100" href="/tools/split-zoom-timeline.html">Split + Zoom Timeline</a>
-            <a class="block rounded-xl px-3 py-2 text-sm text-clip-muted hover:bg-twitch-600/16 hover:text-zinc-100" href="/tools/tiktok-output-preview.html">TikTok Output Preview</a>
-            <a class="block rounded-xl px-3 py-2 text-sm text-clip-muted hover:bg-twitch-600/16 hover:text-zinc-100" href="/tools/bulk-upload-queue.html">Bulk Upload Queue</a>
-            <a class="block rounded-xl px-3 py-2 text-sm text-clip-muted hover:bg-twitch-600/16 hover:text-zinc-100" href="/tools/admin-streamer-management.html">Admin + Streamers</a>
+          <div id="tools-menu" role="menu" class="tools-menu home-tools-menu">
+            <div class="home-tools-grid">
+              <a class="home-tools-item" href="/tools/clip-discovery.html">
+                <span class="home-tools-item-icon" aria-hidden="true">
+                  <svg viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h10"/><circle cx="18" cy="18" r="3"/></svg>
+                </span>
+                <span class="home-tools-item-copy">
+                  <span class="home-tools-item-title">Clip Discovery</span>
+                  <span class="home-tools-item-desc">Fetch, browse, and review incoming clips from your streamer sources.</span>
+                </span>
+              </a>
+              <a class="home-tools-item" href="/tools/approval-workflow.html">
+                <span class="home-tools-item-icon" aria-hidden="true">
+                  <svg viewBox="0 0 24 24"><path d="M5 12l4 4L19 6"/><rect x="3" y="3" width="18" height="18" rx="3"/></svg>
+                </span>
+                <span class="home-tools-item-copy">
+                  <span class="home-tools-item-title">Approval Workflow</span>
+                  <span class="home-tools-item-desc">Move fast through pending, approved, and sorted-out decisions.</span>
+                </span>
+              </a>
+              <a class="home-tools-item" href="/tools/upload-edit-studio.html">
+                <span class="home-tools-item-icon" aria-hidden="true">
+                  <svg viewBox="0 0 24 24"><path d="M4 5h16v14H4z"/><path d="M9 9h6M9 13h4M7 3v4M17 3v4"/></svg>
+                </span>
+                <span class="home-tools-item-copy">
+                  <span class="home-tools-item-title">Upload Edit Studio</span>
+                  <span class="home-tools-item-desc">Set camera/gameplay layout and prep vertical output precisely.</span>
+                </span>
+              </a>
+              <a class="home-tools-item" href="/tools/split-zoom-timeline.html">
+                <span class="home-tools-item-icon" aria-hidden="true">
+                  <svg viewBox="0 0 24 24"><path d="M3 12h18"/><path d="M8 6v12M16 6v12"/><path d="M12 8v8"/></svg>
+                </span>
+                <span class="home-tools-item-copy">
+                  <span class="home-tools-item-title">Split + Zoom Timeline</span>
+                  <span class="home-tools-item-desc">Cut dead air, highlight moments, and control pacing with clarity.</span>
+                </span>
+              </a>
+              <a class="home-tools-item" href="/tools/tiktok-output-preview.html">
+                <span class="home-tools-item-icon" aria-hidden="true">
+                  <svg viewBox="0 0 24 24"><rect x="7" y="3" width="10" height="18" rx="2"/><path d="M10 7h4M10 11h4M10 15h4"/></svg>
+                </span>
+                <span class="home-tools-item-copy">
+                  <span class="home-tools-item-title">TikTok Output Preview</span>
+                  <span class="home-tools-item-desc">Validate the final 9:16 composition before exporting clips.</span>
+                </span>
+              </a>
+              <a class="home-tools-item" href="/tools/bulk-upload-queue.html">
+                <span class="home-tools-item-icon" aria-hidden="true">
+                  <svg viewBox="0 0 24 24"><path d="M12 4v10"/><path d="M8 10l4 4 4-4"/><rect x="4" y="16" width="16" height="4" rx="1"/></svg>
+                </span>
+                <span class="home-tools-item-copy">
+                  <span class="home-tools-item-title">Bulk Upload Queue</span>
+                  <span class="home-tools-item-desc">Batch upload clips with robust pause, resume, and cancel controls.</span>
+                </span>
+              </a>
+              <a class="home-tools-item" href="/tools/admin-streamer-management.html">
+                <span class="home-tools-item-icon" aria-hidden="true">
+                  <svg viewBox="0 0 24 24"><circle cx="8" cy="9" r="3"/><circle cx="16" cy="8" r="2.5"/><path d="M3 19c1.2-2.3 3-3.5 5-3.5s3.8 1.2 5 3.5"/><path d="M13.5 18.5c.8-1.6 2-2.4 3.5-2.4 1.4 0 2.6.8 3.4 2.4"/></svg>
+                </span>
+                <span class="home-tools-item-copy">
+                  <span class="home-tools-item-title">Admin + Streamers</span>
+                  <span class="home-tools-item-desc">Manage streamer mappings and operational controls in one place.</span>
+                </span>
+              </a>
+            </div>
           </div>
         </div>
-        <a href="/login" class="home-pro-btn inline-flex items-center justify-center px-4 py-2 text-sm font-extrabold">Start for free today</a>
+        <a href="/login" class="home-pro-btn home-cta-bright inline-flex items-center justify-center px-4 py-2 text-sm font-extrabold">Start for free today</a>
       </div>
     </div>
   </header>
@@ -219,8 +455,8 @@
         <h1 class="max-w-4xl text-3xl font-extrabold leading-tight tracking-tight sm:text-5xl">Super fast, super easy clip operations for your content pipeline.</h1>
         <p class="mt-5 max-w-3xl text-sm leading-relaxed text-clip-muted sm:text-base">Clip-Reviewer helps you go from discovery to export with less friction: fetch clips, approve quickly, edit with precision, and ship with confidence.</p>
         <div class="mt-7 flex flex-wrap gap-3">
-          <a href="/login" class="home-pro-btn px-4 py-2 text-sm font-bold">Start for free today</a>
-          <a href="#how-it-works" class="rounded-full border border-white/15 bg-white/5 px-4 py-2 text-sm font-semibold text-zinc-200 transition hover:border-white/25 hover:bg-white/10">How it works</a>
+          <a href="/login" class="home-pro-btn home-cta-bright px-4 py-2 text-sm font-bold">Start for free today</a>
+          <a href="#how-it-works" class="home-pro-btn px-4 py-2 text-sm font-semibold">How it works</a>
         </div>
       </div>
     </section>

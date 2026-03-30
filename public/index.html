@@ -33,6 +33,27 @@
       --red: #e91916;
       --text: #f3f6ff;
       --muted: #98a3ba;
+      --ui-btn-bg: linear-gradient(180deg, rgba(24, 28, 39, 0.84), rgba(17, 21, 31, 0.92));
+      --ui-btn-border: rgba(110, 126, 177, 0.3);
+      --ui-btn-text: #d6deec;
+      --brand-btn-bg: linear-gradient(90deg, rgba(23, 28, 40, 0.92) 0%, rgba(46, 58, 170, 0.58) 100%);
+      --brand-btn-border: rgba(110, 126, 177, 0.78);
+      --brand-btn-shadow:
+        0 0 0 1px rgba(170, 182, 255, 0.22) inset,
+        0 0 12px rgba(77, 91, 255, 0.22);
+      --brand-btn-shadow-hover:
+        0 0 0 1px rgba(170, 182, 255, 0.26) inset,
+        0 0 14px rgba(77, 91, 255, 0.3);
+      --cta-bright-bg: linear-gradient(180deg, #5f6cff 0%, #4959f8 48%, #3444d2 100%);
+      --cta-bright-border: rgba(141, 155, 255, 0.82);
+      --cta-bright-shadow:
+        0 0 0 1px rgba(255, 255, 255, 0.14) inset,
+        0 10px 24px rgba(63, 78, 202, 0.52),
+        0 0 18px rgba(77, 91, 255, 0.42);
+      --cta-bright-shadow-hover:
+        0 0 0 1px rgba(255, 255, 255, 0.2) inset,
+        0 12px 28px rgba(63, 78, 202, 0.58),
+        0 0 20px rgba(77, 91, 255, 0.5);
     }
 
     * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -63,17 +84,18 @@
 
     .login-card {
       background:
-        linear-gradient(180deg, rgba(32, 32, 36, 0.94), rgba(23, 23, 27, 0.9));
-      border: 1px solid rgba(255, 255, 255, 0.1);
+        radial-gradient(140% 110% at 100% 0%, rgba(77, 91, 255, 0.14), transparent 58%),
+        linear-gradient(180deg, rgba(16, 20, 31, 0.96), rgba(11, 14, 22, 0.96));
+      border: 1px solid rgba(110, 126, 177, 0.3);
       border-radius: 20px;
       padding: 38px 32px 30px;
       width: min(420px, 92vw);
       text-align: center;
       backdrop-filter: blur(14px);
       box-shadow:
-        0 30px 80px rgba(0, 0, 0, 0.48),
-        0 0 0 1px rgba(255, 255, 255, 0.04) inset,
-        0 18px 40px rgba(51, 68, 196, 0.08);
+        0 30px 80px rgba(0, 0, 0, 0.5),
+        0 0 0 1px rgba(170, 182, 255, 0.06) inset,
+        0 18px 40px rgba(51, 68, 196, 0.14);
     }
 
     .login-card .logo {
@@ -162,37 +184,99 @@
     .login-card button {
       width: 100%;
       padding: 11px;
-      background: linear-gradient(135deg, #4d5bff, #3344c4);
-      color: #fff;
-      border: none;
+      background: var(--ui-btn-bg);
+      color: var(--ui-btn-text);
+      border: 1px solid var(--ui-btn-border);
       border-radius: 10px;
       font-size: 0.98rem;
       font-weight: 700;
       cursor: pointer;
-      transition: transform 0.15s ease, filter 0.2s ease;
-      box-shadow: 0 10px 24px rgba(77, 91, 255, 0.35);
+      transition: border-color 0.2s ease, background 0.2s ease, box-shadow 0.2s ease, color 0.2s ease, filter 0.2s ease, transform 0.15s ease;
+      box-shadow: none;
+    }
+
+    .login-card button::after {
+      content: none !important;
+      display: none !important;
+    }
+
+    #account-modal button::after {
+      content: none !important;
+      display: none !important;
+    }
+
+    #streamer-setup-save,
+    #add-streamer-save,
+    #account-add-email-btn,
+    #account-verify-btn,
+    #account-send-link-btn {
+      border: 1px solid var(--ui-btn-border) !important;
+      background: var(--ui-btn-bg) !important;
+      color: var(--ui-btn-text) !important;
+      box-shadow: none !important;
+      transition: filter 0.2s ease, transform 0.18s ease, box-shadow 0.2s ease !important;
+    }
+
+    #streamer-setup-save:hover,
+    #add-streamer-save:hover,
+    #account-add-email-btn:hover,
+    #account-verify-btn:hover,
+    #account-send-link-btn:hover {
+      filter: brightness(1.03);
+      transform: none;
+      border-color: var(--brand-btn-border) !important;
+      background: var(--brand-btn-bg) !important;
+      color: #eef2ff !important;
+      box-shadow: var(--brand-btn-shadow-hover) !important;
+    }
+
+    #streamer-setup-save::after,
+    #add-streamer-save::after,
+    #account-add-email-btn::after,
+    #account-verify-btn::after,
+    #account-send-link-btn::after {
+      content: none !important;
+      display: none !important;
     }
 
     .login-card button:hover {
-      filter: brightness(1.07);
+      filter: brightness(1.03);
+      transform: none;
+      border-color: var(--brand-btn-border);
+      background: var(--brand-btn-bg);
+      color: #eef2ff;
+      box-shadow: var(--brand-btn-shadow-hover);
+    }
+
+    #login-btn {
+      border-color: var(--cta-bright-border);
+      background: var(--cta-bright-bg);
+      color: #eef2ff;
+      box-shadow: var(--cta-bright-shadow);
+    }
+
+    #login-btn:hover {
+      filter: brightness(1.08);
       transform: translateY(-1px);
+      border-color: var(--cta-bright-border);
+      background: var(--cta-bright-bg);
+      color: #eef2ff;
+      box-shadow: var(--cta-bright-shadow-hover);
     }
 
     .login-card .btn-secondary {
       margin-top: 10px;
-      background: rgba(24, 24, 27, 0.8);
-      border: 1px solid rgba(255, 255, 255, 0.18);
-      color: #d4d4d8;
+      background: var(--ui-btn-bg);
+      border: 1px solid var(--ui-btn-border);
+      color: var(--ui-btn-text);
       box-shadow: none;
       font-weight: 600;
     }
 
     .login-card .btn-secondary:hover {
-      border-color: rgba(77, 91, 255, 0.7);
-      color: #e7ecff;
-      background: rgba(40, 52, 146, 0.24);
-      filter: none;
+      filter: brightness(1.03);
       transform: none;
+      box-shadow: var(--brand-btn-shadow-hover);
     }
 
     .login-card .back-home-link {
@@ -203,19 +287,23 @@
       margin-top: 10px;
       padding: 10px 12px;
       border-radius: 10px;
-      border: 1px solid rgba(255, 255, 255, 0.16);
-      background: rgba(24, 24, 27, 0.8);
-      color: #d4d4d8;
+      border: 1px solid var(--ui-btn-border);
+      background: var(--ui-btn-bg);
+      color: var(--ui-btn-text);
       font-size: 0.9rem;
       font-weight: 700;
       text-decoration: none;
-      transition: border-color 0.2s ease, color 0.2s ease, background 0.2s ease;
+      transition: filter 0.2s ease, transform 0.18s ease, box-shadow 0.2s ease;
+      box-shadow: none;
     }
 
     .login-card .back-home-link:hover {
-      border-color: rgba(77, 91, 255, 0.7);
-      color: #e7ecff;
-      background: rgba(40, 52, 146, 0.24);
+      filter: brightness(1.03);
+      transform: none;
+      border-color: var(--brand-btn-border);
+      background: var(--brand-btn-bg);
+      color: #eef2ff;
+      box-shadow: var(--brand-btn-shadow-hover);
     }
 
     .login-card .login-legal-pill {
@@ -398,7 +486,7 @@
       bottom: calc(100% + 6px);
       border: 1px solid rgba(110, 126, 177, 0.3);
       border-radius: 12px;
-      background: rgba(13, 17, 26, 0.96);
+      background: #0f1421;
       padding: 6px;
       display: none;
       gap: 6px;
@@ -412,16 +500,24 @@
 
     .sidebar-profile-menu .btn-logout {
       width: 100%;
-      justify-content: flex-start;
       border-radius: 10px;
       padding: 8px 10px;
       font-size: 0.82rem;
       border-color: rgba(110, 126, 177, 0.26);
-      background: rgba(19, 24, 36, 0.75);
+      background: rgba(19, 24, 36, 0.92);
+      box-shadow: none;
     }
 
-    .sidebar-profile-menu .btn-logout:hover {
-      border-color: rgba(110, 126, 177, 0.48);
+    .sidebar-profile-menu .btn-logout::after {
+      display: none !important;
+    }
+
+    .sidebar-profile-menu .btn-logout:hover,
+    .sidebar-profile-menu .btn-logout:focus-visible {
+      border-color: rgba(110, 126, 177, 0.74);
+      color: #eef2ff;
+      background: linear-gradient(90deg, rgba(26, 32, 48, 0.96) 0%, rgba(43, 55, 159, 0.7) 100%);
+      box-shadow: 0 0 0 1px rgba(170, 182, 255, 0.2) inset, 0 0 14px rgba(77, 91, 255, 0.24);
     }
 
     .app-main {
@@ -590,6 +686,57 @@
       font-size: 0.9rem;
     }
 
+    .app-sidebar header .sidebar-sync-btn {
+      cursor: pointer;
+      appearance: none;
+      text-align: left;
+      transition: border-color 0.2s ease, background 0.2s ease;
+    }
+
+    .app-sidebar header .sidebar-sync-main {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .app-sidebar header .sidebar-sync-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 999px;
+      background: #71717a;
+      box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.08);
+      flex: 0 0 auto;
+    }
+
+    .app-sidebar header .sidebar-sync-btn[data-state="running"] .sidebar-sync-dot {
+      background: #5f78ff;
+      box-shadow: 0 0 10px rgba(77, 91, 255, 0.9);
+      animation: action-progress-pulse 1.2s ease-in-out infinite;
+    }
+
+    .app-sidebar header .sidebar-sync-btn[data-state="running"] {
+      border-color: rgba(110, 126, 177, 0.82);
+      color: #eef2ff;
+      background: linear-gradient(180deg, rgba(46, 58, 170, 0.44), rgba(30, 39, 116, 0.5));
+      box-shadow: 0 0 0 1px rgba(170, 182, 255, 0.24) inset, 0 0 14px rgba(77, 91, 255, 0.28);
+    }
+
+    .app-sidebar header .sidebar-sync-btn[data-state="done"] .sidebar-sync-dot {
+      background: #34d399;
+      box-shadow: 0 0 8px rgba(52, 211, 153, 0.72);
+      animation: none;
+    }
+
+    .app-sidebar header .sidebar-sync-btn[data-state="error"] .sidebar-sync-dot {
+      background: #f87171;
+      box-shadow: 0 0 8px rgba(248, 113, 113, 0.66);
+      animation: none;
+    }
+
     .app-sidebar-bottom #upload-status-chip {
       width: 100%;
       min-height: 38px;
@@ -625,6 +772,13 @@
       background: #5f78ff;
       box-shadow: 0 0 10px rgba(77, 91, 255, 0.9);
       animation: action-progress-pulse 1.2s ease-in-out infinite;
+    }
+
+    .app-sidebar #upload-status-chip[data-state="running"] {
+      border-color: rgba(110, 126, 177, 0.82);
+      color: #eef2ff;
+      background: linear-gradient(180deg, rgba(46, 58, 170, 0.44), rgba(30, 39, 116, 0.5));
+      box-shadow: 0 0 0 1px rgba(170, 182, 255, 0.24) inset, 0 0 14px rgba(77, 91, 255, 0.28);
     }
 
     .app-sidebar #upload-status-chip[data-state="paused"]::before {
@@ -688,13 +842,20 @@
     .app-sidebar header .btn-header-upload {
       justify-content: flex-start;
       text-align: left;
-      border: 1px solid rgba(141, 155, 255, 0.82);
+      border: 1px solid var(--cta-bright-border);
+      background: var(--cta-bright-bg);
+      color: #eef2ff;
       border-radius: 14px;
       font-size: 0.92rem;
       font-weight: 700;
-      box-shadow: none;
+      box-shadow: var(--cta-bright-shadow);
       transform: none;
       filter: none;
+    }
+
+    .app-sidebar header .btn-header-upload::after {
+      content: none !important;
+      display: none !important;
     }
 
     .app-sidebar header .status-chip:hover {
@@ -706,10 +867,12 @@
     }
 
     .app-sidebar header .btn-header-upload:hover {
-      border-color: rgba(110, 126, 177, 0.52);
-      box-shadow: none;
-      transform: none;
-      filter: brightness(1.05);
+      border-color: var(--cta-bright-border);
+      background: var(--cta-bright-bg);
+      color: #eef2ff;
+      box-shadow: var(--cta-bright-shadow-hover);
+      transform: translateY(-1px);
+      filter: brightness(1.08);
     }
 
     .app-sidebar .sidebar-admin-row .btn-logout {
@@ -1089,8 +1252,9 @@
       border-bottom: 1px solid rgba(255, 255, 255, 0.08);
       background: rgba(24, 24, 27, 0.55);
       backdrop-filter: blur(8px);
-      overflow-x: auto;
-      overflow-y: hidden;
+      overflow: visible;
+      position: relative;
+      z-index: 20;
     }
 
     .controls label {
@@ -1098,6 +1262,122 @@
       font-size: 0.9rem;
       white-space: nowrap;
       flex: 0 0 auto;
+    }
+
+    .hover-dropdown {
+      position: relative;
+      flex: 0 0 auto;
+    }
+
+    .hover-dropdown::after {
+      content: '';
+      position: absolute;
+      left: 0;
+      right: 0;
+      top: 100%;
+      height: 12px;
+    }
+
+    .hover-dropdown-trigger {
+      min-height: 40px;
+      min-width: 270px;
+      border-radius: 14px;
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      background: linear-gradient(180deg, rgba(33, 35, 44, 0.86), rgba(24, 26, 34, 0.94));
+      color: #d4d9e7;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 0 16px;
+      cursor: pointer;
+      font-size: 0.94rem;
+      transition: border-color 0.2s ease, color 0.2s ease, background 0.2s ease;
+    }
+
+    .hover-dropdown-trigger:hover {
+      border-color: rgba(110, 126, 177, 0.56);
+      color: #eef2ff;
+    }
+
+    .hover-dropdown-prefix {
+      color: #9aa6c1;
+      font-size: 0.9rem;
+    }
+
+    .hover-dropdown-value {
+      color: #f3f6ff;
+      font-weight: 700;
+      white-space: nowrap;
+    }
+
+    .hover-dropdown-chevron {
+      color: #aeb8d2;
+      font-size: 0.85rem;
+    }
+
+    .hover-dropdown-menu {
+      position: absolute;
+      left: 0;
+      top: calc(100% + 4px);
+      min-width: 220px;
+      border-radius: 14px;
+      border: 1px solid rgba(110, 126, 177, 0.3);
+      background: linear-gradient(180deg, rgba(20, 24, 35, 0.98), rgba(12, 16, 25, 0.98));
+      box-shadow: 0 16px 30px rgba(0, 0, 0, 0.42);
+      padding: 10px;
+      display: grid;
+      gap: 8px;
+      opacity: 0;
+      pointer-events: none;
+      transform: translateY(-6px);
+      transition: opacity 0.16s ease, transform 0.2s ease;
+      z-index: 120;
+    }
+
+    .hover-dropdown:hover .hover-dropdown-menu,
+    .hover-dropdown:focus-within .hover-dropdown-menu {
+      opacity: 1;
+      pointer-events: auto;
+      transform: translateY(0);
+    }
+
+    .hover-dropdown.collapsed-after-select .hover-dropdown-menu {
+      display: none !important;
+    }
+
+    #app-screen button:not(.thumbnail-trigger):not(.admin-close-btn):not(.sidebar-toggle-btn):not(.sidebar-open-btn) {
+      position: relative;
+      overflow: hidden;
+      isolation: isolate;
+      transition: border-color 0.2s ease, box-shadow 0.2s ease, background 0.2s ease, color 0.2s ease;
+    }
+
+    #app-screen button:not(.thumbnail-trigger):not(.admin-close-btn):not(.sidebar-toggle-btn):not(.sidebar-open-btn)::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      border-radius: inherit;
+      background: linear-gradient(90deg, rgba(255, 255, 255, 0.01) 10%, rgba(77, 91, 255, 0.12) 70%, rgba(77, 91, 255, 0.34) 100%);
+      opacity: 0;
+      transition: opacity 0.2s ease;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    #app-screen button:not(.thumbnail-trigger):not(.admin-close-btn):not(.sidebar-toggle-btn):not(.sidebar-open-btn) > * {
+      position: relative;
+      z-index: 1;
+    }
+
+    #app-screen button:not(.thumbnail-trigger):not(.admin-close-btn):not(.sidebar-toggle-btn):not(.sidebar-open-btn):hover:not(:disabled),
+    #app-screen button:not(.thumbnail-trigger):not(.admin-close-btn):not(.sidebar-toggle-btn):not(.sidebar-open-btn):focus-visible:not(:disabled) {
+      border-color: rgba(110, 126, 177, 0.74);
+      box-shadow: 0 0 0 1px rgba(110, 126, 177, 0.22) inset, 0 0 16px rgba(77, 91, 255, 0.26);
+    }
+
+    #app-screen button:not(.thumbnail-trigger):not(.admin-close-btn):not(.sidebar-toggle-btn):not(.sidebar-open-btn):hover:not(:disabled)::after,
+    #app-screen button:not(.thumbnail-trigger):not(.admin-close-btn):not(.sidebar-toggle-btn):not(.sidebar-open-btn):focus-visible:not(:disabled)::after {
+      opacity: 1;
     }
 
     .sidebar-open-btn {
@@ -1146,13 +1426,16 @@
     }
 
     .period-btns {
-      display: flex;
+      display: grid;
       gap: 8px;
       transition: opacity 0.2s;
       flex: 0 0 auto;
       white-space: nowrap;
     }
-    .period-btns.disabled { opacity: 0.35; pointer-events: none; }
+    .controls-time-dropdown.disabled {
+      opacity: 0.5;
+      pointer-events: none;
+    }
 
     .app-sidebar .period-btns {
       display: grid;
@@ -1160,13 +1443,15 @@
     }
 
     .period-btn {
-      padding: 6px 18px;
-      border-radius: 20px;
+      width: 100%;
+      padding: 9px 12px;
+      border-radius: 12px;
       border: 1px solid rgba(255, 255, 255, 0.12);
       background: rgba(39, 39, 42, 0.6);
       color: #f4f4f5;
       cursor: pointer;
-      font-size: 0.88rem;
+      font-size: 0.9rem;
+      text-align: left;
       transition: all 0.2s;
     }
 
@@ -1181,19 +1466,17 @@
     .period-btn:hover { border-color: #8594ff; color: #d7e0ff; }
 
     .period-btn.active {
-      background: linear-gradient(135deg, #4d5bff, #3344c4);
-      border-color: #8594ff;
-      color: #fff;
+      border-color: rgba(110, 126, 177, 0.82);
+      color: #eef2ff;
       font-weight: 600;
+      background: linear-gradient(180deg, rgba(46, 58, 170, 0.44), rgba(30, 39, 116, 0.5));
+      box-shadow: 0 0 0 1px rgba(170, 182, 255, 0.24) inset, 0 0 14px rgba(77, 91, 255, 0.28);
     }
 
     .filter-btns {
-      display: flex;
+      display: grid;
       gap: 8px;
-      margin-left: auto;
       flex: 0 0 auto;
-      flex-wrap: nowrap;
-      white-space: nowrap;
     }
 
     .app-sidebar .filter-btns {
@@ -1203,16 +1486,16 @@
     }
 
     .filter-btn {
-      padding: 6px 16px;
-      border-radius: 20px;
+      width: 100%;
+      padding: 9px 12px;
+      border-radius: 12px;
       border: 1px solid rgba(255, 255, 255, 0.12);
       background: rgba(39, 39, 42, 0.6);
       color: #d4d4d8;
       cursor: pointer;
-      font-size: 0.85rem;
+      font-size: 0.9rem;
       transition: all 0.2s;
-      white-space: nowrap;
-      flex: 0 0 auto;
+      text-align: left;
     }
 
     .app-sidebar .filter-btn {
@@ -1222,9 +1505,12 @@
       text-align: center;
     }
 
-    .filter-btn.active { border-color: #10b981; color: #34d399; }
-
-    .filter-btn.active[data-filter="sorted-out"] { border-color: #f59e0b; color: #fbbf24; }
+    .filter-btn.active {
+      border-color: rgba(110, 126, 177, 0.82);
+      color: #eef2ff;
+      background: linear-gradient(180deg, rgba(46, 58, 170, 0.44), rgba(30, 39, 116, 0.5));
+      box-shadow: 0 0 0 1px rgba(170, 182, 255, 0.24) inset, 0 0 14px rgba(77, 91, 255, 0.28);
+    }
 
     .btn-refresh {
       padding: 6px 12px;
@@ -1443,7 +1729,7 @@
 
     .streamer-header {
       width: 100%;
-      background: linear-gradient(90deg, rgba(23, 28, 40, 0.92), rgba(44, 52, 72, 0.8));
+      background: rgba(23, 28, 40, 0.9);
       color: var(--text);
       border: none;
       border-bottom: 1px solid rgba(110, 126, 177, 0.22);
@@ -1457,7 +1743,7 @@
     }
 
     .streamer-header:hover {
-      background: linear-gradient(90deg, rgba(63, 78, 202, 0.5), rgba(31, 39, 57, 0.9));
+      background: rgba(23, 28, 40, 0.9);
     }
 
     .streamer-header .meta {
@@ -2057,20 +2343,22 @@
     }
 
     .clip-player-retry-btn {
-      border: 1px solid rgba(77, 91, 255, 0.78);
-      border-radius: 999px;
-      background: rgba(77, 91, 255, 0.15);
-      color: #e7ecff;
-      padding: 7px 16px;
-      font-size: 0.78rem;
+      border: 1px solid var(--ui-btn-border);
+      border-radius: 12px;
+      background: var(--ui-btn-bg);
+      color: var(--ui-btn-text);
+      padding: 8px 16px;
+      font-size: 0.82rem;
       font-weight: 700;
       cursor: pointer;
-      transition: background 0.2s, border-color 0.2s;
+      transition: border-color 0.2s ease, background 0.2s ease, box-shadow 0.2s ease, color 0.2s ease;
     }
 
     .clip-player-retry-btn:hover {
-      background: rgba(77, 91, 255, 0.28);
-      border-color: #aab6ff;
+      border-color: var(--brand-btn-border);
+      background: var(--brand-btn-bg);
+      color: #eef2ff;
+      box-shadow: var(--brand-btn-shadow-hover);
     }
 
     .clip-player-actions {
@@ -2082,7 +2370,49 @@
     .clip-modal-actions-grid {
       display: grid;
       grid-template-columns: repeat(2, minmax(0, 1fr));
-      gap: 8px;
+      gap: 10px;
+    }
+
+    .clip-modal-btn {
+      min-height: 42px;
+      padding: 9px 14px;
+      border-radius: 12px;
+      border: 1px solid var(--ui-btn-border);
+      background: var(--ui-btn-bg);
+      color: var(--ui-btn-text);
+      font-size: 0.86rem;
+      font-weight: 700;
+      cursor: pointer;
+      transition: border-color 0.2s ease, background 0.2s ease, box-shadow 0.2s ease, color 0.2s ease;
+    }
+
+    .clip-modal-btn:hover:not(:disabled),
+    .clip-modal-btn:focus-visible:not(:disabled) {
+      border-color: var(--brand-btn-border);
+      background: var(--brand-btn-bg);
+      color: #eef2ff;
+      box-shadow: var(--brand-btn-shadow-hover);
+    }
+
+    .clip-modal-btn.is-approved {
+      color: #ffd8d8;
+      border-color: rgba(254, 151, 151, 0.38);
+      background: linear-gradient(180deg, rgba(57, 29, 37, 0.78), rgba(31, 19, 26, 0.86));
+    }
+
+    .clip-modal-btn.is-sorted {
+      color: #ffd9a4;
+      border-color: rgba(240, 189, 106, 0.42);
+      background: linear-gradient(180deg, rgba(56, 42, 20, 0.72), rgba(34, 26, 14, 0.84));
+    }
+
+    .clip-modal-btn.is-disabled,
+    .clip-modal-btn:disabled {
+      opacity: 0.58;
+      cursor: not-allowed;
+      border-color: rgba(110, 126, 177, 0.24);
+      color: #8a94aa;
+      box-shadow: none;
     }
 
     .clip-player-open-link {
@@ -2761,6 +3091,44 @@
       grid-template-columns: repeat(3, 1fr);
     }
 
+    #crop-modal .crop-actions .btn-secondary,
+    #crop-modal .crop-actions .btn-primary {
+      border-radius: 10px;
+      border: 1px solid rgba(110, 126, 177, 0.3);
+      background: rgba(19, 24, 36, 0.92);
+      color: #d6deec;
+      font-weight: 700;
+      box-shadow: none;
+      transition: border-color 0.2s ease, background 0.2s ease, box-shadow 0.2s ease, color 0.2s ease;
+    }
+
+    #crop-modal .crop-actions .btn-primary {
+      border-color: rgba(141, 155, 255, 0.72);
+      background: linear-gradient(180deg, rgba(63, 78, 202, 0.92), rgba(51, 68, 196, 0.96));
+      color: #eef2ff;
+    }
+
+    #crop-modal .crop-actions .btn-secondary::after,
+    #crop-modal .crop-actions .btn-primary::after {
+      display: none !important;
+    }
+
+    #crop-modal .crop-actions .btn-secondary:hover,
+    #crop-modal .crop-actions .btn-secondary:focus-visible {
+      border-color: rgba(110, 126, 177, 0.74);
+      color: #eef2ff;
+      background: linear-gradient(90deg, rgba(26, 32, 48, 0.96) 0%, rgba(43, 55, 159, 0.7) 100%);
+      box-shadow: 0 0 0 1px rgba(170, 182, 255, 0.2) inset, 0 0 14px rgba(77, 91, 255, 0.24);
+    }
+
+    #crop-modal .crop-actions .btn-primary:hover,
+    #crop-modal .crop-actions .btn-primary:focus-visible {
+      border-color: rgba(170, 182, 255, 0.88);
+      color: #f4f7ff;
+      background: linear-gradient(90deg, rgba(48, 61, 182, 0.95) 0%, rgba(77, 91, 255, 0.88) 100%);
+      box-shadow: 0 0 0 1px rgba(170, 182, 255, 0.24) inset, 0 0 16px rgba(77, 91, 255, 0.28);
+    }
+
     .crop-toggle-row {
       display: flex;
       align-items: center;
@@ -3373,7 +3741,13 @@
             </div>
             <div class="header-meta-group">
               <div class="status-chip">Streamers<strong id="status-streamers">0</strong></div>
-              <div class="status-chip">Last sync<strong id="status-last-sync">Never</strong></div>
+              <button type="button" id="sidebar-refresh-btn" class="status-chip sidebar-sync-btn" data-state="idle" title="Refresh clips from Twitch">
+                <span class="sidebar-sync-main">
+                  <span class="sidebar-sync-dot" aria-hidden="true"></span>
+                  <span id="sidebar-sync-label">Last sync</span>
+                </span>
+                <strong id="status-last-sync">Never</strong>
+              </button>
             </div>
           </div>
         </header>
@@ -3474,23 +3848,31 @@
     <main class="app-main">
       <div class="controls">
         <button id="sidebar-open-btn" class="sidebar-open-btn" type="button" aria-label="Open sidebar" title="Open sidebar">⟩</button>
-        <label>Time range:</label>
-        <div class="period-btns">
-          <button class="period-btn active" data-days="30">30 Days</button>
-          <button class="period-btn" data-days="60">60 Days</button>
-          <button class="period-btn" data-days="365">1 Year</button>
+        <div class="hover-dropdown controls-time-dropdown">
+          <button type="button" class="hover-dropdown-trigger" aria-haspopup="true" aria-label="Time range">
+            <span class="hover-dropdown-prefix">Time:</span>
+            <span id="time-range-selected" class="hover-dropdown-value">30 Days</span>
+            <span class="hover-dropdown-chevron">▾</span>
+          </button>
+          <div class="hover-dropdown-menu period-btns" role="menu">
+            <button class="period-btn active" data-days="30">30 Days</button>
+            <button class="period-btn" data-days="60">60 Days</button>
+            <button class="period-btn" data-days="365">1 Year</button>
+          </div>
         </div>
-        <button class="btn-refresh" id="refresh-clips-btn">Refresh from Twitch</button>
-        <div id="action-progress-chip" class="action-progress-chip" data-state="idle" aria-live="polite">
-          <span class="action-progress-dot" aria-hidden="true"></span>
-          <span id="action-progress-text" class="action-progress-text">No active tasks</span>
-          <button type="button" id="action-progress-cancel" class="action-progress-cancel" style="display:none;">Cancel</button>
-        </div>
-        <div class="filter-btns">
-          <button class="filter-btn active" data-filter="all">All</button>
-          <button class="filter-btn" data-filter="approved">Approved</button>
-          <button class="filter-btn" data-filter="pending">Pending</button>
-          <button class="filter-btn" data-filter="sorted-out">Sorted Out</button>
+
+        <div class="hover-dropdown controls-filter-dropdown">
+          <button type="button" class="hover-dropdown-trigger" aria-haspopup="true" aria-label="Clip status filter">
+            <span class="hover-dropdown-prefix">Status:</span>
+            <span id="filter-selected" class="hover-dropdown-value">All</span>
+            <span class="hover-dropdown-chevron">▾</span>
+          </button>
+          <div class="hover-dropdown-menu filter-btns" role="menu">
+            <button class="filter-btn active" data-filter="all">All</button>
+            <button class="filter-btn" data-filter="approved">Approved</button>
+            <button class="filter-btn" data-filter="pending">Pending</button>
+            <button class="filter-btn" data-filter="sorted-out">Sorted Out</button>
+          </div>
         </div>
       </div>
 
@@ -3871,6 +4253,7 @@
   let sessionReviewedIds = new Set();
   let sessionApprovedIds = new Set();
   let sessionSortedIds = new Set();
+  const dropdownCollapseCleanup = new WeakMap();
 
   const DASHBOARD_PREFS_KEY = 'clipReviewer.dashboardPrefs.v1';
   const ADMIN_PREFS_KEY = 'clipReviewer.adminPrefs.v1';
@@ -4298,6 +4681,7 @@
     if (syncEl) syncEl.textContent = formatRelativeSyncLabel(lastClipSyncAt);
     updateSidebarProfileCard();
     updateSessionProgressCard();
+    updateActionProgressChip();
   }
 
   function setSetupStepDone(stepId, done) {
@@ -4397,7 +4781,52 @@
     document.querySelectorAll('.filter-btn').forEach(btn => {
       btn.classList.toggle('active', btn.dataset.filter === currentFilter);
     });
-    document.querySelector('.period-btns').classList.toggle('disabled', currentFilter === 'approved' || currentFilter === 'sorted-out');
+    setTimeRangeDropdownDisabled(currentFilter === 'approved' || currentFilter === 'sorted-out');
+    updateControlDropdownLabels();
+  }
+
+  function setTimeRangeDropdownDisabled(disabled) {
+    const timeDropdown = document.querySelector('.controls-time-dropdown');
+    if (!timeDropdown) return;
+    timeDropdown.classList.toggle('disabled', !!disabled);
+  }
+
+  function updateControlDropdownLabels() {
+    const timeLabel = document.getElementById('time-range-selected');
+    const filterLabel = document.getElementById('filter-selected');
+    const activePeriod = document.querySelector('.period-btn.active');
+    const activeFilter = document.querySelector('.filter-btn.active');
+    if (timeLabel && activePeriod) timeLabel.textContent = String(activePeriod.textContent || '').trim();
+    if (filterLabel && activeFilter) filterLabel.textContent = String(activeFilter.textContent || '').trim();
+  }
+
+  function collapseDropdownAfterSelection(buttonEl) {
+    const dropdown = buttonEl?.closest('.hover-dropdown');
+    if (!(dropdown instanceof HTMLElement)) return;
+    const existingCleanup = dropdownCollapseCleanup.get(dropdown);
+    if (typeof existingCleanup === 'function') existingCleanup();
+    dropdown.classList.add('collapsed-after-select');
+    const trigger = dropdown.querySelector('.hover-dropdown-trigger');
+    if (trigger instanceof HTMLElement) trigger.blur();
+
+    const clear = () => {
+      dropdown.classList.remove('collapsed-after-select');
+      document.removeEventListener('pointermove', handlePointerMove, true);
+      document.removeEventListener('mousedown', handlePointerMove, true);
+      document.removeEventListener('touchstart', handlePointerMove, true);
+      dropdownCollapseCleanup.delete(dropdown);
+    };
+    const handlePointerMove = (event) => {
+      const target = event?.target;
+      if (target instanceof Node && dropdown.contains(target)) return;
+      clear();
+    };
+    dropdownCollapseCleanup.set(dropdown, clear);
+    window.setTimeout(() => {
+      document.addEventListener('pointermove', handlePointerMove, true);
+      document.addEventListener('mousedown', handlePointerMove, true);
+      document.addEventListener('touchstart', handlePointerMove, true);
+    }, 0);
   }
 
   function thumbnailSrc(url) {
@@ -5452,6 +5881,8 @@
       btn.classList.add('active');
       currentPeriod = parseInt(btn.dataset.days);
       saveDashboardPrefs();
+      updateControlDropdownLabels();
+      collapseDropdownAfterSelection(btn);
       loadClips();
     });
   });
@@ -5462,14 +5893,21 @@
       document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
       btn.classList.add('active');
       currentFilter = btn.dataset.filter;
-      document.querySelector('.period-btns').classList.toggle('disabled', currentFilter === 'approved' || currentFilter === 'sorted-out');
+      setTimeRangeDropdownDisabled(currentFilter === 'approved' || currentFilter === 'sorted-out');
       saveDashboardPrefs();
+      updateControlDropdownLabels();
+      collapseDropdownAfterSelection(btn);
       renderClips();
     });
   });
 
-  document.getElementById('refresh-clips-btn').addEventListener('click', refreshClipsFromTwitch);
-  document.getElementById('action-progress-cancel')?.addEventListener('click', cancelRefreshFromProgressChip);
+  document.getElementById('sidebar-refresh-btn')?.addEventListener('click', () => {
+    if (refreshAbortController) {
+      cancelRefreshFromProgressChip();
+      return;
+    }
+    void refreshClipsFromTwitch();
+  });
   document.getElementById('dashboard-state-actions')?.addEventListener('click', (e) => {
     const target = e.target;
     if (!(target instanceof HTMLElement)) return;
@@ -5540,11 +5978,7 @@
       updateActionProgressChip();
       return;
     }
-    const btn = document.getElementById('refresh-clips-btn');
-    const oldText = btn.textContent;
     refreshAbortController = new AbortController();
-    btn.disabled = true;
-    btn.textContent = 'Refreshing...';
     updateActionProgressChip();
 
     try {
@@ -5584,8 +6018,6 @@
     } finally {
       refreshAbortController = null;
       updateActionProgressChip();
-      btn.disabled = false;
-      btn.textContent = oldText;
     }
   }
 
@@ -5863,32 +6295,31 @@
   }
 
   function updateActionProgressChip() {
-    const chip = document.getElementById('action-progress-chip');
-    const textEl = document.getElementById('action-progress-text');
-    const cancelBtn = document.getElementById('action-progress-cancel');
-    if (!chip || !textEl || !cancelBtn) return;
+    const refreshBtn = document.getElementById('sidebar-refresh-btn');
+    const labelEl = document.getElementById('sidebar-sync-label');
+    const syncValueEl = document.getElementById('status-last-sync');
+    if (!refreshBtn || !labelEl || !syncValueEl) return;
 
     let state = 'idle';
-    let text = 'No active tasks';
-    let canCancel = false;
+    let label = 'Last sync';
+    let value = formatRelativeSyncLabel(lastClipSyncAt);
 
     if (refreshAbortController) {
       state = 'running';
-      text = 'Refreshing clips from Twitch...';
-      canCancel = true;
-    } else if (downloadInProgressIds.size > 0) {
-      state = 'running';
-      const count = downloadInProgressIds.size;
-      text = `Preparing ${count} download${count === 1 ? '' : 's'}...`;
+      label = 'Refreshing';
+      value = 'Cancel';
     } else if (actionProgressFlash && actionProgressFlash.text && Date.now() <= (actionProgressFlash.expiresAt || 0)) {
       state = actionProgressFlash.state || 'done';
-      text = actionProgressFlash.text;
+      if (state === 'error') label = 'Task failed';
+      else if (state === 'done') label = 'Task complete';
+      else if (state === 'running') label = 'Working';
+      value = actionProgressFlash.text;
     }
 
-    chip.dataset.state = state;
-    textEl.textContent = text;
-    cancelBtn.style.display = canCancel ? 'inline-flex' : 'none';
-    cancelBtn.disabled = !canCancel;
+    refreshBtn.dataset.state = state;
+    refreshBtn.title = refreshAbortController ? 'Cancel refresh' : 'Refresh clips from Twitch';
+    labelEl.textContent = label;
+    syncValueEl.textContent = value;
   }
 
   function renderDashboardState() {
@@ -6027,13 +6458,34 @@
   }
 
   function buildClipActionsHtml(clip, mode = 'card') {
+    const isModal = mode === 'modal';
     const wrapperClass = mode === 'modal'
       ? 'clip-modal-actions-grid'
       : 'clip-actions grid grid-cols-2 gap-2';
     const downloadBusy = downloadInProgressIds.has(clip.id);
-    const downloadBtnClass = `btn-download rounded-lg px-3 py-2 text-xs font-semibold border transition ${downloadBusy ? 'border-zinc-700 text-zinc-400 opacity-60 cursor-not-allowed' : 'border-zinc-700 text-zinc-200 hover:border-indigo-500 hover:text-indigo-300'}`;
     const downloadBtnText = downloadBusy ? 'Preparing...' : 'Download';
     const downloadBtnDisabled = downloadBusy ? 'disabled' : '';
+
+    if (isModal) {
+      const approveBtnClass = `btn-approve clip-modal-btn ${clip.approved ? 'is-approved' : ''}`.trim();
+      const sortBtnClass = `btn-sortout clip-modal-btn ${clip.sorted_out ? 'is-sorted' : ''}`.trim();
+      const downloadBtnClass = `btn-download clip-modal-btn ${downloadBusy ? 'is-disabled' : ''}`.trim();
+
+      return `
+        <div class="${wrapperClass}">
+          <button class="${approveBtnClass}" onclick="toggleApprove('${clip.id}', ${clip.approved})">
+            ${clip.approved ? 'Approved - Undo' : 'Approve'}
+          </button>
+          ${!clip.approved ? `<button class="${sortBtnClass}" onclick="toggleSortOut('${clip.id}', ${clip.sorted_out})">
+            ${clip.sorted_out ? 'Sorted - Undo' : 'Sort Out'}
+          </button>` : ''}
+          ${clip.approved ? `<button class="btn-upload clip-modal-btn" onclick="openCropModal('${clip.id}')">Edit</button>` : ''}
+          ${clip.approved ? `<button class="${downloadBtnClass}" data-download-clip-id="${clip.id}" ${downloadBtnDisabled} onclick="downloadCroppedVideo('${clip.id}', this)">${downloadBtnText}</button>` : ''}
+        </div>
+      `;
+    }
+
+    const downloadBtnClass = `btn-download rounded-lg px-3 py-2 text-xs font-semibold border transition ${downloadBusy ? 'border-zinc-700 text-zinc-400 opacity-60 cursor-not-allowed' : 'border-zinc-700 text-zinc-200 hover:border-indigo-500 hover:text-indigo-300'}`;
 
     return `
       <div class="${wrapperClass}">
