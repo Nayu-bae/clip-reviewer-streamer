@@ -1,7 +1,81 @@
 @import url('https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700;800&display=swap');
 
+:root {
+  --theme-bg: #090b12;
+  --theme-panel: #11141d;
+  --theme-panel-2: #171c28;
+  --theme-border: rgba(110, 126, 177, 0.24);
+  --theme-border-strong: rgba(110, 126, 177, 0.4);
+  --theme-text: #f3f6ff;
+  --theme-muted: #98a3ba;
+  --theme-accent: #4d5bff;
+  --theme-accent-strong: #3948dd;
+}
+
 body {
   font-family: 'Sora', 'Segoe UI', sans-serif;
+  color: var(--theme-text);
+  background:
+    radial-gradient(1000px 440px at 0% -12%, rgba(77, 91, 255, 0.22), transparent 60%),
+    radial-gradient(860px 420px at 100% 110%, rgba(57, 72, 221, 0.16), transparent 60%),
+    linear-gradient(180deg, #070910 0%, var(--theme-bg) 100%);
+}
+
+header {
+  background: rgba(10, 13, 21, 0.8) !important;
+  border-bottom-color: var(--theme-border) !important;
+}
+
+[class*="bg-clip-bg"] {
+  background-color: var(--theme-bg) !important;
+}
+
+[class*="bg-clip-panel2"] {
+  background-color: var(--theme-panel-2) !important;
+}
+
+[class*="bg-clip-panel"] {
+  background-color: var(--theme-panel) !important;
+}
+
+[class*="text-clip-muted"] {
+  color: var(--theme-muted) !important;
+}
+
+[class*="border-white/10"],
+[class*="border-white/12"],
+[class*="border-white/15"] {
+  border-color: var(--theme-border) !important;
+}
+
+[class*="hover:border-white/25"]:hover {
+  border-color: var(--theme-border-strong) !important;
+}
+
+[class*="hover:bg-white/10"]:hover {
+  background-color: rgba(77, 91, 255, 0.12) !important;
+}
+
+[class*="border-twitch-600/65"] {
+  border-color: rgba(77, 91, 255, 0.62) !important;
+}
+
+[class*="from-twitch-600"] {
+  --tw-gradient-from: var(--theme-accent) var(--tw-gradient-from-position) !important;
+  --tw-gradient-to: rgb(77 91 255 / 0) var(--tw-gradient-to-position) !important;
+  --tw-gradient-stops: var(--tw-gradient-from), var(--tw-gradient-to) !important;
+}
+
+[class*="to-indigo-600"] {
+  --tw-gradient-to: var(--theme-accent-strong) var(--tw-gradient-to-position) !important;
+}
+
+[class*="hover:border-twitch-600/70"]:hover {
+  border-color: rgba(77, 91, 255, 0.72) !important;
+}
+
+[class*="hover:bg-twitch-600/16"]:hover {
+  background-color: rgba(77, 91, 255, 0.16) !important;
 }
 
 .tools-menu {
@@ -10,6 +84,11 @@ body {
   transform: perspective(700px) rotateX(-11deg) translateY(-6px) scale(0.98);
   pointer-events: none;
   transition: opacity 170ms ease, transform 170ms ease;
+  background: rgba(12, 15, 24, 0.95) !important;
+  border-color: var(--theme-border) !important;
+  box-shadow:
+    0 24px 48px rgba(0, 0, 0, 0.45),
+    0 0 0 1px rgba(77, 91, 255, 0.08) inset;
 }
 
 .tools-menu.open {

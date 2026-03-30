@@ -12,8 +12,8 @@
         extend: {
           colors: {
             twitch: {
-              700: '#772ce8',
-              600: '#9147ff',
+              700: '#3948dd',
+              600: '#4d5bff',
             },
           },
         },
@@ -22,17 +22,17 @@
   </script>
   <style>
     :root {
-      --bg: #0e0e10;
-      --surface: #18181b;
-      --surface2: #1f1f23;
-      --border: #2a2a2e;
-      --purple: #9147ff;
-      --purple-hover: #772ce8;
+      --bg: #090b12;
+      --surface: #11141d;
+      --surface2: #171c28;
+      --border: #262d3d;
+      --purple: #4d5bff;
+      --purple-hover: #3948dd;
       --green: #00b56a;
       --green-hover: #009558;
       --red: #e91916;
-      --text: #efeff1;
-      --muted: #adadb8;
+      --text: #f3f6ff;
+      --muted: #98a3ba;
     }
 
     * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -55,9 +55,9 @@
       justify-content: center;
       min-height: 100vh;
       background:
-        radial-gradient(1200px 500px at 0% -10%, rgba(145, 71, 255, 0.22), transparent 60%),
-        radial-gradient(900px 500px at 100% 110%, rgba(34, 211, 238, 0.14), transparent 60%),
-        linear-gradient(180deg, #0a0a0c 0%, #0e0e10 100%);
+        radial-gradient(1200px 500px at 0% -10%, rgba(77, 91, 255, 0.22), transparent 60%),
+        radial-gradient(900px 500px at 100% 110%, rgba(77, 91, 255, 0.12), transparent 60%),
+        linear-gradient(180deg, #070910 0%, #090b12 100%);
       overflow: hidden;
     }
 
@@ -73,7 +73,7 @@
       box-shadow:
         0 30px 80px rgba(0, 0, 0, 0.48),
         0 0 0 1px rgba(255, 255, 255, 0.04) inset,
-        0 18px 40px rgba(124, 58, 237, 0.08);
+        0 18px 40px rgba(51, 68, 196, 0.08);
     }
 
     .login-card .logo {
@@ -89,7 +89,7 @@
       width: 100%;
       height: 100%;
       object-fit: contain;
-      filter: drop-shadow(0 0 14px rgba(145, 71, 255, 0.42));
+      filter: drop-shadow(0 0 14px rgba(77, 91, 255, 0.42));
     }
 
     .login-card h1 {
@@ -131,15 +131,15 @@
     }
 
     .login-card input:focus {
-      border-color: rgba(145, 71, 255, 0.75);
-      box-shadow: 0 0 0 3px rgba(145, 71, 255, 0.2);
+      border-color: rgba(77, 91, 255, 0.75);
+      box-shadow: 0 0 0 3px rgba(77, 91, 255, 0.2);
       background: rgba(39, 39, 42, 0.95);
     }
 
     .login-card .input-label {
       display: block;
       text-align: left;
-      color: #c4b5fd;
+      color: #aab6ff;
       font-size: 0.78rem;
       font-weight: 700;
       letter-spacing: 0.02em;
@@ -151,7 +151,7 @@
       margin-top: 6px;
       margin-bottom: 2px;
       text-align: left;
-      color: #cbd5e1;
+      color: #b9c4dc;
       font-size: 0.8rem;
       background: rgba(15, 23, 42, 0.45);
       border: 1px solid rgba(148, 163, 184, 0.25);
@@ -162,7 +162,7 @@
     .login-card button {
       width: 100%;
       padding: 11px;
-      background: linear-gradient(135deg, #9147ff, #7c3aed);
+      background: linear-gradient(135deg, #4d5bff, #3344c4);
       color: #fff;
       border: none;
       border-radius: 10px;
@@ -170,7 +170,7 @@
       font-weight: 700;
       cursor: pointer;
       transition: transform 0.15s ease, filter 0.2s ease;
-      box-shadow: 0 10px 24px rgba(145, 71, 255, 0.35);
+      box-shadow: 0 10px 24px rgba(77, 91, 255, 0.35);
     }
 
     .login-card button:hover {
@@ -188,9 +188,9 @@
     }
 
     .login-card .btn-secondary:hover {
-      border-color: rgba(145, 71, 255, 0.7);
-      color: #ede9fe;
-      background: rgba(76, 29, 149, 0.24);
+      border-color: rgba(77, 91, 255, 0.7);
+      color: #e7ecff;
+      background: rgba(40, 52, 146, 0.24);
       filter: none;
       transform: none;
     }
@@ -213,9 +213,39 @@
     }
 
     .login-card .back-home-link:hover {
-      border-color: rgba(145, 71, 255, 0.7);
-      color: #ede9fe;
-      background: rgba(76, 29, 149, 0.24);
+      border-color: rgba(77, 91, 255, 0.7);
+      color: #e7ecff;
+      background: rgba(40, 52, 146, 0.24);
+    }
+
+    .login-card .login-legal-pill {
+      margin-top: 10px;
+      width: 100%;
+      padding: 10px 12px;
+      border-radius: 999px;
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      background: rgba(20, 20, 24, 0.72);
+      color: #9aa6c1;
+      font-size: 0.8rem;
+      line-height: 1.25;
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: center;
+      gap: 4px;
+      text-align: center;
+    }
+
+    .login-card .login-legal-pill a {
+      color: #c9d4eb;
+      text-decoration: none;
+      font-weight: 600;
+      transition: color 0.2s ease;
+    }
+
+    .login-card .login-legal-pill a:hover {
+      color: #eef2ff;
+      text-decoration: underline;
     }
 
     #login-error {
@@ -236,10 +266,176 @@
     #app-screen {
       display: none;
       background:
-        radial-gradient(900px 420px at 0% -5%, rgba(145, 71, 255, 0.14), transparent 60%),
-        radial-gradient(720px 420px at 100% 105%, rgba(217, 70, 239, 0.08), transparent 65%),
-        linear-gradient(180deg, #0a0a0c 0%, #0e0e10 100%);
+        radial-gradient(900px 420px at 0% -5%, rgba(77, 91, 255, 0.14), transparent 60%),
+        radial-gradient(720px 420px at 100% 105%, rgba(81, 98, 255, 0.08), transparent 65%),
+      linear-gradient(180deg, #070910 0%, #090b12 100%);
       min-height: 100vh;
+    }
+
+    .app-shell {
+      min-height: 100vh;
+      display: grid;
+      grid-template-columns: minmax(268px, 304px) minmax(0, 1fr);
+    }
+
+    .app-sidebar {
+      border-right: 1px solid rgba(110, 126, 177, 0.2);
+      background:
+        linear-gradient(180deg, rgba(11, 14, 22, 0.92), rgba(10, 12, 19, 0.95));
+      backdrop-filter: blur(12px);
+      display: flex;
+      flex-direction: column;
+      position: sticky;
+      top: 0;
+      height: 100dvh;
+      overflow: hidden;
+    }
+
+    .app-sidebar-scroll {
+      flex: 1 1 auto;
+      min-height: 0;
+      overflow-y: auto;
+      padding: 8px 0 10px;
+    }
+
+    .app-sidebar-bottom {
+      flex: 0 0 auto;
+      border-top: 1px solid rgba(110, 126, 177, 0.2);
+      padding: 10px 12px 12px;
+      display: grid;
+      gap: 8px;
+      background: linear-gradient(180deg, rgba(9, 12, 20, 0.86), rgba(8, 10, 17, 0.94));
+    }
+
+    .sidebar-admin-row {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 8px;
+    }
+
+    .sidebar-profile-wrap {
+      margin-top: 0;
+      padding: 0;
+      border-top: none;
+      position: relative;
+    }
+
+    .sidebar-profile-btn {
+      width: 100%;
+      border: 1px solid rgba(110, 126, 177, 0.3);
+      background: rgba(16, 20, 30, 0.88);
+      border-radius: 14px;
+      padding: 10px 12px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      color: #f3f6ff;
+      cursor: pointer;
+      text-align: left;
+      transition: border-color 0.2s ease, background 0.2s ease;
+    }
+
+    .sidebar-profile-btn:hover {
+      border-color: rgba(77, 91, 255, 0.68);
+      background: rgba(28, 35, 52, 0.9);
+    }
+
+    .sidebar-profile-avatar {
+      width: 40px;
+      height: 40px;
+      border-radius: 999px;
+      border: 1px solid rgba(255, 255, 255, 0.14);
+      background: linear-gradient(160deg, rgba(77, 91, 255, 0.32), rgba(37, 46, 68, 0.84));
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 800;
+      color: #eef2ff;
+      font-size: 0.9rem;
+      flex: 0 0 auto;
+    }
+
+    .sidebar-profile-text {
+      min-width: 0;
+      display: grid;
+      gap: 1px;
+      flex: 1;
+    }
+
+    .sidebar-profile-name {
+      font-size: 0.95rem;
+      font-weight: 700;
+      color: #f3f6ff;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .sidebar-profile-sub {
+      font-size: 0.8rem;
+      color: #98a3ba;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .sidebar-profile-chevron {
+      color: #b8c4df;
+      font-size: 0.92rem;
+      line-height: 1;
+      transition: transform 0.18s ease;
+      flex: 0 0 auto;
+    }
+
+    .sidebar-profile-chevron.open {
+      transform: rotate(180deg);
+    }
+
+    .sidebar-profile-menu {
+      position: absolute;
+      left: 0;
+      right: 0;
+      bottom: calc(100% + 6px);
+      border: 1px solid rgba(110, 126, 177, 0.3);
+      border-radius: 12px;
+      background: rgba(13, 17, 26, 0.96);
+      padding: 6px;
+      display: none;
+      gap: 6px;
+      box-shadow: 0 12px 24px rgba(0, 0, 0, 0.42);
+      z-index: 30;
+    }
+
+    .sidebar-profile-menu.open {
+      display: grid;
+    }
+
+    .sidebar-profile-menu .btn-logout {
+      width: 100%;
+      justify-content: flex-start;
+      border-radius: 10px;
+      padding: 8px 10px;
+      font-size: 0.82rem;
+      border-color: rgba(110, 126, 177, 0.26);
+      background: rgba(19, 24, 36, 0.75);
+    }
+
+    .sidebar-profile-menu .btn-logout:hover {
+      border-color: rgba(110, 126, 177, 0.48);
+    }
+
+    .app-main {
+      min-width: 0;
+      display: flex;
+      flex-direction: column;
+    }
+
+    #app-screen.sidebar-collapsed .app-shell {
+      grid-template-columns: minmax(0, 1fr);
+    }
+
+    #app-screen.sidebar-collapsed .app-sidebar {
+      display: none;
     }
 
     header {
@@ -256,6 +452,22 @@
       z-index: 100;
     }
 
+    .app-sidebar header {
+      position: static;
+      top: auto;
+      z-index: auto;
+      border-bottom: none;
+      background: transparent;
+      backdrop-filter: none;
+      min-height: 0;
+      padding: 4px 12px 0;
+      display: grid;
+      grid-template-columns: minmax(0, 1fr);
+      justify-items: stretch;
+      gap: 8px;
+      width: 100%;
+    }
+
     header .brand {
       display: flex;
       align-items: center;
@@ -264,12 +476,54 @@
       font-weight: 700;
     }
 
+    .app-sidebar header .brand {
+      font-size: 1.1rem;
+      line-height: 1.05;
+      letter-spacing: -0.02em;
+      font-weight: 800;
+      padding: 4px 6px 8px;
+      border-bottom: 1px solid rgba(110, 126, 177, 0.2);
+    }
+
+    .sidebar-toggle-btn {
+      margin-left: auto;
+      width: 28px;
+      height: 28px;
+      border-radius: 10px;
+      border: 1px solid rgba(110, 126, 177, 0.3);
+      background: rgba(18, 22, 33, 0.85);
+      color: #d5deff;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      font-size: 1rem;
+      line-height: 1;
+      transition: all 0.2s ease;
+    }
+
+    .sidebar-toggle-btn:hover {
+      border-color: rgba(77, 91, 255, 0.8);
+      color: #f3f6ff;
+      background: rgba(45, 60, 176, 0.3);
+    }
+
     header .brand .brand-logo {
       width: 28px;
       height: 28px;
       object-fit: contain;
-      filter: drop-shadow(0 0 10px rgba(145, 71, 255, 0.36));
+      filter: drop-shadow(0 0 10px rgba(77, 91, 255, 0.36));
       flex: 0 0 auto;
+    }
+
+    .app-sidebar header .brand .brand-logo {
+      width: 28px;
+      height: 28px;
+      padding: 3px;
+      border-radius: 10px;
+      border: 1px solid rgba(77, 91, 255, 0.55);
+      background: rgba(77, 91, 255, 0.16);
+      box-shadow: 0 0 18px rgba(77, 91, 255, 0.28);
     }
 
     header .right {
@@ -278,6 +532,202 @@
       gap: 10px;
       flex-wrap: wrap;
       justify-content: flex-end;
+    }
+
+    .app-sidebar header .right {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 8px;
+      align-items: stretch;
+      justify-content: stretch;
+      justify-self: stretch;
+      align-self: stretch;
+      min-width: 0;
+      width: 100%;
+    }
+
+    .app-sidebar header .header-meta-group,
+    .app-sidebar header #upload-status-chip,
+    .app-sidebar header #bulk-upload-btn,
+    .app-sidebar header #upload-pause-btn,
+    .app-sidebar header #upload-resume-btn,
+    .app-sidebar header #upload-cancel-btn {
+      grid-column: 1 / -1;
+    }
+
+    .app-sidebar header .header-meta-group {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 8px;
+      justify-self: stretch;
+      width: 100%;
+    }
+
+    .app-sidebar header .status-chip,
+    .app-sidebar header .approved-count,
+    .app-sidebar header #upload-status-chip,
+    .app-sidebar header .btn-header-upload,
+    .app-sidebar header .btn-header-control {
+      width: 100%;
+      max-width: 100%;
+      min-width: 0;
+      min-height: 38px;
+      border-radius: 14px;
+      padding: 0 11px;
+      display: inline-flex;
+      align-items: center;
+      line-height: 1;
+    }
+
+    .app-sidebar header .status-chip,
+    .app-sidebar header #upload-status-chip {
+      justify-content: space-between;
+      border: 1px solid rgba(110, 126, 177, 0.26);
+      background: linear-gradient(180deg, rgba(24, 28, 39, 0.84), rgba(17, 21, 31, 0.92));
+      color: #c7d0e2;
+      font-size: 0.84rem;
+      font-weight: 500;
+    }
+
+    .app-sidebar header .status-chip strong {
+      color: #f3f6ff;
+      margin-left: 0;
+      font-weight: 700;
+      font-size: 0.9rem;
+    }
+
+    .app-sidebar header .approved-count {
+      justify-content: flex-start;
+      border: 1px solid rgba(16, 185, 129, 0.56);
+      background: linear-gradient(180deg, rgba(6, 78, 59, 0.62), rgba(6, 95, 70, 0.42));
+      color: #a7f3d0;
+      font-size: 0.9rem;
+      font-weight: 700;
+    }
+
+    .app-sidebar header #upload-status-chip {
+      max-width: none;
+      justify-content: flex-start;
+      gap: 8px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .app-sidebar header #upload-status-chip::before {
+      content: '';
+      width: 8px;
+      height: 8px;
+      border-radius: 999px;
+      background: #71717a;
+      box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.08);
+      flex: 0 0 auto;
+    }
+
+    .app-sidebar header #upload-status-chip[data-state="running"]::before {
+      background: #5f78ff;
+      box-shadow: 0 0 10px rgba(77, 91, 255, 0.9);
+      animation: action-progress-pulse 1.2s ease-in-out infinite;
+    }
+
+    .app-sidebar header #upload-status-chip[data-state="paused"]::before {
+      background: #fbbf24;
+      box-shadow: 0 0 8px rgba(251, 191, 36, 0.66);
+      animation: none;
+    }
+
+    .app-sidebar header #upload-status-chip[data-state="done"]::before {
+      background: #34d399;
+      box-shadow: 0 0 8px rgba(52, 211, 153, 0.72);
+      animation: none;
+    }
+
+    .app-sidebar header #upload-status-chip[data-state="error"]::before {
+      background: #f87171;
+      box-shadow: 0 0 8px rgba(248, 113, 113, 0.66);
+      animation: none;
+    }
+
+    .app-sidebar header .btn-header-control {
+      justify-content: flex-start;
+      text-align: left;
+      border: 1px solid rgba(110, 126, 177, 0.26);
+      background: linear-gradient(180deg, rgba(24, 28, 39, 0.84), rgba(17, 21, 31, 0.92));
+      color: #8b96ab;
+      font-size: 0.84rem;
+      font-weight: 500;
+    }
+
+    .app-sidebar header .btn-header-control:hover:not(:disabled) {
+      border-color: rgba(77, 91, 255, 0.66);
+      color: #dce5ff;
+      background: linear-gradient(180deg, rgba(39, 46, 66, 0.88), rgba(21, 27, 40, 0.95));
+    }
+
+    .app-sidebar header .btn-header-control:disabled {
+      opacity: 1;
+      color: #7e8798;
+      cursor: not-allowed;
+    }
+
+    .app-sidebar header .btn-header-upload {
+      justify-content: flex-start;
+      text-align: left;
+      border: 1px solid rgba(141, 155, 255, 0.82);
+      border-radius: 14px;
+      font-size: 0.92rem;
+      font-weight: 700;
+      box-shadow: none;
+      transform: none;
+      filter: none;
+    }
+
+    .app-sidebar header .status-chip:hover,
+    .app-sidebar header #upload-status-chip:hover {
+      border-color: rgba(110, 126, 177, 0.42);
+    }
+
+    .app-sidebar header .approved-count:hover {
+      border-color: rgba(16, 185, 129, 0.82);
+    }
+
+    .app-sidebar header .btn-header-upload:hover {
+      border-color: rgba(110, 126, 177, 0.52);
+      box-shadow: none;
+      transform: none;
+      filter: brightness(1.05);
+    }
+
+    .app-sidebar .sidebar-admin-row .btn-logout {
+      width: 100%;
+      max-width: 100%;
+      min-width: 0;
+      min-height: 38px;
+      border-radius: 14px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      padding: 0 10px;
+      text-align: center;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      border: 1px solid rgba(110, 126, 177, 0.3);
+      background: linear-gradient(180deg, rgba(30, 33, 41, 0.9), rgba(25, 28, 35, 0.94));
+      color: #d6deec;
+      font-size: 0.86rem;
+      font-weight: 600;
+    }
+
+    .app-sidebar .sidebar-admin-row .btn-logout svg {
+      width: 15px;
+      height: 15px;
+      flex: 0 0 auto;
+    }
+
+    .app-sidebar .sidebar-admin-row .btn-logout:hover {
+      border-color: rgba(110, 126, 177, 0.48);
     }
 
     .approved-count {
@@ -310,7 +760,7 @@
     }
 
     #navbar-username {
-      color: #ddd6fe;
+      color: #d5deff;
       font-weight: 600;
     }
 
@@ -326,25 +776,34 @@
     }
 
     .btn-logout:hover {
-      border-color: rgba(145, 71, 255, 0.75);
-      color: #f3e8ff;
-      background: rgba(124, 58, 237, 0.22);
+      border-color: rgba(77, 91, 255, 0.75);
+      color: #e8eeff;
+      background: rgba(51, 68, 196, 0.22);
     }
 
     .btn-header-upload {
-      padding: 6px 16px;
-      background: linear-gradient(135deg, rgba(145, 71, 255, 0.24), rgba(217, 70, 239, 0.24));
-      border: 1px solid rgba(196, 181, 253, 0.65);
-      color: #ddd6fe;
-      border-radius: 6px;
+      padding: 8px 16px;
+      background: linear-gradient(180deg, #5f6cff 0%, #4959f8 48%, #3444d2 100%);
+      border: 1px solid rgba(141, 155, 255, 0.82);
+      color: #eef2ff;
+      border-radius: 12px;
       cursor: pointer;
-      font-size: 0.85rem;
-      transition: all 0.2s;
+      font-size: 0.84rem;
+      font-weight: 700;
+      transition: filter 0.2s ease, transform 0.18s ease, box-shadow 0.2s ease;
+      box-shadow:
+        0 0 0 1px rgba(255, 255, 255, 0.14) inset,
+        0 10px 24px rgba(63, 78, 202, 0.52),
+        0 0 18px rgba(77, 91, 255, 0.42);
     }
 
     .btn-header-upload:hover {
-      border-color: #c4b5fd;
-      color: #faf5ff;
+      filter: brightness(1.08);
+      transform: translateY(-1px);
+      box-shadow:
+        0 0 0 1px rgba(255, 255, 255, 0.2) inset,
+        0 12px 28px rgba(63, 78, 202, 0.58),
+        0 0 20px rgba(77, 91, 255, 0.5);
     }
 
     .btn-header-control {
@@ -359,8 +818,8 @@
     }
 
     .btn-header-control:hover {
-      border-color: rgba(145, 71, 255, 0.75);
-      color: #e9d5ff;
+      border-color: rgba(77, 91, 255, 0.75);
+      color: #d7e0ff;
     }
 
     .btn-header-control:disabled,
@@ -402,11 +861,33 @@
       margin: 14px 24px 0;
       border: 1px solid rgba(139, 92, 246, 0.32);
       border-radius: 12px;
-      background: linear-gradient(135deg, rgba(76, 29, 149, 0.2), rgba(24, 24, 27, 0.88));
+      background: linear-gradient(135deg, rgba(40, 52, 146, 0.2), rgba(24, 24, 27, 0.88));
       box-shadow: 0 12px 34px rgba(0, 0, 0, 0.24);
       padding: 12px;
       display: grid;
       gap: 10px;
+    }
+
+    .app-sidebar .setup-guide {
+      margin: 0 12px;
+      border-color: rgba(110, 126, 177, 0.26);
+      border-radius: 12px;
+      background: rgba(15, 19, 29, 0.62);
+      box-shadow: none;
+    }
+
+    .app-sidebar .setup-step {
+      border-color: rgba(110, 126, 177, 0.24);
+      border-radius: 10px;
+      background: linear-gradient(180deg, rgba(24, 28, 39, 0.74), rgba(17, 21, 31, 0.84));
+    }
+
+    .app-sidebar .setup-step:hover {
+      border-color: rgba(110, 126, 177, 0.42);
+    }
+
+    .app-sidebar .setup-step-index {
+      border-radius: 999px;
     }
 
     .setup-guide.hidden {
@@ -483,11 +964,11 @@
     }
 
     .setup-step-action {
-      border: 1px solid rgba(196, 181, 253, 0.6);
-      border-radius: 8px;
+      border: 1px solid rgba(170, 182, 255, 0.6);
+      border-radius: 9px;
       background: rgba(109, 40, 217, 0.26);
-      color: #ede9fe;
-      font-size: 0.73rem;
+      color: #e7ecff;
+      font-size: 0.7rem;
       font-weight: 700;
       padding: 5px 10px;
       cursor: pointer;
@@ -496,9 +977,9 @@
     }
 
     .setup-step-action:hover {
-      border-color: rgba(196, 181, 253, 0.95);
-      color: #faf5ff;
-      background: rgba(124, 58, 237, 0.38);
+      border-color: rgba(170, 182, 255, 0.95);
+      color: #f5f8ff;
+      background: rgba(51, 68, 196, 0.38);
     }
 
     .setup-step-action:disabled {
@@ -512,16 +993,79 @@
       display: flex;
       align-items: center;
       gap: 12px;
-      flex-wrap: wrap;
+      flex-wrap: nowrap;
       border-bottom: 1px solid rgba(255, 255, 255, 0.08);
       background: rgba(24, 24, 27, 0.55);
       backdrop-filter: blur(8px);
+      overflow-x: auto;
+      overflow-y: hidden;
     }
 
-    .controls label { color: var(--muted); font-size: 0.9rem; }
+    .controls label {
+      color: var(--muted);
+      font-size: 0.9rem;
+      white-space: nowrap;
+      flex: 0 0 auto;
+    }
 
-    .period-btns { display: flex; gap: 8px; transition: opacity 0.2s; }
+    .sidebar-open-btn {
+      display: none;
+      width: 40px;
+      height: 40px;
+      padding: 0;
+      border-radius: 14px;
+      border: 1px solid rgba(110, 126, 177, 0.34);
+      background: rgba(18, 22, 33, 0.9);
+      color: #d5deff;
+      cursor: pointer;
+      font-size: 1.3rem;
+      font-weight: 500;
+      line-height: 1;
+      transition: all 0.2s ease;
+    }
+
+    .sidebar-open-btn:hover {
+      border-color: rgba(77, 91, 255, 0.8);
+      background: rgba(45, 60, 176, 0.3);
+      color: #f3f6ff;
+    }
+
+    #app-screen.sidebar-collapsed .sidebar-open-btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      flex: 0 0 auto;
+    }
+
+    .app-sidebar .controls {
+      margin: 0 14px;
+      padding: 14px;
+      border-radius: 14px;
+      border: 1px solid rgba(110, 126, 177, 0.26);
+      background: rgba(15, 19, 29, 0.82);
+      display: grid;
+      gap: 10px;
+    }
+
+    .app-sidebar .controls label {
+      font-size: 0.76rem;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+    }
+
+    .period-btns {
+      display: flex;
+      gap: 8px;
+      transition: opacity 0.2s;
+      flex: 0 0 auto;
+      white-space: nowrap;
+    }
     .period-btns.disabled { opacity: 0.35; pointer-events: none; }
+
+    .app-sidebar .period-btns {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
 
     .period-btn {
       padding: 6px 18px;
@@ -534,16 +1078,37 @@
       transition: all 0.2s;
     }
 
-    .period-btn:hover { border-color: #a78bfa; color: #e9d5ff; }
+    .app-sidebar .period-btn {
+      width: 100%;
+      border-radius: 12px;
+      padding: 8px 10px;
+      font-size: 0.82rem;
+      text-align: center;
+    }
+
+    .period-btn:hover { border-color: #8594ff; color: #d7e0ff; }
 
     .period-btn.active {
-      background: linear-gradient(135deg, #9147ff, #7c3aed);
-      border-color: #a78bfa;
+      background: linear-gradient(135deg, #4d5bff, #3344c4);
+      border-color: #8594ff;
       color: #fff;
       font-weight: 600;
     }
 
-    .filter-btns { display: flex; gap: 8px; margin-left: auto; }
+    .filter-btns {
+      display: flex;
+      gap: 8px;
+      margin-left: auto;
+      flex: 0 0 auto;
+      flex-wrap: nowrap;
+      white-space: nowrap;
+    }
+
+    .app-sidebar .filter-btns {
+      margin-left: 0;
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
 
     .filter-btn {
       padding: 6px 16px;
@@ -554,6 +1119,15 @@
       cursor: pointer;
       font-size: 0.85rem;
       transition: all 0.2s;
+      white-space: nowrap;
+      flex: 0 0 auto;
+    }
+
+    .app-sidebar .filter-btn {
+      width: 100%;
+      border-radius: 12px;
+      padding: 8px 10px;
+      text-align: center;
     }
 
     .filter-btn.active { border-color: #10b981; color: #34d399; }
@@ -569,11 +1143,19 @@
       cursor: pointer;
       font-size: 0.82rem;
       transition: all 0.2s;
+      flex: 0 0 auto;
+    }
+
+    .app-sidebar .btn-refresh,
+    .app-sidebar .action-progress-chip {
+      width: 100%;
+      border-radius: 12px;
+      min-height: 38px;
     }
 
     .btn-refresh:hover {
-      border-color: #a78bfa;
-      color: #e9d5ff;
+      border-color: #8594ff;
+      color: #d7e0ff;
     }
 
     .action-progress-chip {
@@ -588,12 +1170,16 @@
       font-size: 0.78rem;
       font-weight: 600;
       min-height: 34px;
+      min-width: 0;
+      width: auto;
+      max-width: min(100%, 520px);
+      flex: 1 1 320px;
     }
 
     .action-progress-chip[data-state="running"] {
-      border-color: rgba(167, 139, 250, 0.72);
-      color: #ede9fe;
-      background: rgba(76, 29, 149, 0.3);
+      border-color: rgba(77, 91, 255, 0.76);
+      color: #e7ecff;
+      background: rgba(40, 52, 146, 0.32);
     }
 
     .action-progress-chip[data-state="done"] {
@@ -618,8 +1204,8 @@
     }
 
     .action-progress-chip[data-state="running"] .action-progress-dot {
-      background: #a78bfa;
-      box-shadow: 0 0 10px rgba(167, 139, 250, 0.85);
+      background: #5f78ff;
+      box-shadow: 0 0 10px rgba(77, 91, 255, 0.9);
       animation: action-progress-pulse 1.2s ease-in-out infinite;
     }
 
@@ -642,6 +1228,10 @@
 
     .action-progress-text {
       white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      min-width: 0;
+      flex: 1 1 auto;
     }
 
     .action-progress-cancel {
@@ -655,6 +1245,7 @@
       padding: 4px 9px;
       cursor: pointer;
       transition: all 0.16s ease;
+      flex: 0 0 auto;
     }
 
     .action-progress-cancel:hover {
@@ -710,28 +1301,60 @@
 
     .stats-bar strong { color: var(--text); }
 
+    .app-sidebar .stats-bar {
+      margin: 0 14px 14px;
+      padding: 12px 14px;
+      border: 1px solid rgba(110, 126, 177, 0.24);
+      border-radius: 12px;
+      background: rgba(14, 18, 27, 0.82);
+      display: block;
+      line-height: 1.45;
+    }
+
+    .app-main #clips-container {
+      max-width: none;
+      padding: 18px 20px 26px;
+      width: 100%;
+      margin-left: 0;
+      margin-right: 0;
+    }
+
+    .app-main #loading,
+    .app-main #empty {
+      min-height: 36vh;
+    }
+
+    .app-main .dashboard-state-card {
+      max-width: none;
+      margin: 16px 0 0;
+      padding: 0 20px;
+    }
+
     /* ── Grid ──────────────────────────────── */
     #clips-container {
       padding: 24px;
       display: flex;
       flex-direction: column;
       gap: 18px;
+      align-items: stretch;
     }
 
     .streamer-section {
-      background: rgba(24, 24, 27, 0.7);
-      border: 1px solid rgba(255, 255, 255, 0.1);
+      background: rgba(17, 20, 29, 0.82);
+      border: 1px solid rgba(110, 126, 177, 0.24);
       border-radius: 14px;
       box-shadow: 0 14px 36px rgba(0, 0, 0, 0.28);
       overflow: hidden;
+      width: 100%;
+      min-width: 0;
     }
 
     .streamer-header {
       width: 100%;
-      background: linear-gradient(90deg, rgba(39, 39, 42, 0.82), rgba(63, 63, 70, 0.72));
+      background: linear-gradient(90deg, rgba(23, 28, 40, 0.92), rgba(44, 52, 72, 0.8));
       color: var(--text);
       border: none;
-      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+      border-bottom: 1px solid rgba(110, 126, 177, 0.22);
       padding: 12px 14px;
       display: flex;
       align-items: center;
@@ -742,7 +1365,7 @@
     }
 
     .streamer-header:hover {
-      background: linear-gradient(90deg, rgba(61, 28, 112, 0.7), rgba(63, 63, 70, 0.8));
+      background: linear-gradient(90deg, rgba(63, 78, 202, 0.5), rgba(31, 39, 57, 0.9));
     }
 
     .streamer-header .meta {
@@ -1053,9 +1676,9 @@
     }
 
     .dashboard-state-action:hover {
-      border-color: rgba(196, 181, 253, 0.86);
-      color: #ede9fe;
-      background: rgba(76, 29, 149, 0.34);
+      border-color: rgba(170, 182, 255, 0.86);
+      color: #e7ecff;
+      background: rgba(40, 52, 146, 0.34);
     }
 
     /* ── Admin Modal ────────────────────────────── */
@@ -1280,7 +1903,7 @@
       max-height: 92vh;
       overflow: auto;
       background: linear-gradient(160deg, rgba(27, 27, 34, 0.98), rgba(18, 18, 24, 0.98));
-      border: 1px solid rgba(145, 71, 255, 0.32);
+      border: 1px solid rgba(77, 91, 255, 0.32);
       border-radius: 16px;
       box-shadow: 0 24px 70px rgba(0, 0, 0, 0.55), 0 0 0 1px rgba(255, 255, 255, 0.03) inset;
       padding: 18px;
@@ -1294,7 +1917,7 @@
       gap: 12px;
       color: var(--muted);
       font-size: 0.82rem;
-      border-bottom: 1px solid rgba(145, 71, 255, 0.18);
+      border-bottom: 1px solid rgba(77, 91, 255, 0.18);
       padding-bottom: 10px;
     }
 
@@ -1342,10 +1965,10 @@
     }
 
     .clip-player-retry-btn {
-      border: 1px solid rgba(145, 71, 255, 0.78);
+      border: 1px solid rgba(77, 91, 255, 0.78);
       border-radius: 999px;
-      background: rgba(145, 71, 255, 0.15);
-      color: #ede9fe;
+      background: rgba(77, 91, 255, 0.15);
+      color: #e7ecff;
       padding: 7px 16px;
       font-size: 0.78rem;
       font-weight: 700;
@@ -1354,14 +1977,14 @@
     }
 
     .clip-player-retry-btn:hover {
-      background: rgba(145, 71, 255, 0.28);
-      border-color: #c4b5fd;
+      background: rgba(77, 91, 255, 0.28);
+      border-color: #aab6ff;
     }
 
     .clip-player-actions {
       display: block;
       padding-top: 4px;
-      border-top: 1px solid rgba(145, 71, 255, 0.18);
+      border-top: 1px solid rgba(77, 91, 255, 0.18);
     }
 
     .clip-modal-actions-grid {
@@ -1373,12 +1996,12 @@
     .clip-player-open-link {
       color: var(--purple);
       text-decoration: none;
-      border-bottom: 1px dotted rgba(145, 71, 255, 0.65);
+      border-bottom: 1px dotted rgba(77, 91, 255, 0.65);
     }
 
     .clip-player-open-link:hover {
-      color: #c4b5fd;
-      border-bottom-color: #c4b5fd;
+      color: #aab6ff;
+      border-bottom-color: #aab6ff;
     }
 
     .clip-player-title-row {
@@ -1392,8 +2015,8 @@
       width: 9px;
       height: 9px;
       border-radius: 999px;
-      background: linear-gradient(180deg, #b794ff, #7c3aed);
-      box-shadow: 0 0 12px rgba(145, 71, 255, 0.8);
+      background: linear-gradient(180deg, #b794ff, #3344c4);
+      box-shadow: 0 0 12px rgba(77, 91, 255, 0.8);
       flex: 0 0 auto;
     }
 
@@ -1646,7 +2269,7 @@
 
     .output-cam-area {
       z-index: 12;
-      background: rgba(145, 71, 255, 0.14);
+      background: rgba(77, 91, 255, 0.14);
       box-shadow:
         inset 0 0 0 1px rgba(221, 214, 254, 0.58),
         0 0 0 1px rgba(0, 0, 0, 0.34);
@@ -1751,7 +2374,7 @@
 
     .output-cam-area .output-cam-resize {
       bottom: -2px;
-      background: linear-gradient(to bottom, rgba(167, 139, 250, 0.86), rgba(145, 71, 255, 0.22));
+      background: linear-gradient(to bottom, rgba(167, 139, 250, 0.86), rgba(77, 91, 255, 0.22));
       border-top: 1px solid rgba(233, 213, 255, 0.96);
       box-shadow:
         0 1px 0 rgba(0, 0, 0, 0.55),
@@ -1799,8 +2422,8 @@
     }
 
     .output-cam-move-handle {
-      border-color: rgba(196, 181, 253, 0.72);
-      background: rgba(76, 29, 149, 0.76);
+      border-color: rgba(170, 182, 255, 0.72);
+      background: rgba(40, 52, 146, 0.76);
     }
 
     .output-game-move-handle {
@@ -1850,7 +2473,7 @@
     }
 
     .output-cam-resize-handle::before {
-      background: linear-gradient(to bottom, rgba(167, 139, 250, 0.88), rgba(145, 71, 255, 0.3));
+      background: linear-gradient(to bottom, rgba(167, 139, 250, 0.88), rgba(77, 91, 255, 0.3));
       border-top: 1px solid rgba(233, 213, 255, 0.95);
       box-shadow:
         0 1px 0 rgba(0, 0, 0, 0.55),
@@ -1910,13 +2533,13 @@
       user-select: none;
       cursor: grab;
       background: linear-gradient(135deg, rgba(14, 14, 18, 0.78), rgba(23, 23, 31, 0.74));
-      border: 1px solid rgba(145, 71, 255, 0.62);
+      border: 1px solid rgba(77, 91, 255, 0.62);
       color: #fff;
       font-weight: 700;
       border-radius: 999px;
       box-shadow:
         0 6px 18px rgba(0, 0, 0, 0.38),
-        0 0 12px rgba(145, 71, 255, 0.24);
+        0 0 12px rgba(77, 91, 255, 0.24);
       text-shadow: 0 1px 2px rgba(0, 0, 0, 0.45);
       white-space: nowrap;
       box-sizing: border-box;
@@ -1942,8 +2565,8 @@
       pointer-events: none;
       display: none;
       z-index: 15;
-      background: linear-gradient(180deg, rgba(196, 181, 253, 0.0), rgba(196, 181, 253, 0.8), rgba(196, 181, 253, 0.0));
-      box-shadow: 0 0 10px rgba(145, 71, 255, 0.42);
+      background: linear-gradient(180deg, rgba(170, 182, 255, 0.0), rgba(170, 182, 255, 0.8), rgba(170, 182, 255, 0.0));
+      box-shadow: 0 0 10px rgba(77, 91, 255, 0.42);
     }
 
     .output-center-guide-x {
@@ -2014,7 +2637,7 @@
     .split-current-time {
       margin: 0;
       font-size: 0.76rem;
-      color: #c4b5fd;
+      color: #aab6ff;
       font-weight: 700;
       white-space: nowrap;
     }
@@ -2035,7 +2658,7 @@
       justify-content: space-between;
       gap: 6px;
       padding: 4px 6px;
-      border: 1px solid rgba(145, 71, 255, 0.22);
+      border: 1px solid rgba(77, 91, 255, 0.22);
       border-radius: 999px;
       background: rgba(17, 17, 24, 0.42);
     }
@@ -2055,10 +2678,10 @@
     }
 
     .split-btn {
-      border: 1px solid rgba(145, 71, 255, 0.34);
+      border: 1px solid rgba(77, 91, 255, 0.34);
       border-radius: 999px;
-      background: rgba(145, 71, 255, 0.12);
-      color: #ede9fe;
+      background: rgba(77, 91, 255, 0.12);
+      color: #e7ecff;
       font-size: 0.69rem;
       font-weight: 700;
       letter-spacing: 0.01em;
@@ -2074,8 +2697,8 @@
     }
 
     .split-btn:hover {
-      background: rgba(145, 71, 255, 0.22);
-      border-color: rgba(196, 181, 253, 0.76);
+      background: rgba(77, 91, 255, 0.22);
+      border-color: rgba(170, 182, 255, 0.76);
       transform: translateY(-1px);
     }
 
@@ -2117,7 +2740,7 @@
       gap: 4px;
       padding: 6px;
       border-radius: 10px;
-      border: 1px solid rgba(145, 71, 255, 0.35);
+      border: 1px solid rgba(77, 91, 255, 0.35);
       background: rgba(17, 17, 24, 0.96);
       box-shadow: 0 8px 22px rgba(0, 0, 0, 0.45);
     }
@@ -2133,7 +2756,7 @@
 
     .split-timeline-wrap {
       margin-top: 10px;
-      border: 1px solid rgba(145, 71, 255, 0.35);
+      border: 1px solid rgba(77, 91, 255, 0.35);
       border-radius: 10px;
       background: linear-gradient(180deg, rgba(17, 17, 24, 0.95), rgba(14, 14, 20, 0.95));
       overflow: hidden;
@@ -2142,7 +2765,7 @@
     .split-ruler {
       position: relative;
       height: 34px;
-      border-bottom: 1px solid rgba(145, 71, 255, 0.25);
+      border-bottom: 1px solid rgba(77, 91, 255, 0.25);
       background: linear-gradient(180deg, rgba(255, 255, 255, 0.03), rgba(0, 0, 0, 0.08));
     }
 
@@ -2155,7 +2778,7 @@
     }
 
     .split-ruler-tick.major {
-      background: rgba(196, 181, 253, 0.45);
+      background: rgba(170, 182, 255, 0.45);
       width: 2px;
     }
 
@@ -2222,7 +2845,7 @@
       padding: 3px 4px;
       width: 186px;
       border-radius: 999px;
-      border: 1px solid rgba(196, 181, 253, 0.72);
+      border: 1px solid rgba(170, 182, 255, 0.72);
       background: rgba(7, 7, 10, 0.97);
       box-shadow: 0 10px 24px rgba(0, 0, 0, 0.52);
       z-index: 9;
@@ -2258,7 +2881,7 @@
       top: -2px;
       bottom: -2px;
       width: 2px;
-      background: #a78bfa;
+      background: #8594ff;
       box-shadow: 0 0 10px rgba(167, 139, 250, 0.8);
       pointer-events: none;
       z-index: 3;
@@ -2331,9 +2954,9 @@
     /* Remove old dedicated toolbar color variants now replaced by contextual actions + overflow menu */
     .split-btn.warn,
     .split-btn.ok {
-      border-color: rgba(145, 71, 255, 0.30);
-      background: rgba(145, 71, 255, 0.10);
-      color: #ddd6fe;
+      border-color: rgba(77, 91, 255, 0.30);
+      background: rgba(77, 91, 255, 0.10);
+      color: #d5deff;
     }
 
     .split-empty-note {
@@ -2385,9 +3008,9 @@
       width: calc(50% - 2px);
       height: calc(100% - 4px);
       border-radius: 999px;
-      background: linear-gradient(135deg, #9147ff, #7c3aed);
+      background: linear-gradient(135deg, #4d5bff, #3344c4);
       transition: transform 0.2s ease-out;
-      box-shadow: 0 6px 16px rgba(145, 71, 255, 0.4);
+      box-shadow: 0 6px 16px rgba(77, 91, 255, 0.4);
     }
 
     .cam-toggle-labels {
@@ -2435,17 +3058,61 @@
     .btn-primary:hover { background: var(--green-hover); }
 
     @media (max-width: 980px) {
+      .app-shell {
+        grid-template-columns: minmax(250px, 286px) minmax(0, 1fr);
+      }
+
+      .app-sidebar {
+        position: sticky;
+        top: 0;
+        height: 100dvh;
+        overflow: hidden;
+        border-right: 1px solid rgba(110, 126, 177, 0.2);
+        border-bottom: none;
+      }
+
+      .app-sidebar header .right {
+        grid-template-columns: 1fr;
+      }
+
+      .app-main #clips-container,
+      .app-main .dashboard-state-card {
+        padding-left: 14px;
+        padding-right: 14px;
+      }
+
       .crop-layout { grid-template-columns: 1fr; }
       .crop-preview,
       .crop-preview-wrap {
         min-height: 360px;
       }
-      .controls {
-        align-items: stretch;
+    }
+
+    @media (max-width: 1500px) {
+      .controls .action-progress-chip {
+        max-width: min(100%, 360px);
+        flex-basis: 360px;
       }
-      .action-progress-chip {
-        width: 100%;
-        justify-content: space-between;
+    }
+
+    @media (max-width: 1320px) {
+      .controls .action-progress-chip {
+        max-width: min(100%, 320px);
+        flex-basis: 260px;
+      }
+    }
+
+    @media (max-width: 760px) {
+      .app-sidebar header .right {
+        grid-template-columns: 1fr;
+      }
+
+      .app-sidebar .period-btns {
+        grid-template-columns: 1fr;
+      }
+
+      .app-sidebar .filter-btns {
+        grid-template-columns: 1fr;
       }
     }
 
@@ -2457,20 +3124,21 @@
     }
 
     body.login-view .legal-footer {
-      position: fixed;
-      left: 50%;
-      bottom: 16px;
-      transform: translateX(-50%);
-      z-index: 40;
-      width: auto;
-      min-width: 280px;
-      border: 1px solid rgba(255, 255, 255, 0.08);
-      border-radius: 999px;
-      background: rgba(20, 20, 24, 0.78);
-      backdrop-filter: blur(14px);
-      box-shadow:
-        0 12px 30px rgba(0, 0, 0, 0.32),
-        0 0 0 1px rgba(255, 255, 255, 0.03) inset;
+      display: none;
+    }
+
+    body.login-view #login-screen {
+      min-height: 100dvh;
+      padding-bottom: 20px;
+      overflow-y: auto;
+      overflow-x: hidden;
+    }
+
+    @media (max-height: 860px) {
+      body.login-view #login-screen {
+        align-items: flex-start;
+        padding-top: 18px;
+      }
     }
 
     body.login-view #app-screen {
@@ -2502,7 +3170,7 @@
     <h1>Clip-Reviewer</h1>
     <p>Enter your credentials to access the dashboard</p>
     <div id="auth-mode-switch" tabindex="0" role="group" aria-label="Authentication mode" class="relative mb-3 rounded-full border border-zinc-700/80 overflow-hidden text-sm bg-zinc-950/70 p-1 shadow-inner shadow-black/50 cursor-pointer select-none">
-      <div id="auth-mode-slider" class="absolute inset-y-1 left-1 w-[calc(50%-0.25rem)] rounded-full bg-gradient-to-r from-violet-600 to-fuchsia-600 transition-transform duration-200 ease-out shadow-lg shadow-violet-700/40"></div>
+      <div id="auth-mode-slider" class="absolute inset-y-1 left-1 w-[calc(50%-0.25rem)] rounded-full bg-gradient-to-r from-indigo-600 to-blue-600 transition-transform duration-200 ease-out shadow-lg shadow-indigo-700/40"></div>
       <div class="relative z-10 grid grid-cols-2">
         <div id="auth-mode-login" class="px-3 py-2 text-center text-white font-semibold">Sign In</div>
         <div id="auth-mode-register" class="px-3 py-2 text-center text-zinc-400">Register</div>
@@ -2522,6 +3190,12 @@
     <div id="account-change-help">You can update username, email, and password here. Leave any field unchanged if you do not want to update it.</div>
     <button id="forgot-password-btn" class="btn-secondary" type="button">Forgot Password</button>
     <a href="/" class="back-home-link">Back to Homepage</a>
+    <div class="login-legal-pill">
+      <span>By signing in, you agree to our</span>
+      <a href="/terms.html">Terms of Service</a>
+      <span>and</span>
+      <a href="/privacy.html">Privacy Policy</a>
+    </div>
     <div id="login-info"></div>
     <div id="login-error">Something went wrong. Please try again.</div>
   </div>
@@ -2529,130 +3203,157 @@
 
 <!-- ══════════════════ MAIN APP ══════════════════ -->
 <div id="app-screen" class="min-h-screen">
-  <header class="backdrop-blur supports-[backdrop-filter]:bg-zinc-900/80">
-    <div class="brand">
-      <img class="brand-logo" src="/pictures/logos/logo-concept-6-clapper-neon.svg" alt="Clip-Reviewer logo" />
-      Clip-Reviewer
-    </div>
-    <div class="right">
-      <div class="header-meta-group">
-        <div class="status-chip">Signed in<strong id="navbar-username">@-</strong></div>
-        <div class="status-chip">Streamers<strong id="status-streamers">0</strong></div>
-        <div class="status-chip">Last sync<strong id="status-last-sync">Never</strong></div>
-        <div class="approved-count" id="approved-count">0 approved</div>
-      </div>
-      <div id="upload-status-chip" class="upload-status-chip">Upload queue idle</div>
-      <button class="btn-header-upload" id="bulk-upload-btn">Start Upload</button>
-      <button class="btn-header-control" id="upload-pause-btn" disabled>Pause</button>
-      <button class="btn-header-control" id="upload-resume-btn" disabled>Resume</button>
-      <button class="btn-header-control" id="upload-cancel-btn" disabled>Cancel</button>
-      <button class="btn-logout inline-flex items-center gap-1.5" id="admin-btn">
-        <svg class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-          <path d="M3 3.75A.75.75 0 013.75 3h12.5a.75.75 0 01.75.75V5a.75.75 0 01-.75.75H3.75A.75.75 0 013 5V3.75zM3 8.75A.75.75 0 013.75 8h5.5a.75.75 0 01.75.75v7.5a.75.75 0 01-.75.75h-5.5a.75.75 0 01-.75-.75v-7.5zM11 8.75A.75.75 0 0111.75 8h4.5a.75.75 0 01.75.75v2.5a.75.75 0 01-.75.75h-4.5a.75.75 0 01-.75-.75v-2.5zM11 14.75a.75.75 0 01.75-.75h4.5a.75.75 0 01.75.75v1.5a.75.75 0 01-.75.75h-4.5a.75.75 0 01-.75-.75v-1.5z"/>
-        </svg>
-        Admin
-      </button>
-      <button class="btn-logout inline-flex items-center gap-1.5" id="manage-streamers-btn">
-        <svg class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-          <path d="M10 2a.75.75 0 01.75.75v6.5h6.5a.75.75 0 010 1.5h-6.5v6.5a.75.75 0 01-1.5 0v-6.5h-6.5a.75.75 0 010-1.5h6.5v-6.5A.75.75 0 0110 2z"/>
-        </svg>
-        Add Streamer
-      </button>
-      <button class="btn-logout" id="account-btn">Account</button>
-      <button class="btn-logout" id="logout-btn">Logout</button>
-    </div>
-  </header>
+  <div class="app-shell">
+    <aside class="app-sidebar">
+      <div class="app-sidebar-scroll">
+        <header class="backdrop-blur supports-[backdrop-filter]:bg-zinc-900/80">
+          <div class="brand">
+            <img class="brand-logo" src="/pictures/logos/logo-concept-6-clapper-neon.svg" alt="Clip-Reviewer logo" />
+            Clip-Reviewer
+            <button id="sidebar-toggle-btn" class="sidebar-toggle-btn" type="button" aria-label="Collapse sidebar" title="Collapse sidebar">⟨</button>
+          </div>
+          <div class="right">
+            <div class="header-meta-group">
+              <div class="status-chip">Streamers<strong id="status-streamers">0</strong></div>
+              <div class="status-chip">Last sync<strong id="status-last-sync">Never</strong></div>
+              <div class="approved-count" id="approved-count">0 approved</div>
+            </div>
+            <div id="upload-status-chip" class="upload-status-chip">Upload queue idle</div>
+            <button class="btn-header-upload" id="bulk-upload-btn">Start Upload</button>
+            <button class="btn-header-control" id="upload-pause-btn" disabled>Pause</button>
+            <button class="btn-header-control" id="upload-resume-btn" disabled>Resume</button>
+            <button class="btn-header-control" id="upload-cancel-btn" disabled>Cancel</button>
+          </div>
+        </header>
 
-  <section id="setup-guide" class="setup-guide hidden" aria-live="polite">
-    <div class="setup-guide-header">
-      <h3>Quick Setup</h3>
-      <span id="setup-guide-progress" class="setup-guide-progress">0 / 4 complete</span>
-    </div>
-    <div class="setup-guide-grid">
-      <div class="setup-step" id="setup-step-streamer">
-        <span class="setup-step-index">1</span>
-        <div class="setup-step-main">
-          <div class="setup-step-title">Add at least one streamer</div>
-          <div class="setup-step-sub">Your dashboard pulls clips only for streamers linked to this account.</div>
+        <section id="setup-guide" class="setup-guide hidden" aria-live="polite">
+          <div class="setup-guide-header">
+            <h3>Quick Setup</h3>
+            <span id="setup-guide-progress" class="setup-guide-progress">0 / 4 complete</span>
+          </div>
+          <div class="setup-guide-grid">
+            <div class="setup-step" id="setup-step-streamer">
+              <span class="setup-step-index">1</span>
+              <div class="setup-step-main">
+                <div class="setup-step-title">Add at least one streamer</div>
+                <div class="setup-step-sub">Your dashboard pulls clips only for streamers linked to this account.</div>
+              </div>
+              <button id="setup-action-streamer" class="setup-step-action" type="button">Add</button>
+            </div>
+            <div class="setup-step" id="setup-step-refresh">
+              <span class="setup-step-index">2</span>
+              <div class="setup-step-main">
+                <div class="setup-step-title">Fetch clips from Twitch</div>
+                <div class="setup-step-sub">Run a refresh once your streamer list is saved.</div>
+              </div>
+              <button id="setup-action-refresh" class="setup-step-action" type="button">Fetch</button>
+            </div>
+            <div class="setup-step" id="setup-step-edit">
+              <span class="setup-step-index">3</span>
+              <div class="setup-step-main">
+                <div class="setup-step-title">Open your first edit</div>
+                <div class="setup-step-sub">Use the Edit button on an approved clip to configure layout.</div>
+              </div>
+              <button id="setup-action-edit" class="setup-step-action" type="button">Open Edit</button>
+            </div>
+            <div class="setup-step" id="setup-step-download">
+              <span class="setup-step-index">4</span>
+              <div class="setup-step-main">
+                <div class="setup-step-title">Export first cropped clip</div>
+                <div class="setup-step-sub">Generate a local MP4 to verify the final output.</div>
+              </div>
+              <button id="setup-action-download" class="setup-step-action" type="button">Export</button>
+            </div>
+          </div>
+        </section>
+      </div>
+
+      <div class="app-sidebar-bottom">
+        <div class="sidebar-admin-row">
+          <button class="btn-logout inline-flex items-center gap-1.5" id="admin-btn">
+            <svg class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+              <path d="M3 3.75A.75.75 0 013.75 3h12.5a.75.75 0 01.75.75V5a.75.75 0 01-.75.75H3.75A.75.75 0 013 5V3.75zM3 8.75A.75.75 0 013.75 8h5.5a.75.75 0 01.75.75v7.5a.75.75 0 01-.75.75h-5.5a.75.75 0 01-.75-.75v-7.5zM11 8.75A.75.75 0 0111.75 8h4.5a.75.75 0 01.75.75v2.5a.75.75 0 01-.75.75h-4.5a.75.75 0 01-.75-.75v-2.5zM11 14.75a.75.75 0 01.75-.75h4.5a.75.75 0 01.75.75v1.5a.75.75 0 01-.75.75h-4.5a.75.75 0 01-.75-.75v-1.5z"/>
+            </svg>
+            Admin
+          </button>
+          <button class="btn-logout inline-flex items-center gap-1.5" id="manage-streamers-btn">
+            <svg class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+              <path d="M10 2a.75.75 0 01.75.75v6.5h6.5a.75.75 0 010 1.5h-6.5v6.5a.75.75 0 01-1.5 0v-6.5h-6.5a.75.75 0 010-1.5h6.5v-6.5A.75.75 0 0110 2z"/>
+            </svg>
+            Add Streamer
+          </button>
         </div>
-        <button id="setup-action-streamer" class="setup-step-action" type="button">Add</button>
-      </div>
-      <div class="setup-step" id="setup-step-refresh">
-        <span class="setup-step-index">2</span>
-        <div class="setup-step-main">
-          <div class="setup-step-title">Fetch clips from Twitch</div>
-          <div class="setup-step-sub">Run a refresh once your streamer list is saved.</div>
+
+        <div class="sidebar-profile-wrap" id="sidebar-profile-wrap">
+          <div id="sidebar-profile-menu" class="sidebar-profile-menu" aria-hidden="true">
+            <button class="btn-logout" id="account-btn" type="button">Account</button>
+            <button class="btn-logout" id="logout-btn" type="button">Logout</button>
+          </div>
+          <button id="sidebar-profile-btn" class="sidebar-profile-btn" type="button" aria-expanded="false" aria-controls="sidebar-profile-menu">
+            <span id="sidebar-profile-avatar" class="sidebar-profile-avatar">C</span>
+            <span class="sidebar-profile-text">
+              <span id="sidebar-profile-name" class="sidebar-profile-name">Clip Reviewer</span>
+              <span id="sidebar-profile-sub" class="sidebar-profile-sub">@-</span>
+            </span>
+            <span id="sidebar-profile-chevron" class="sidebar-profile-chevron">⌄</span>
+          </button>
         </div>
-        <button id="setup-action-refresh" class="setup-step-action" type="button">Fetch</button>
       </div>
-      <div class="setup-step" id="setup-step-edit">
-        <span class="setup-step-index">3</span>
-        <div class="setup-step-main">
-          <div class="setup-step-title">Open your first edit</div>
-          <div class="setup-step-sub">Use the Edit button on an approved clip to configure layout.</div>
+    </aside>
+
+    <main class="app-main">
+      <div class="controls">
+        <button id="sidebar-open-btn" class="sidebar-open-btn" type="button" aria-label="Open sidebar" title="Open sidebar">⟩</button>
+        <label>Time range:</label>
+        <div class="period-btns">
+          <button class="period-btn active" data-days="30">30 Days</button>
+          <button class="period-btn" data-days="60">60 Days</button>
+          <button class="period-btn" data-days="365">1 Year</button>
         </div>
-        <button id="setup-action-edit" class="setup-step-action" type="button">Open Edit</button>
-      </div>
-      <div class="setup-step" id="setup-step-download">
-        <span class="setup-step-index">4</span>
-        <div class="setup-step-main">
-          <div class="setup-step-title">Export first cropped clip</div>
-          <div class="setup-step-sub">Generate a local MP4 to verify the final output.</div>
+        <button class="btn-refresh" id="refresh-clips-btn">Refresh from Twitch</button>
+        <div id="action-progress-chip" class="action-progress-chip" data-state="idle" aria-live="polite">
+          <span class="action-progress-dot" aria-hidden="true"></span>
+          <span id="action-progress-text" class="action-progress-text">No active tasks</span>
+          <button type="button" id="action-progress-cancel" class="action-progress-cancel" style="display:none;">Cancel</button>
         </div>
-        <button id="setup-action-download" class="setup-step-action" type="button">Export</button>
+        <div class="filter-btns">
+          <button class="filter-btn active" data-filter="all">All</button>
+          <button class="filter-btn" data-filter="approved">Approved</button>
+          <button class="filter-btn" data-filter="pending">Pending</button>
+          <button class="filter-btn" data-filter="sorted-out">Sorted Out</button>
+        </div>
       </div>
-    </div>
-  </section>
 
-  <div class="controls">
-    <label>Time range:</label>
-    <div class="period-btns">
-      <button class="period-btn active" data-days="30">30 Days</button>
-      <button class="period-btn" data-days="60">60 Days</button>
-      <button class="period-btn" data-days="365">1 Year</button>
-    </div>
-    <button class="btn-refresh" id="refresh-clips-btn">Refresh from Twitch</button>
-    <div id="action-progress-chip" class="action-progress-chip" data-state="idle" aria-live="polite">
-      <span class="action-progress-dot" aria-hidden="true"></span>
-      <span id="action-progress-text" class="action-progress-text">No active tasks</span>
-      <button type="button" id="action-progress-cancel" class="action-progress-cancel" style="display:none;">Cancel</button>
-    </div>
-    <div class="filter-btns">
-      <button class="filter-btn active" data-filter="all">All</button>
-      <button class="filter-btn" data-filter="approved">Approved</button>
-      <button class="filter-btn" data-filter="pending">Pending</button>
-      <button class="filter-btn" data-filter="sorted-out">Sorted Out</button>
-    </div>
+      <div class="stats-bar" id="stats-bar">
+        Fetching clips…
+      </div>
+
+      <div id="loading">
+        <div class="spinner"></div>
+        <span>Fetching clips…</span>
+      </div>
+
+      <div id="empty">
+        <div class="icon">
+          <svg class="mx-auto h-12 w-12 text-zinc-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 7.5A2.25 2.25 0 016 5.25h12a2.25 2.25 0 012.25 2.25v9A2.25 2.25 0 0118 18.75H6a2.25 2.25 0 01-2.25-2.25v-9z"/>
+            <path stroke-linecap="round" stroke-linejoin="round" d="M4 8l8 6 8-6"/>
+          </svg>
+        </div>
+        <p>No clips found for this period.</p>
+      </div>
+
+      <div id="dashboard-state-card" class="dashboard-state-card" data-tone="neutral" aria-live="polite">
+        <div class="dashboard-state-inner">
+          <div id="dashboard-state-title" class="dashboard-state-title"></div>
+          <div id="dashboard-state-msg" class="dashboard-state-msg"></div>
+          <div id="dashboard-state-actions" class="dashboard-state-actions"></div>
+        </div>
+      </div>
+
+      <div id="clips-container" class="px-4 md:px-6 pb-10"></div>
+    </main>
   </div>
-
-  <div class="stats-bar" id="stats-bar">
-    Fetching clips…
-  </div>
-
-  <div id="loading">
-    <div class="spinner"></div>
-    <span>Fetching clips…</span>
-  </div>
-
-  <div id="empty">
-    <div class="icon">
-      <svg class="mx-auto h-12 w-12 text-zinc-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-        <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 7.5A2.25 2.25 0 016 5.25h12a2.25 2.25 0 012.25 2.25v9A2.25 2.25 0 0118 18.75H6a2.25 2.25 0 01-2.25-2.25v-9z"/>
-        <path stroke-linecap="round" stroke-linejoin="round" d="M4 8l8 6 8-6"/>
-      </svg>
-    </div>
-    <p>No clips found for this period.</p>
-  </div>
-
-  <div id="dashboard-state-card" class="dashboard-state-card" data-tone="neutral" aria-live="polite">
-    <div class="dashboard-state-inner">
-      <div id="dashboard-state-title" class="dashboard-state-title"></div>
-      <div id="dashboard-state-msg" class="dashboard-state-msg"></div>
-      <div id="dashboard-state-actions" class="dashboard-state-actions"></div>
-    </div>
-  </div>
-
-  <div id="clips-container" class="max-w-[1400px] mx-auto px-4 md:px-6 pb-10"></div>
 </div>
 
 <!-- ══════════════════ CLIP PLAYER MODAL ══════════════════ -->
@@ -2683,7 +3384,7 @@
   <div class="admin-modal-content">
     <div class="admin-modal-header">
       <h2 class="inline-flex items-center gap-2">
-        <svg class="h-5 w-5 text-violet-400" viewBox="0 0 20 20" fill="currentColor" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+        <svg class="h-5 w-5 text-indigo-400" viewBox="0 0 20 20" fill="currentColor" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
           <path d="M3 3.75A.75.75 0 013.75 3h12.5a.75.75 0 01.75.75V5a.75.75 0 01-.75.75H3.75A.75.75 0 013 5V3.75zM3 8.75A.75.75 0 013.75 8h5.5a.75.75 0 01.75.75v7.5a.75.75 0 01-.75.75h-5.5a.75.75 0 01-.75-.75v-7.5zM11 8.75A.75.75 0 0111.75 8h4.5a.75.75 0 01.75.75v2.5a.75.75 0 01-.75.75h-4.5a.75.75 0 01-.75-.75v-2.5zM11 14.75a.75.75 0 01.75-.75h4.5a.75.75 0 01.75.75v1.5a.75.75 0 01-.75.75h-4.5a.75.75 0 01-.75-.75v-1.5z"/>
         </svg>
         Database Admin
@@ -2699,7 +3400,7 @@
   <div class="crop-modal-content">
     <div class="admin-modal-header" style="margin-bottom: 14px;">
       <h2 id="crop-title" class="inline-flex items-center gap-2">
-        <svg class="h-5 w-5 text-violet-400" viewBox="0 0 20 20" fill="currentColor" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+        <svg class="h-5 w-5 text-indigo-400" viewBox="0 0 20 20" fill="currentColor" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
           <path d="M4.25 4.25A.75.75 0 015 3.5h1.5a.75.75 0 010 1.5H5.75v.75a.75.75 0 01-1.5 0v-1.5zM13.5 3.5a.75.75 0 000 1.5h.75v.75a.75.75 0 001.5 0v-1.5a.75.75 0 00-.75-.75H13.5zM4.25 13.5a.75.75 0 011.5 0v.75h.75a.75.75 0 010 1.5H5a.75.75 0 01-.75-.75V13.5zM15 14.25h-1.5a.75.75 0 000 1.5H15a.75.75 0 00.75-.75v-1.5a.75.75 0 00-1.5 0v.75zM7.5 9a1.5 1.5 0 113 0v2.25a.75.75 0 001.5 0V9a3 3 0 10-6 0v2.25a.75.75 0 001.5 0V9z"/>
         </svg>
         Edit for Upload
@@ -2878,12 +3579,12 @@
 
 <!-- ══════════════════ STREAMER SETUP MODAL ══════════════════ -->
 <div id="streamer-setup-modal" class="fixed inset-0 z-[1200] hidden items-center justify-center bg-black/75 backdrop-blur-sm px-4">
-  <div class="w-full max-w-xl rounded-2xl border border-white/15 bg-zinc-900/90 p-5 shadow-2xl shadow-black/60 ring-1 ring-violet-400/20">
+  <div class="w-full max-w-xl rounded-2xl border border-white/15 bg-zinc-900/90 p-5 shadow-2xl shadow-black/60 ring-1 ring-indigo-400/20">
     <h3 class="text-lg font-semibold mb-1 text-zinc-100">Set Your Streamers</h3>
     <p class="text-sm text-zinc-300 mb-3">Add Twitch logins or broadcaster IDs (comma, space, or one per line).</p>
-    <textarea id="streamer-setup-input" class="w-full min-h-[130px] rounded-xl border border-white/10 bg-zinc-800/70 px-3 py-2 text-sm text-zinc-100 placeholder:text-zinc-400 focus:outline-none focus:ring-2 focus:ring-violet-500/60 focus:border-violet-400/70" placeholder="shroud&#10;ninja&#10;123456789"></textarea>
+    <textarea id="streamer-setup-input" class="w-full min-h-[130px] rounded-xl border border-white/10 bg-zinc-800/70 px-3 py-2 text-sm text-zinc-100 placeholder:text-zinc-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/60 focus:border-indigo-400/70" placeholder="shroud&#10;ninja&#10;123456789"></textarea>
     <div class="mt-3 flex gap-2 justify-end">
-      <button id="streamer-setup-save" class="rounded-xl border border-violet-400/60 bg-gradient-to-r from-violet-600 to-fuchsia-600 px-4 py-2 text-sm font-semibold text-white shadow-lg shadow-violet-900/40 hover:brightness-110">Save Streamers</button>
+      <button id="streamer-setup-save" class="rounded-xl border border-indigo-400/60 bg-gradient-to-r from-indigo-600 to-blue-600 px-4 py-2 text-sm font-semibold text-white shadow-lg shadow-indigo-900/40 hover:brightness-110">Save Streamers</button>
     </div>
     <div id="streamer-setup-error" class="mt-2 text-sm text-rose-400 hidden"></div>
   </div>
@@ -2897,7 +3598,7 @@
     <input id="add-streamer-input" class="w-full rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm" placeholder="shroud" />
     <div class="mt-3 flex gap-2 justify-end">
       <button id="add-streamer-cancel" class="rounded-lg border border-zinc-700 px-3 py-2 text-sm text-zinc-300">Cancel</button>
-      <button id="add-streamer-save" class="rounded-lg border border-violet-500 bg-violet-600 px-4 py-2 text-sm font-semibold text-white hover:bg-violet-500">Add</button>
+      <button id="add-streamer-save" class="rounded-lg border border-indigo-500 bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-500">Add</button>
     </div>
     <div id="add-streamer-error" class="mt-2 text-sm text-red-400 hidden"></div>
     <div class="mt-4 border-t border-zinc-700 pt-3">
@@ -2928,7 +3629,7 @@
     </div>
     <div class="mt-3 flex gap-2 justify-end">
       <button id="account-close-btn" class="rounded-lg border border-zinc-700 px-3 py-2 text-sm text-zinc-300">Close</button>
-      <button id="account-send-link-btn" class="rounded-lg border border-violet-500 bg-violet-600 px-4 py-2 text-sm font-semibold text-white hover:bg-violet-500">Send Account Link</button>
+      <button id="account-send-link-btn" class="rounded-lg border border-indigo-500 bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-500">Send Account Link</button>
     </div>
     <div id="account-modal-status" class="mt-2 text-sm text-zinc-300 hidden"></div>
   </div>
@@ -2971,6 +3672,7 @@
   let accountModalEmailMasked = '';
   let accountModalHasEmail = false;
   let accountModalEmailVerified = true;
+  let sidebarProfileEmailMasked = '';
   let needsStreamerSetup = false;
   let activeUploadJobId = null;
   let activePlaybackClipId = null;
@@ -2992,6 +3694,7 @@
 
   const DASHBOARD_PREFS_KEY = 'clipReviewer.dashboardPrefs.v1';
   const ADMIN_PREFS_KEY = 'clipReviewer.adminPrefs.v1';
+  const SIDEBAR_COLLAPSE_KEY = 'clipReviewer.sidebarCollapsed.v1';
   const BADGE_CENTER_SNAP_THRESHOLD = 0.015;
   const ONBOARDING_PROGRESS_KEY_PREFIX = 'clipReviewer.onboardingProgress.v2.user.';
   const ONBOARDING_PROGRESS_KEY_LEGACY = 'clipReviewer.onboardingProgress.v1';
@@ -3093,6 +3796,101 @@
     }));
   }
 
+  function applySidebarCollapsed(collapsed) {
+    const appScreen = document.getElementById('app-screen');
+    if (!appScreen) return;
+    appScreen.classList.toggle('sidebar-collapsed', !!collapsed);
+  }
+
+  function updateSidebarProfileCard() {
+    const nameEl = document.getElementById('sidebar-profile-name');
+    const subEl = document.getElementById('sidebar-profile-sub');
+    const avatarEl = document.getElementById('sidebar-profile-avatar');
+    if (!nameEl || !subEl || !avatarEl) return;
+
+    const username = String(currentUsername || '').trim();
+    const initial = username ? username.charAt(0).toUpperCase() : 'C';
+    avatarEl.textContent = initial;
+    nameEl.textContent = username || 'Clip Reviewer';
+    subEl.textContent = sidebarProfileEmailMasked || (username ? `@${username}` : '@-');
+  }
+
+  function setSidebarProfileMenu(open) {
+    const menu = document.getElementById('sidebar-profile-menu');
+    const btn = document.getElementById('sidebar-profile-btn');
+    const chevron = document.getElementById('sidebar-profile-chevron');
+    if (!menu || !btn || !chevron) return;
+    const next = !!open;
+    menu.classList.toggle('open', next);
+    menu.setAttribute('aria-hidden', next ? 'false' : 'true');
+    btn.setAttribute('aria-expanded', next ? 'true' : 'false');
+    chevron.classList.toggle('open', next);
+  }
+
+  async function refreshSidebarProfileDetails() {
+    if (!currentUsername) {
+      sidebarProfileEmailMasked = '';
+      updateSidebarProfileCard();
+      return;
+    }
+    try {
+      const r = await fetch('/api/me/account');
+      const data = await r.json().catch(() => ({}));
+      if (!r.ok) return;
+      sidebarProfileEmailMasked = String(data.email || data.emailMasked || '').trim();
+      updateSidebarProfileCard();
+    } catch {
+      // Keep previously rendered profile details.
+    }
+  }
+
+  function setSidebarCollapsed(collapsed) {
+    applySidebarCollapsed(collapsed);
+    try {
+      localStorage.setItem(SIDEBAR_COLLAPSE_KEY, collapsed ? '1' : '0');
+    } catch {}
+  }
+
+  function initSidebarToggle() {
+    const collapseBtn = document.getElementById('sidebar-toggle-btn');
+    const openBtn = document.getElementById('sidebar-open-btn');
+
+    collapseBtn?.addEventListener('click', () => setSidebarCollapsed(true));
+    openBtn?.addEventListener('click', () => setSidebarCollapsed(false));
+
+    const collapsed = localStorage.getItem(SIDEBAR_COLLAPSE_KEY) === '1';
+    applySidebarCollapsed(collapsed);
+  }
+
+  function initSidebarProfileMenu() {
+    const profileWrap = document.getElementById('sidebar-profile-wrap');
+    const profileBtn = document.getElementById('sidebar-profile-btn');
+    const accountBtn = document.getElementById('account-btn');
+    const logoutBtn = document.getElementById('logout-btn');
+
+    updateSidebarProfileCard();
+
+    profileBtn?.addEventListener('click', (event) => {
+      event.preventDefault();
+      const menu = document.getElementById('sidebar-profile-menu');
+      const isOpen = !!menu?.classList.contains('open');
+      setSidebarProfileMenu(!isOpen);
+    });
+
+    accountBtn?.addEventListener('click', () => setSidebarProfileMenu(false));
+    logoutBtn?.addEventListener('click', () => setSidebarProfileMenu(false));
+
+    document.addEventListener('click', (event) => {
+      if (!profileWrap || !(event.target instanceof Node)) return;
+      if (profileWrap.contains(event.target)) return;
+      setSidebarProfileMenu(false);
+    });
+
+    document.addEventListener('keydown', (event) => {
+      if (event.key === 'Escape') setSidebarProfileMenu(false);
+    });
+  }
+
   function normalizeOnboardingProgress(raw) {
     const source = raw && typeof raw === 'object' ? raw : {};
     return {
@@ -3177,6 +3975,7 @@
     if (userEl) userEl.textContent = currentUsername ? `@${currentUsername}` : '@-';
     if (streamerEl) streamerEl.textContent = String(Math.max(0, Number(managedStreamerCount) || 0));
     if (syncEl) syncEl.textContent = formatRelativeSyncLabel(lastClipSyncAt);
+    updateSidebarProfileCard();
   }
 
   function setSetupStepDone(stepId, done) {
@@ -3297,7 +4096,7 @@
   function setNavbarUsername(username) {
     const el = document.getElementById('navbar-username');
     const safe = String(username || '').trim();
-    el.textContent = safe ? `@${safe}` : '@-';
+    if (el) el.textContent = safe ? `@${safe}` : '@-';
     updateDashboardStatusRow();
   }
 
@@ -3883,8 +4682,10 @@
     document.getElementById('login-screen').style.display = 'none';
     document.getElementById('app-screen').style.display = 'block';
     document.body.classList.remove('login-view');
+    setSidebarProfileMenu(false);
     clearDashboardState();
     updateDashboardStatusRow();
+    void refreshSidebarProfileDetails();
     updateSetupGuide();
     void refreshManagedStreamerCount();
     restoreActiveUploadJob();
@@ -3968,8 +4769,10 @@
       const data = await r.json().catch(() => ({}));
       if (!r.ok) throw new Error(data.error || 'Could not load account details.');
       accountModalEmailMasked = String(data.emailMasked || '').trim();
+      sidebarProfileEmailMasked = String(data.email || accountModalEmailMasked || '').trim();
       accountModalHasEmail = Boolean(String(data.email || '').trim());
       accountModalEmailVerified = !!data.emailVerified;
+      updateSidebarProfileCard();
       const username = String(data.username || '').trim();
       if (accountModalHasEmail) {
         emailEl.textContent = accountModalEmailVerified
@@ -4476,6 +5279,7 @@
 
     if (!job) {
       statusEl.textContent = 'Upload queue idle';
+      statusEl.dataset.state = 'idle';
       startBtn.disabled = false;
       startBtn.textContent = 'Start Upload';
       pauseBtn.disabled = true;
@@ -4487,6 +5291,19 @@
     const progress = `${job.processed}/${job.total}`;
     const clipSuffix = job.currentTitle ? ` - ${job.currentTitle}` : '';
     statusEl.textContent = `${job.status.toUpperCase()} ${progress}${clipSuffix}`;
+
+    const rawStatus = String(job.status || '').toLowerCase();
+    if (rawStatus === 'running') {
+      statusEl.dataset.state = 'running';
+    } else if (rawStatus === 'paused') {
+      statusEl.dataset.state = 'paused';
+    } else if (rawStatus === 'done' || rawStatus === 'completed' || rawStatus === 'success') {
+      statusEl.dataset.state = 'done';
+    } else if (rawStatus === 'failed' || rawStatus === 'error' || rawStatus === 'cancelled' || rawStatus === 'canceled') {
+      statusEl.dataset.state = 'error';
+    } else {
+      statusEl.dataset.state = 'idle';
+    }
 
     const active = job.status === 'running' || job.status === 'paused';
     startBtn.disabled = active;
@@ -4621,7 +5438,7 @@
 
   function buildStreamerSection(streamerName, clips) {
     const section = document.createElement('section');
-    section.className = 'streamer-section rounded-2xl border border-zinc-800/80 bg-zinc-900/70 shadow-lg shadow-black/20 mb-5 overflow-hidden';
+    section.className = 'streamer-section w-full rounded-2xl border shadow-lg shadow-black/20 mb-5 overflow-hidden';
 
     if (collapsedStreamers.has(streamerName)) {
       section.classList.add('collapsed');
@@ -4629,7 +5446,7 @@
 
     const header = document.createElement('button');
     header.type = 'button';
-    header.className = 'streamer-header w-full px-4 py-3 text-left flex items-center justify-between bg-zinc-800/60 hover:bg-zinc-800 transition';
+    header.className = 'streamer-header w-full px-4 py-3 text-left flex items-center justify-between transition';
     header.innerHTML = `
       <span>${escHtml(streamerName)}</span>
       <span class="meta">${clips.length} clip${clips.length !== 1 ? 's' : ''} <span class="chevron">▾</span></span>
@@ -4809,6 +5626,8 @@
     loadOnboardingProgressForUser('', { allowLegacyMigration: false });
     managedStreamerCount = 0;
     lastClipSyncAt = null;
+    sidebarProfileEmailMasked = '';
+    setSidebarProfileMenu(false);
     setNavbarUsername('');
     updateSetupGuide();
     setAuthMode('login');
@@ -4873,7 +5692,7 @@
       ? 'clip-modal-actions-grid'
       : 'clip-actions grid grid-cols-2 gap-2';
     const downloadBusy = downloadInProgressIds.has(clip.id);
-    const downloadBtnClass = `btn-download rounded-lg px-3 py-2 text-xs font-semibold border transition ${downloadBusy ? 'border-zinc-700 text-zinc-400 opacity-60 cursor-not-allowed' : 'border-zinc-700 text-zinc-200 hover:border-violet-500 hover:text-violet-300'}`;
+    const downloadBtnClass = `btn-download rounded-lg px-3 py-2 text-xs font-semibold border transition ${downloadBusy ? 'border-zinc-700 text-zinc-400 opacity-60 cursor-not-allowed' : 'border-zinc-700 text-zinc-200 hover:border-indigo-500 hover:text-indigo-300'}`;
     const downloadBtnText = downloadBusy ? 'Preparing...' : 'Download';
     const downloadBtnDisabled = downloadBusy ? 'disabled' : '';
 
@@ -6603,7 +7422,7 @@
 
     activeCropClip = clip;
     document.getElementById('crop-title').innerHTML = `
-      <svg class="h-5 w-5 text-violet-400" viewBox="0 0 20 20" fill="currentColor" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+      <svg class="h-5 w-5 text-indigo-400" viewBox="0 0 20 20" fill="currentColor" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
         <path d="M4.25 4.25A.75.75 0 015 3.5h1.5a.75.75 0 010 1.5H5.75v.75a.75.75 0 01-1.5 0v-1.5zM13.5 3.5a.75.75 0 000 1.5h.75v.75a.75.75 0 001.5 0v-1.5a.75.75 0 00-.75-.75H13.5zM4.25 13.5a.75.75 0 011.5 0v.75h.75a.75.75 0 010 1.5H5a.75.75 0 01-.75-.75V13.5zM15 14.25h-1.5a.75.75 0 000 1.5H15a.75.75 0 00.75-.75v-1.5a.75.75 0 00-1.5 0v.75zM7.5 9a1.5 1.5 0 113 0v2.25a.75.75 0 001.5 0V9a3 3 0 10-6 0v2.25a.75.75 0 001.5 0V9z"/>
       </svg>
       Upload Edit - ${escHtml(clip.broadcaster_name)}
@@ -6971,7 +7790,7 @@
     const canUseImage = !!(cropFallbackImage && cropFallbackImage.complete && cropFallbackImage.naturalWidth > 0 && cropFallbackImage.naturalHeight > 0);
 
     if (!canUseVideo && !canUseImage) {
-      ctx.fillStyle = '#adadb8';
+      ctx.fillStyle = '#98a3ba';
       ctx.font = '18px Segoe UI';
       ctx.textAlign = 'center';
       ctx.fillText('Video preview loading...', canvas.width / 2, canvas.height / 2);
@@ -7631,6 +8450,8 @@
 
   // ── Boot ─────────────────────────────────────────────────────────────────
   document.body.classList.add('login-view');
+  initSidebarToggle();
+  initSidebarProfileMenu();
   applyStoredPrefs();
   loadOnboardingProgressForUser('', { allowLegacyMigration: false });
   setAuthMode('login');
@@ -7654,5 +8475,3 @@
 </footer>
 </body>
 </html>
-
-
