@@ -6076,6 +6076,45 @@
     renderClipPlayerModal();
   }
 
+  function maybeAdvancePlaybackAfterMutation(changedClipId, playbackBefore) {
+    const modal = document.getElementById('clip-player-modal');
+    const changedId = String(changedClipId || '');
+    if (!modal?.classList.contains('show')) return;
+    if (!changedId || String(activePlaybackClipId || '') !== changedId) return;
+
+    const currentSequence = getPlaybackClipSequence();
+    if (currentSequence.includes(changedId)) return;
+
+    const beforeSequence = Array.isArray(playbackBefore?.sequence)
+      ? playbackBefore.sequence.map((id) => String(id || '')).filter(Boolean)
+      : [];
+    const beforeIndexRaw = Number(playbackBefore?.index);
+    const beforeIndex = Number.isInteger(beforeIndexRaw) ? beforeIndexRaw : -1;
+
+    const oldNextId = beforeIndex >= 0 ? (beforeSequence[beforeIndex + 1] || '') : '';
+    const oldPrevId = beforeIndex >= 0 ? (beforeSequence[beforeIndex - 1] || '') : '';
+
+    let nextId = '';
+    if (oldNextId && currentSequence.includes(oldNextId)) {
+      nextId = oldNextId;
+    } else if (oldPrevId && currentSequence.includes(oldPrevId)) {
+      nextId = oldPrevId;
+    } else if (currentSequence.length > 0) {
+      const fallbackIdx = beforeIndex >= 0
+        ? Math.max(0, Math.min(currentSequence.length - 1, beforeIndex))
+        : 0;
+      nextId = currentSequence[fallbackIdx] || currentSequence[0];
+    }
+
+    if (nextId) {
+      activePlaybackClipId = nextId;
+      activePlaybackRequestToken = '';
+      return;
+    }
+
+    closeClipPlayerModal();
+  }
+
   function openClipPlayerModal(clipId) {
     activePlaybackClipId = String(clipId || '');
     activePlaybackRequestToken = '';
@@ -6294,6 +6333,7 @@
 
   // ── Approve toggle ───────────────────────────────────────────────────────
   async function toggleApprove(clipId, currentlyApproved) {
+    const playbackBefore = getPlaybackPosition();
     const method = currentlyApproved ? 'DELETE' : 'POST';
     await fetch(`/api/approve/${clipId}`, { method });
 
@@ -6331,12 +6371,14 @@
 
     // If filter is active and card no longer belongs, re-render
     if (currentFilter !== 'all') renderClips();
+    maybeAdvancePlaybackAfterMutation(clipId, playbackBefore);
     renderClipPlayerModal();
     updateSetupGuide();
   }
 
   // ── Sort out toggle ──────────────────────────────────────────────────────
   async function toggleSortOut(clipId, currentlySortedOut) {
+    const playbackBefore = getPlaybackPosition();
     const method = currentlySortedOut ? 'DELETE' : 'POST';
     await fetch(`/api/sortout/${clipId}`, { method });
 
@@ -6355,6 +6397,7 @@
 
     // Re-render based on current filter
     renderClips();
+    maybeAdvancePlaybackAfterMutation(clipId, playbackBefore);
     renderClipPlayerModal();
     updateSetupGuide();
   }
