@@ -109,6 +109,7 @@ interface DbClipRow {
     twitch_name_enabled: number | null;
     twitch_name_x: number | null;
     twitch_name_y: number | null;
+    twitch_name_text: string | null;
     gameplay_x: number | null;
     gameplay_y: number | null;
     gameplay_w: number | null;
@@ -313,6 +314,7 @@ db.exec(`
         twitch_name_enabled INTEGER NOT NULL DEFAULT 0,
         twitch_name_x REAL,
         twitch_name_y REAL,
+        twitch_name_text TEXT,
         gameplay_x    REAL,
         gameplay_y    REAL,
         gameplay_w    REAL,
@@ -379,6 +381,7 @@ addColumnIfMissing('ALTER TABLE user_clip_state ADD COLUMN third_output_h REAL')
 addColumnIfMissing('ALTER TABLE user_clip_state ADD COLUMN twitch_name_enabled INTEGER NOT NULL DEFAULT 0');
 addColumnIfMissing('ALTER TABLE user_clip_state ADD COLUMN twitch_name_x REAL');
 addColumnIfMissing('ALTER TABLE user_clip_state ADD COLUMN twitch_name_y REAL');
+addColumnIfMissing('ALTER TABLE user_clip_state ADD COLUMN twitch_name_text TEXT');
 addColumnIfMissing('ALTER TABLE user_clip_state ADD COLUMN split_points_json TEXT');
 addColumnIfMissing('ALTER TABLE user_clip_state ADD COLUMN split_deleted_segments_json TEXT');
 addColumnIfMissing('ALTER TABLE user_clip_state ADD COLUMN split_zoom_segments_json TEXT');
@@ -873,7 +876,7 @@ function ensureLegacySeedUser(): void {
             INSERT INTO user_clip_state (
                 user_id, clip_id, approved, sorted_out,
                 cam_x, cam_y, cam_w, cam_h, cam_enabled, twitch_name_enabled,
-                twitch_name_x, twitch_name_y,
+                twitch_name_x, twitch_name_y, twitch_name_text,
                 gameplay_x, gameplay_y, gameplay_w, gameplay_h,
                 third_x, third_y, third_w, third_h,
                 cam_output_y, cam_output_h,
@@ -884,7 +887,7 @@ function ensureLegacySeedUser(): void {
             ) VALUES (
                 $user_id, $clip_id, $approved, $sorted_out,
                 $cam_x, $cam_y, $cam_w, $cam_h, $cam_enabled, $twitch_name_enabled,
-                $twitch_name_x, $twitch_name_y,
+                $twitch_name_x, $twitch_name_y, $twitch_name_text,
                 $gameplay_x, $gameplay_y, $gameplay_w, $gameplay_h,
                 $third_x, $third_y, $third_w, $third_h,
                 $cam_output_y, $cam_output_h,
@@ -909,6 +912,7 @@ function ensureLegacySeedUser(): void {
                 $twitch_name_enabled: row.twitch_name_enabled ?? 0,
                 $twitch_name_x: row.twitch_name_x,
                 $twitch_name_y: row.twitch_name_y,
+                $twitch_name_text: String(row.broadcaster_name || '').trim().slice(0, 64),
                 $gameplay_x: row.gameplay_x,
                 $gameplay_y: row.gameplay_y,
                 $gameplay_w: row.gameplay_w,
@@ -1034,6 +1038,7 @@ function getAllClips(userId: number): (Clip & { approved: boolean; sorted_out: b
             s.twitch_name_enabled,
             s.twitch_name_x,
             s.twitch_name_y,
+            s.twitch_name_text,
             s.gameplay_x,
             s.gameplay_y,
             s.gameplay_w,
@@ -1140,6 +1145,7 @@ function getApprovedClips(userId: number, limit: number): DbClipRow[] {
             s.twitch_name_enabled,
             s.twitch_name_x,
             s.twitch_name_y,
+            s.twitch_name_text,
             s.gameplay_x,
             s.gameplay_y,
             s.gameplay_w,
@@ -1361,7 +1367,7 @@ function getCropOrDefault(clip: DbClipRow): {
         w: thirdOutputW,
         h: thirdOutputH,
     };
-    const twitchNameText = String(clip.broadcaster_name || '').trim().slice(0, 64);
+    const twitchNameText = String(clip.twitch_name_text || clip.broadcaster_name || '').trim().slice(0, 64);
     const twitchName = {
         enabled: clip.twitch_name_enabled === 1 && twitchNameText.length > 0,
         x: clamp(asNum(clip.twitch_name_x, 0.04)),
@@ -2053,15 +2059,15 @@ async function processClipToTikTokFormat(inputPath: string, outputPath: string, 
     const drawtextFontPath = resolveDrawtextFontPath();
     const drawtextFontOpt = drawtextFontPath ? `:fontfile='${toFfmpegFilterPath(drawtextFontPath)}'` : '';
 
-    const nameFontPx = Math.max(18, Math.round(outputH * 0.036));
-    const namePadX = Math.round(nameFontPx * 0.62);
-    const nameIconHPx = Math.max(2, Math.round(nameFontPx * 1.04));
+    const nameFontPx = Math.max(20, Math.round(outputH * 0.039));
+    const namePadX = Math.round(nameFontPx * 0.60);
+    const nameIconHPx = Math.max(2, Math.round(nameFontPx * 1.26));
     const logoAspect = logoPath ? getLogoAspectRatio(logoPath) : 1;
     const clampedLogoAspect = Math.max(0.4, Math.min(3, logoAspect));
     const iconWRaw = Math.max(2, Math.round(nameIconHPx * clampedLogoAspect));
     const nameIconWPx = iconWRaw % 2 === 0 ? iconWRaw : iconWRaw + 1;
-    const nameGapPx = Math.round(nameFontPx * 0.30);
-    const nameBadgeH = Math.round(nameFontPx * 1.62);
+    const nameGapPx = Math.round(nameFontPx * 0.24);
+    const nameBadgeH = Math.round(nameFontPx * 1.78);
     const estimatedTextW = Math.max(nameFontPx, Math.round(nameFontPx * 0.62 * twitchName.text.length));
     const badgeContentW = (logoPath ? (nameIconWPx + nameGapPx) : 0) + estimatedTextW;
     const nameBadgeW = Math.min(outputW - 24, namePadX + badgeContentW + namePadX);
@@ -2074,7 +2080,7 @@ async function processClipToTikTokFormat(inputPath: string, outputPath: string, 
     const logoX = nameBadgeX + namePadX;
     const logoY = nameBadgeY + Math.round((nameBadgeH - nameIconHPx) / 2);
     const textX = nameBadgeX + namePadX + (logoPath ? (nameIconWPx + nameGapPx) : 0);
-    const textY = nameBadgeY + Math.round((nameBadgeH - nameFontPx) / 2);
+    const textY = nameBadgeY + Math.round((nameBadgeH - nameFontPx) / 2 + (nameFontPx * 0.08));
     const safeTwitchName = escapeFfmpegDrawtext(twitchName.text);
     const canDrawNameText = Boolean(drawtextFontPath && safeTwitchName);
     const roundedMask = (alpha: number) => `if(lte(abs(X-W/2),W/2-H/2),${alpha},if(lte((X-H/2)*(X-H/2)+(Y-H/2)*(Y-H/2),(H/2)*(H/2)),${alpha},if(lte((X-(W-H/2))*(X-(W-H/2))+(Y-H/2)*(Y-H/2),(H/2)*(H/2)),${alpha},0)))`;
@@ -2432,6 +2438,15 @@ function parseTwitchNameEnabled(value: unknown): number | null {
     if (value === true || value === 1 || value === '1' || value === 'true') return 1;
     if (value === false || value === 0 || value === '0' || value === 'false') return 0;
     return null;
+}
+
+function parseTwitchNameText(value: unknown): string | null {
+    if (value === undefined || value === null) return '';
+    if (typeof value !== 'string') return null;
+    return value
+        .replace(/\s+/g, ' ')
+        .trim()
+        .slice(0, 64);
 }
 
 function parseSplitPointsPayload(value: unknown): number[] | null {
@@ -3662,6 +3677,7 @@ app.get('/api/clips/:clipId/download-cropped', requireAuth, async (req: Request,
                 s.twitch_name_enabled,
                 s.twitch_name_x,
                 s.twitch_name_y,
+                s.twitch_name_text,
                 s.gameplay_x,
                 s.gameplay_y,
                 s.gameplay_w,
@@ -3903,7 +3919,7 @@ app.get('/api/crop/:clipId', requireAuth, (req: Request, res: Response) => {
     const { clipId } = req.params;
 
     const row = db.prepare(`
-        SELECT c.id, s.approved, s.cam_x, s.cam_y, s.cam_w, s.cam_h, s.cam_enabled, s.twitch_name_enabled, s.twitch_name_x, s.twitch_name_y, s.gameplay_x, s.gameplay_y, s.gameplay_w, s.gameplay_h, s.third_x, s.third_y, s.third_w, s.third_h, s.cam_output_y, s.cam_output_h, s.gameplay_output_y, s.gameplay_output_h
+        SELECT c.id, c.broadcaster_name, s.approved, s.cam_x, s.cam_y, s.cam_w, s.cam_h, s.cam_enabled, s.twitch_name_enabled, s.twitch_name_x, s.twitch_name_y, s.twitch_name_text, s.gameplay_x, s.gameplay_y, s.gameplay_w, s.gameplay_h, s.third_x, s.third_y, s.third_w, s.third_h, s.cam_output_y, s.cam_output_h, s.gameplay_output_y, s.gameplay_output_h
              , s.third_area_enabled, s.third_output_x, s.third_output_y, s.third_output_w, s.third_output_h
              , s.split_points_json, s.split_deleted_segments_json, s.split_zoom_segments_json, s.split_zoom_layouts_json
         FROM clips c
@@ -3928,6 +3944,7 @@ app.get('/api/crop/:clipId', requireAuth, (req: Request, res: Response) => {
             twitch_name_enabled: row.twitch_name_enabled === 1 ? 1 : 0,
             twitch_name_x: row.twitch_name_x,
             twitch_name_y: row.twitch_name_y,
+            twitch_name_text: row.twitch_name_text || row.broadcaster_name || '',
             gameplay_x: row.gameplay_x,
             gameplay_y: row.gameplay_y,
             gameplay_w: row.gameplay_w,
@@ -3962,6 +3979,7 @@ app.post('/api/crop/:clipId', requireAuth, (req: Request, res: Response) => {
         twitch_name_enabled,
         twitch_name_x,
         twitch_name_y,
+        twitch_name_text,
         gameplay_x, gameplay_y, gameplay_w, gameplay_h,
         third_x, third_y, third_w, third_h,
         cam_output_y,
@@ -3988,6 +4006,12 @@ app.post('/api/crop/:clipId', requireAuth, (req: Request, res: Response) => {
     const parsedTwitchNameEnabled = parseTwitchNameEnabled(twitch_name_enabled);
     if (parsedTwitchNameEnabled === null) {
         res.status(400).json({ error: 'Invalid twitch_name_enabled value. Use 0 or 1.' });
+        return;
+    }
+
+    const parsedTwitchNameText = parseTwitchNameText(twitch_name_text);
+    if (parsedTwitchNameText === null) {
+        res.status(400).json({ error: 'Invalid twitch_name_text value. Use a string up to 64 characters.' });
         return;
     }
 
@@ -4067,6 +4091,7 @@ app.post('/api/crop/:clipId', requireAuth, (req: Request, res: Response) => {
             third_area_enabled = $third_area_enabled,
             twitch_name_x = $twitch_name_x,
             twitch_name_y = $twitch_name_y,
+            twitch_name_text = $twitch_name_text,
             gameplay_x = $gameplay_x,
             gameplay_y = $gameplay_y,
             gameplay_w = $gameplay_w,
@@ -4100,6 +4125,7 @@ app.post('/api/crop/:clipId', requireAuth, (req: Request, res: Response) => {
         $third_area_enabled: parsedThirdAreaEnabled,
         $twitch_name_x: twitch_name_x,
         $twitch_name_y: twitch_name_y,
+        $twitch_name_text: parsedTwitchNameText,
         $gameplay_x: gameplay_x,
         $gameplay_y: gameplay_y,
         $gameplay_w: gameplay_w,

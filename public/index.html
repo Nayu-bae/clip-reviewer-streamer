@@ -520,6 +520,7 @@
       box-shadow: 0 0 0 1px rgba(170, 182, 255, 0.2) inset, 0 0 14px rgba(77, 91, 255, 0.24);
     }
 
+
     .app-main {
       min-width: 0;
       display: flex;
@@ -3041,6 +3042,15 @@
       cursor: grabbing;
     }
 
+    .output-name-badge.editing {
+      cursor: text;
+      border-color: rgba(166, 184, 255, 0.9);
+      box-shadow:
+        0 6px 18px rgba(0, 0, 0, 0.42),
+        0 0 0 2px rgba(136, 156, 255, 0.28),
+        0 0 14px rgba(105, 125, 255, 0.3);
+    }
+
     .output-name-badge img {
       display: block;
       object-fit: contain;
@@ -3049,7 +3059,20 @@
 
     .output-name-badge span {
       display: block;
-      line-height: 1;
+      line-height: 1.04;
+      pointer-events: auto;
+      cursor: text;
+      user-select: text;
+      -webkit-user-select: text;
+      min-width: 0;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      transform: translateY(0.04em);
+    }
+
+    .output-name-badge span:focus {
+      outline: none;
     }
 
     .output-center-guide {
@@ -3150,6 +3173,69 @@
       border: 1px solid var(--border);
       border-radius: 8px;
       padding: 8px 10px;
+    }
+
+    .crop-inline-input-row {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 6px;
+      margin-top: 8px;
+      padding: 10px;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      background: rgba(18, 23, 34, 0.9);
+      overflow: hidden;
+      max-height: 0;
+      opacity: 0;
+      transform: translateY(-6px);
+      pointer-events: none;
+      padding-top: 0;
+      padding-bottom: 0;
+      margin-top: 0;
+      border-width: 0;
+      transition:
+        max-height 0.22s ease,
+        opacity 0.2s ease,
+        transform 0.22s ease,
+        padding 0.2s ease,
+        margin 0.2s ease,
+        border-width 0.2s ease;
+    }
+
+    .crop-inline-input-row.show {
+      max-height: 96px;
+      opacity: 1;
+      transform: translateY(0);
+      pointer-events: auto;
+      padding-top: 10px;
+      padding-bottom: 10px;
+      margin-top: 8px;
+      border-width: 1px;
+    }
+
+    .crop-inline-input-row label {
+      font-size: 0.74rem;
+      color: #aab6ff;
+      font-weight: 700;
+      letter-spacing: 0.01em;
+    }
+
+    .crop-inline-input-row input {
+      width: 100%;
+      border: 1px solid rgba(118, 136, 196, 0.42);
+      background: rgba(9, 12, 19, 0.88);
+      color: #eef2ff;
+      border-radius: 8px;
+      padding: 8px 10px;
+      font-size: 0.88rem;
+      outline: none;
+      transition: border-color 0.18s ease, box-shadow 0.18s ease, background 0.18s ease;
+    }
+
+    .crop-inline-input-row input:focus {
+      border-color: rgba(162, 179, 255, 0.88);
+      box-shadow: 0 0 0 2px rgba(120, 140, 255, 0.22), 0 0 12px rgba(77, 91, 255, 0.2);
+      background: rgba(10, 14, 24, 0.96);
     }
 
     .split-header-row {
@@ -3840,6 +3926,7 @@
 
         <div class="sidebar-profile-wrap" id="sidebar-profile-wrap">
           <div id="sidebar-profile-menu" class="sidebar-profile-menu" aria-hidden="true">
+            <button class="btn-logout" id="home-btn" type="button">Homepage</button>
             <button class="btn-logout" id="account-btn" type="button">Account</button>
             <button class="btn-logout" id="logout-btn" type="button">Logout</button>
           </div>
@@ -4052,7 +4139,7 @@
       <div class="crop-side">
         <div class="crop-group">
           <h4>Edit Instructions</h4>
-          <p class="crop-help">Drag inside a box to move it. Drag an edge or corner handle to resize it. In zoom segments, hold Alt and use mouse wheel to resize quickly (Shift+wheel = width only, Ctrl+wheel = height only). Cyan box is camera source, orange box is gameplay source, green box is the third source area.</p>
+          <p class="crop-help">Drag inside a box to move it. Drag an edge or corner handle to resize it. In zoom segments, hold Alt and use mouse wheel to resize quickly (Shift+wheel = width only, Ctrl+wheel = height only). Twitch name text can be edited in the field below when Twitch name is enabled. Cyan box is camera source, orange box is gameplay source, green box is the third source area.</p>
           <div id="crop-autosave-status" class="crop-autosave-status" data-state="idle">Autosave idle.</div>
           <div class="crop-toggle-row" id="cam-toggle-row">
             <span>Camera</span>
@@ -4075,6 +4162,10 @@
               </div>
             </div>
             <strong id="twitch-name-enabled-label">Off</strong>
+          </div>
+          <div id="twitch-name-input-row" class="crop-inline-input-row">
+            <label for="twitch-name-input">Display Name</label>
+            <input id="twitch-name-input" type="text" maxlength="64" autocomplete="off" spellcheck="false" />
           </div>
           <div class="crop-toggle-row" id="preview-borders-toggle-row">
             <span>Preview borders</span>
@@ -4217,6 +4308,9 @@
     let outputThirdDragState = null;
     let outputNameBadgeSnapState = { x: false, y: false };
     let outputNameBadgeLayout = null;
+    let outputNameBadgeEditing = false;
+    let outputNameBadgeEditBefore = '';
+    let outputNameBadgeCancelEdit = false;
     let selectedSplitSegmentIndex = null;
     let splitOverflowMenuOpen = false;
   let cropPreviewRaf = null;
@@ -4314,6 +4408,7 @@
   const DEFAULT_CROP = {
     camEnabled: true,
     twitchNameEnabled: false,
+    twitchNameText: '',
     previewBordersEnabled: true,
     thirdAreaEnabled: false,
     twitchNamePos: { x: 0.04, y: 0.04 },
@@ -4330,6 +4425,18 @@
   };
 
   // ── Helpers ─────────────────────────────────────────────────────────────
+  function sanitizeTwitchNameText(value, fallback = '') {
+    const primary = String(value ?? '').replace(/\s+/g, ' ').trim();
+    const backup = String(fallback ?? '').replace(/\s+/g, ' ').trim();
+    const resolved = primary || backup;
+    return resolved.slice(0, 64);
+  }
+
+  function getActiveTwitchNameText() {
+    const fallback = String(activeCropClip?.broadcaster_name || '').trim();
+    return sanitizeTwitchNameText(cropState?.twitchNameText, fallback);
+  }
+
   function formatDate(iso) {
     return new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
   }
@@ -4439,6 +4546,7 @@
   function initSidebarProfileMenu() {
     const profileWrap = document.getElementById('sidebar-profile-wrap');
     const profileBtn = document.getElementById('sidebar-profile-btn');
+    const homeBtn = document.getElementById('home-btn');
     const accountBtn = document.getElementById('account-btn');
     const logoutBtn = document.getElementById('logout-btn');
 
@@ -4451,6 +4559,10 @@
       setSidebarProfileMenu(!isOpen);
     });
 
+    homeBtn?.addEventListener('click', () => {
+      setSidebarProfileMenu(false);
+      window.location.assign('/');
+    });
     accountBtn?.addEventListener('click', () => setSidebarProfileMenu(false));
     logoutBtn?.addEventListener('click', () => setSidebarProfileMenu(false));
 
@@ -6877,6 +6989,8 @@
   const camEnabledSlider = document.getElementById('cam-enabled-slider');
   const twitchNameToggleRow = document.getElementById('twitch-name-toggle-row');
   const twitchNameEnabledSlider = document.getElementById('twitch-name-enabled-slider');
+  const twitchNameInputRow = document.getElementById('twitch-name-input-row');
+  const twitchNameInput = document.getElementById('twitch-name-input');
   const previewBordersToggleRow = document.getElementById('preview-borders-toggle-row');
   const previewBordersEnabledSlider = document.getElementById('preview-borders-enabled-slider');
   const thirdAreaToggleRow = document.getElementById('third-area-toggle-row');
@@ -6888,8 +7002,16 @@
   };
   const setTwitchNameEnabled = (enabled) => {
     if (!cropState) return;
+    const wasEnabled = !!cropState.twitchNameEnabled;
     cropState.twitchNameEnabled = !!enabled;
+    if (cropState.twitchNameEnabled) {
+      cropState.twitchNameText = getActiveTwitchNameText();
+    }
     updateCropBoxes();
+    if (!wasEnabled && cropState.twitchNameEnabled && twitchNameInput) {
+      twitchNameInput.focus();
+      twitchNameInput.select();
+    }
   };
   const setPreviewBordersEnabled = (enabled) => {
     if (!cropState) return;
@@ -6976,6 +7098,30 @@
       e.preventDefault();
       toggleTwitchNameEnabled();
     }
+  });
+  const commitTwitchNameInput = () => {
+    if (!cropState || !twitchNameInput) return;
+    const fallback = String(activeCropClip?.broadcaster_name || '').trim();
+    const next = sanitizeTwitchNameText(twitchNameInput.value, fallback);
+    cropState.twitchNameText = next;
+    if (twitchNameInput.value !== next) twitchNameInput.value = next;
+    renderOutputPreview();
+  };
+  twitchNameInput?.addEventListener('input', () => {
+    if (!cropState || !cropState.twitchNameEnabled) return;
+    const raw = String(twitchNameInput.value || '').slice(0, 64);
+    cropState.twitchNameText = sanitizeTwitchNameText(raw, String(activeCropClip?.broadcaster_name || '').trim());
+    renderOutputPreview();
+  });
+  twitchNameInput?.addEventListener('blur', () => {
+    if (!cropState || !cropState.twitchNameEnabled) return;
+    commitTwitchNameInput();
+  });
+  twitchNameInput?.addEventListener('keydown', (e) => {
+    if (e.key !== 'Enter') return;
+    e.preventDefault();
+    commitTwitchNameInput();
+    twitchNameInput.blur();
   });
   previewBordersToggleRow.addEventListener('pointerdown', (e) => {
     if (!cropState) return;
@@ -7139,6 +7285,10 @@
     video.pause();
     const badgeEl = document.getElementById('output-name-badge');
     if (badgeEl) badgeEl.style.display = 'none';
+    outputNameBadgeEditing = false;
+    outputNameBadgeEditBefore = '';
+    outputNameBadgeCancelEdit = false;
+    badgeEl?.classList.remove('editing');
     stopOutputNameBadgeDrag();
     stopCropDrag();
     stopOutputCamDrag();
@@ -8003,6 +8153,19 @@
     label.textContent = enabled ? 'On' : 'Off';
   }
 
+  function syncTwitchNameInputUI() {
+    if (!twitchNameInputRow || !twitchNameInput) return;
+    const enabled = !!cropState?.twitchNameEnabled;
+    twitchNameInputRow.classList.toggle('show', enabled);
+    twitchNameInputRow.setAttribute('aria-hidden', enabled ? 'false' : 'true');
+    twitchNameInput.disabled = !enabled;
+    twitchNameInput.placeholder = String(activeCropClip?.broadcaster_name || '').trim();
+    const nextValue = enabled ? getActiveTwitchNameText() : '';
+    if (document.activeElement !== twitchNameInput && twitchNameInput.value !== nextValue) {
+      twitchNameInput.value = nextValue;
+    }
+  }
+
   function syncPreviewBordersToggleUI() {
     const slider = document.getElementById('preview-borders-enabled-slider');
     const sliderFill = document.getElementById('preview-borders-enabled-slider-fill');
@@ -8119,6 +8282,7 @@
       third_area_enabled: cropState.thirdAreaEnabled ? 1 : 0,
       twitch_name_x: cropState.twitchNamePos?.x ?? DEFAULT_CROP.twitchNamePos.x,
       twitch_name_y: cropState.twitchNamePos?.y ?? DEFAULT_CROP.twitchNamePos.y,
+      twitch_name_text: getActiveTwitchNameText(),
       gameplay_x: cropState.gameplay.x,
       gameplay_y: cropState.gameplay.y,
       gameplay_w: cropState.gameplay.w,
@@ -8168,6 +8332,10 @@
     cropState.twitchNamePos = normalizeNamePos(
       { x: payload.twitch_name_x, y: payload.twitch_name_y },
       cropState.twitchNamePos || DEFAULT_CROP.twitchNamePos
+    );
+    cropState.twitchNameText = sanitizeTwitchNameText(
+      payload.twitch_name_text,
+      cropState.twitchNameText || activeCropClip?.broadcaster_name || ''
     );
     cropState.cam = normalizeCrop(
       { x: payload.cam_x, y: payload.cam_y, w: payload.cam_w, h: payload.cam_h },
@@ -8339,6 +8507,7 @@
     cropState = {
       camEnabled: clip.cam_enabled !== 0,
       twitchNameEnabled: clip.twitch_name_enabled === 1,
+      twitchNameText: sanitizeTwitchNameText(clip.twitch_name_text, clip.broadcaster_name || ''),
       previewBordersEnabled: true,
       thirdAreaEnabled: clip.third_area_enabled === 1,
       twitchNamePos: normalizeNamePos({ x: clip.twitch_name_x, y: clip.twitch_name_y }, DEFAULT_CROP.twitchNamePos),
@@ -8377,6 +8546,7 @@
         cropState = {
           camEnabled: data.crop.cam_enabled !== 0,
           twitchNameEnabled: data.crop.twitch_name_enabled === 1,
+          twitchNameText: sanitizeTwitchNameText(data.crop.twitch_name_text, cropState.twitchNameText || clip.broadcaster_name || ''),
           previewBordersEnabled: cropState.previewBordersEnabled !== false,
           thirdAreaEnabled: data.crop.third_area_enabled === 1,
           twitchNamePos: normalizeNamePos({ x: data.crop.twitch_name_x, y: data.crop.twitch_name_y }, cropState.twitchNamePos),
@@ -8464,6 +8634,7 @@
     third.style.display = cropState.thirdAreaEnabled ? 'block' : 'none';
     syncCamToggleUI();
     syncTwitchNameToggleUI();
+    syncTwitchNameInputUI();
     syncPreviewBordersToggleUI();
     syncThirdAreaToggleUI();
     updateOutputAreaOverlays();
@@ -8592,16 +8763,17 @@
     }
 
   function getOutputBadgeLayout(ctx, canvas, streamerName) {
-    const fontPx = Math.max(18, Math.round(canvas.height * 0.036));
+    const fontPx = Math.max(20, Math.round(canvas.height * 0.039));
+    ctx.font = `700 ${fontPx}px Segoe UI, Arial, sans-serif`;
     const hasLogo = !!(twitchLogoImage.complete && twitchLogoImage.naturalWidth > 0 && twitchLogoImage.naturalHeight > 0);
-    const padX = Math.round(fontPx * 0.62);
-    const iconHeight = Math.max(2, Math.round(fontPx * 1.04));
+    const padX = Math.round(fontPx * 0.60);
+    const iconHeight = Math.max(2, Math.round(fontPx * 1.26));
     const logoAspect = hasLogo ? (twitchLogoImage.naturalWidth / twitchLogoImage.naturalHeight) : 1;
     const iconWidth = Math.max(2, Math.round(iconHeight * Math.max(0.4, Math.min(3, logoAspect))));
-    const gap = Math.round(fontPx * 0.30);
-    const badgeHeight = Math.round(fontPx * 1.62);
+    const gap = Math.round(fontPx * 0.24);
+    const badgeHeight = Math.round(fontPx * 1.78);
     const text = String(streamerName || '').trim();
-    const textWidth = Math.ceil(ctx.measureText(text).width + Math.max(10, fontPx * 0.30));
+    const textWidth = Math.ceil(ctx.measureText(text).width + Math.max(8, fontPx * 0.18));
     const badgeWidth = padX + (hasLogo ? (iconWidth + gap) : 0) + textWidth + padX;
     const maxX = Math.max(0, 1 - (badgeWidth / canvas.width));
     const maxY = Math.max(0, 1 - (badgeHeight / canvas.height));
@@ -8633,6 +8805,7 @@
     if (!badgeEl || !badgeTextEl || !badgeLogoEl || !canvas) return;
 
     if (!cropState?.twitchNameEnabled || !outputNameBadgeLayout) {
+      if (document.activeElement === badgeTextEl) badgeTextEl.blur();
       badgeEl.style.display = 'none';
       outputNameBadgeSnapState = { x: false, y: false };
       updateOutputCenterGuides();
@@ -8657,7 +8830,12 @@
     badgeLogoEl.style.width = `${badge.iconWidth * scale}px`;
     badgeLogoEl.style.height = `${badge.iconHeight * scale}px`;
     badgeLogoEl.style.display = badge.hasLogo ? 'block' : 'none';
-    badgeTextEl.textContent = badge.text;
+    badgeTextEl.contentEditable = 'false';
+    badgeTextEl.spellcheck = false;
+    if (!outputNameBadgeEditing) {
+      badgeTextEl.textContent = badge.text;
+    }
+    badgeTextEl.title = 'Use the Twitch name field in Edit Instructions to change text.';
   }
 
   function renderOutputPreview() {
@@ -8793,18 +8971,20 @@
       }
     }
 
-    const streamerName = String(activeCropClip?.broadcaster_name || '').trim();
-    if (!zoomActive && cropState.twitchNameEnabled && streamerName) {
-      const fontPx = Math.max(18, Math.round(canvas.height * 0.036));
+    const twitchNameText = getActiveTwitchNameText();
+    if (!zoomActive && cropState.twitchNameEnabled && twitchNameText) {
+      const fontPx = Math.max(20, Math.round(canvas.height * 0.039));
       ctx.font = `700 ${fontPx}px Segoe UI, Arial, sans-serif`;
       ctx.textAlign = 'left';
       ctx.textBaseline = 'middle';
-      const badge = getOutputBadgeLayout(ctx, canvas, streamerName);
+      const badge = getOutputBadgeLayout(ctx, canvas, twitchNameText);
       cropState.twitchNamePos = { x: badge.xNorm, y: badge.yNorm };
       outputNameBadgeLayout = badge;
     }
     updateOutputNameBadgeOverlay();
   }
+
+  const outputNameBadgeTextEl = document.getElementById('output-name-badge-text');
 
   document.getElementById('output-name-badge').addEventListener('mousedown', (e) => {
     if (!cropState?.twitchNameEnabled || !outputNameBadgeLayout) return;
