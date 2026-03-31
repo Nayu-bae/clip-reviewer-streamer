@@ -138,8 +138,6 @@ header {
   z-index: 120;
 }
 
-.home-tools-dropdown:hover .home-tools-menu,
-.home-tools-dropdown:focus-within .home-tools-menu,
 .home-tools-menu.open {
   opacity: 1;
   pointer-events: auto;

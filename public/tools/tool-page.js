@@ -70,22 +70,65 @@
     ctaButton.classList.add('tool-cta-bright');
   }
 
+  let closeTimer = null;
+  const clearCloseTimer = () => {
+    if (!closeTimer) return;
+    clearTimeout(closeTimer);
+    closeTimer = null;
+  };
+
   const setDropdown = (open) => {
     const next = !!open;
     toggle.setAttribute('aria-expanded', next ? 'true' : 'false');
     menu.classList.toggle('open', next);
   };
 
+  const scheduleClose = () => {
+    clearCloseTimer();
+    closeTimer = setTimeout(() => {
+      setDropdown(false);
+    }, 220);
+  };
+
+  dropdown.addEventListener('mouseenter', () => {
+    clearCloseTimer();
+    setDropdown(true);
+  });
+
+  dropdown.addEventListener('mouseleave', () => {
+    scheduleClose();
+  });
+
   toggle.addEventListener('click', (event) => {
     event.preventDefault();
+    clearCloseTimer();
     setDropdown(!menu.classList.contains('open'));
   });
 
+  toggle.addEventListener('focus', () => {
+    clearCloseTimer();
+    setDropdown(true);
+  });
+
+  menu.addEventListener('mouseenter', () => {
+    clearCloseTimer();
+  });
+
+  menu.addEventListener('mouseleave', () => {
+    scheduleClose();
+  });
+
   document.addEventListener('click', (event) => {
-    if (!dropdown.contains(event.target)) setDropdown(false);
+    if (!dropdown.contains(event.target)) {
+      clearCloseTimer();
+      setDropdown(false);
+    }
   });
 
   menu.querySelectorAll('a').forEach((link) => {
-    link.addEventListener('click', () => setDropdown(false));
+    link.addEventListener('click', () => {
+      clearCloseTimer();
+      setDropdown(false);
+    });
   });
 })();
