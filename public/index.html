@@ -2528,7 +2528,7 @@
       z-index: 1200;
       align-items: center;
       justify-content: center;
-      padding: 20px;
+      padding: 12px;
     }
 
     #crop-modal.show {
@@ -2536,26 +2536,33 @@
     }
 
     .crop-modal-content {
-      width: min(1500px, 98vw);
+      width: min(1720px, 99vw);
+      height: min(96vh, 980px);
       max-height: 96vh;
-      overflow: auto;
+      overflow: hidden;
       background: var(--surface);
       border: 1px solid var(--border);
       border-radius: 12px;
-      padding: 18px;
+      padding: 14px;
+      display: flex;
+      flex-direction: column;
     }
 
     .crop-layout {
       display: grid;
-      grid-template-columns: 2fr 1fr;
-      gap: 18px;
-      align-items: start;
+      grid-template-columns: minmax(0, 1.78fr) minmax(280px, 0.95fr) minmax(320px, 1.12fr);
+      gap: 14px;
+      align-items: stretch;
+      flex: 1 1 auto;
+      min-height: 0;
     }
 
     .crop-main {
       display: grid;
-      gap: 12px;
+      gap: 10px;
       align-content: start;
+      grid-template-rows: auto auto minmax(0, 1fr);
+      min-height: 0;
     }
 
     .crop-preview-wrap {
@@ -2563,15 +2570,18 @@
       border-radius: 10px;
       overflow: hidden;
       background: #000;
-      min-height: 560px;
+      min-height: 0;
+      align-self: start;
     }
 
     .crop-preview {
       position: relative;
       width: 100%;
-      aspect-ratio: 16 / 9;
+      aspect-ratio: var(--crop-preview-aspect, 16 / 9);
       background: #000;
-      min-height: 560px;
+      min-height: clamp(220px, 34vh, 430px);
+      max-height: min(46vh, 500px);
+      height: auto;
     }
 
     #crop-preview-media {
@@ -2675,27 +2685,71 @@
       background: #22c55e;
     }
 
+    .crop-preview-side {
+      display: grid;
+      gap: 10px;
+      min-height: 0;
+      grid-template-rows: minmax(0, 1fr);
+      align-content: stretch;
+    }
+
     .crop-side {
       display: grid;
-      gap: 14px;
+      gap: 10px;
+      min-height: 0;
+      grid-template-rows: minmax(0, 1fr) auto;
+      align-content: stretch;
     }
 
     .crop-group {
       border: 1px solid var(--border);
       border-radius: 10px;
-      padding: 12px;
+      padding: 10px;
       background: var(--surface2);
+      min-height: 0;
+    }
+
+    .crop-side > .crop-group {
+      overflow: auto;
     }
 
     .crop-group h4 {
-      margin-bottom: 8px;
+      margin-bottom: 6px;
       font-size: 0.9rem;
     }
 
     .crop-help {
       color: var(--muted);
-      font-size: 0.84rem;
-      line-height: 1.5;
+      font-size: 0.79rem;
+      line-height: 1.38;
+    }
+
+    .crop-help-list {
+      margin: 0;
+      padding-left: 16px;
+      color: var(--muted);
+      font-size: 0.79rem;
+      line-height: 1.42;
+      display: grid;
+      gap: 6px;
+    }
+
+    .crop-help-list li {
+      margin: 0;
+    }
+
+    .crop-help-list kbd {
+      display: inline-block;
+      padding: 1px 5px;
+      border-radius: 6px;
+      border: 1px solid rgba(255, 255, 255, 0.14);
+      background: rgba(24, 24, 27, 0.85);
+      color: #e4e4e7;
+      font-size: 0.7rem;
+      font-family: inherit;
+      font-weight: 600;
+      letter-spacing: 0.01em;
+      margin: 0 1px;
     }
 
     .crop-autosave-status {
@@ -2731,7 +2785,8 @@
       border-radius: 10px;
       overflow: hidden;
       background: #000;
-      max-width: 360px;
+      width: min(100%, clamp(300px, 24vw, 430px));
+      max-width: none;
       margin: 0 auto;
       position: relative;
     }
@@ -3057,13 +3112,13 @@
       flex: 0 0 auto;
     }
 
-    .output-name-badge span {
+    .output-name-badge #output-name-badge-text {
       display: block;
       line-height: 1.04;
       pointer-events: auto;
-      cursor: text;
-      user-select: text;
-      -webkit-user-select: text;
+      cursor: grab;
+      user-select: none;
+      -webkit-user-select: none;
       min-width: 0;
       white-space: nowrap;
       overflow: hidden;
@@ -3071,8 +3126,27 @@
       transform: translateY(0.04em);
     }
 
-    .output-name-badge span:focus {
-      outline: none;
+    .output-name-badge.dragging #output-name-badge-text {
+      cursor: grabbing;
+    }
+
+    .output-name-badge-resize {
+      position: absolute;
+      right: -7px;
+      bottom: -7px;
+      width: 14px;
+      height: 14px;
+      border-radius: 4px;
+      border: 1px solid rgba(167, 139, 250, 0.95);
+      background: linear-gradient(135deg, rgba(167, 139, 250, 0.96), rgba(77, 91, 255, 0.95));
+      box-shadow: 0 1px 6px rgba(0, 0, 0, 0.45);
+      cursor: nwse-resize;
+      z-index: 2;
+      pointer-events: auto;
+    }
+
+    .output-name-badge.resizing .output-name-badge-resize {
+      box-shadow: 0 0 0 2px rgba(170, 182, 255, 0.32), 0 2px 8px rgba(0, 0, 0, 0.52);
     }
 
     .output-center-guide {
@@ -3111,7 +3185,7 @@
       display: flex;
       justify-content: flex-end;
       gap: 10px;
-      margin-top: 2px;
+      margin-top: 0;
     }
 
     .crop-actions .btn-secondary,
@@ -3166,13 +3240,13 @@
       display: flex;
       align-items: center;
       gap: 10px;
-      margin-top: 8px;
+      margin-top: 6px;
       color: var(--muted);
       font-size: 0.85rem;
       background: var(--surface2);
       border: 1px solid var(--border);
       border-radius: 8px;
-      padding: 8px 10px;
+      padding: 7px 9px;
     }
 
     .crop-inline-input-row {
@@ -3673,6 +3747,20 @@
 
     .btn-primary:hover { background: var(--green-hover); }
 
+    @media (max-width: 1280px) {
+      .crop-layout { grid-template-columns: 1fr; }
+      .crop-preview,
+      .crop-preview-wrap {
+        min-height: 360px;
+        max-height: none;
+      }
+      .crop-modal-content {
+        height: auto;
+        max-height: 96vh;
+        overflow: auto;
+      }
+    }
+
     @media (max-width: 980px) {
       .app-shell {
         grid-template-columns: minmax(250px, 286px) minmax(0, 1fr);
@@ -3697,10 +3785,21 @@
         padding-right: 14px;
       }
 
-      .crop-layout { grid-template-columns: 1fr; }
-      .crop-preview,
-      .crop-preview-wrap {
-        min-height: 360px;
+      .crop-preview-side .output-preview-wrap {
+        width: min(100%, 400px);
+      }
+    }
+
+    @media (max-height: 820px) {
+      .crop-modal-content {
+        height: auto;
+        overflow: auto;
+      }
+    }
+
+    @media (max-width: 1550px) {
+      .output-preview-wrap {
+        width: min(100%, clamp(260px, 22vw, 370px));
       }
     }
 
@@ -4136,10 +4235,55 @@
         </div>
       </div>
 
+      <div class="crop-preview-side">
+        <div class="crop-group">
+          <h4>TikTok Output Preview</h4>
+          <div class="output-preview-wrap">
+            <canvas id="output-preview" width="540" height="960"></canvas>
+            <div id="output-cam-area" class="output-cam-area" style="display:none; top:0; height:30%;">
+              <span class="output-cam-label">Camera Area</span>
+              <span id="output-cam-resize" class="output-cam-resize"></span>
+            </div>
+            <div id="output-game-area" class="output-game-area" style="display:none; top:30%; height:70%;">
+              <span id="output-game-resize" class="output-cam-resize"></span>
+              <span class="output-cam-label">Gameplay Area</span>
+            </div>
+            <div id="output-third-area" class="output-third-area" style="display:none; left:58%; top:56%; width:36%; height:30%;">
+              <span class="output-third-label">Third Area</span>
+              <span class="output-third-handle n" data-handle="n"></span>
+              <span class="output-third-handle s" data-handle="s"></span>
+              <span class="output-third-handle e" data-handle="e"></span>
+              <span class="output-third-handle w" data-handle="w"></span>
+              <span class="output-third-handle nw" data-handle="nw"></span>
+              <span class="output-third-handle ne" data-handle="ne"></span>
+              <span class="output-third-handle sw" data-handle="sw"></span>
+              <span class="output-third-handle se" data-handle="se"></span>
+            </div>
+            <button id="output-cam-move-handle" type="button" class="output-move-handle output-cam-move-handle" style="display:none;">Move Camera</button>
+            <button id="output-game-move-handle" type="button" class="output-move-handle output-game-move-handle" style="display:none;">Move Gameplay</button>
+            <button id="output-cam-resize-handle" type="button" class="output-resize-handle output-cam-resize-handle" style="display:none;" aria-label="Resize camera area"></button>
+            <button id="output-game-resize-handle" type="button" class="output-resize-handle output-game-resize-handle" style="display:none;" aria-label="Resize gameplay area"></button>
+            <div id="output-name-badge" class="output-name-badge">
+              <img id="output-name-badge-logo" src="/pictures/twitchLogo.png" alt="Twitch" draggable="false" />
+              <span id="output-name-badge-text"></span>
+              <span id="output-name-badge-resize" class="output-name-badge-resize" aria-hidden="true"></span>
+            </div>
+            <div id="output-center-guide-x" class="output-center-guide output-center-guide-x"></div>
+            <div id="output-center-guide-y" class="output-center-guide output-center-guide-y"></div>
+          </div>
+        </div>
+      </div>
+
       <div class="crop-side">
         <div class="crop-group">
           <h4>Edit Instructions</h4>
-          <p class="crop-help">Drag inside a box to move it. Drag an edge or corner handle to resize it. In zoom segments, hold Alt and use mouse wheel to resize quickly (Shift+wheel = width only, Ctrl+wheel = height only). Twitch name text can be edited in the field below when Twitch name is enabled. Cyan box is camera source, orange box is gameplay source, green box is the third source area.</p>
+          <ul class="crop-help-list">
+            <li>Drag inside a box to move it. Drag any edge/corner handle to resize it.</li>
+            <li>In zoom segments, hold <kbd>Alt</kbd> + mouse wheel to resize quickly.</li>
+            <li>Use <kbd>Shift</kbd> + wheel for width-only and <kbd>Ctrl</kbd> + wheel for height-only zoom changes.</li>
+            <li>Edit Twitch name in the <strong>Display Name</strong> field, drag the badge to move it, and drag its corner handle to resize.</li>
+            <li><strong>Cyan</strong> = camera source, <strong>orange</strong> = gameplay source, <strong>green</strong> = third source.</li>
+          </ul>
           <div id="crop-autosave-status" class="crop-autosave-status" data-state="idle">Autosave idle.</div>
           <div class="crop-toggle-row" id="cam-toggle-row">
             <span>Camera</span>
@@ -4188,41 +4332,6 @@
               </div>
             </div>
             <strong id="third-area-enabled-label">Off</strong>
-          </div>
-        </div>
-        <div class="crop-group">
-          <h4>TikTok Output Preview</h4>
-          <div class="output-preview-wrap">
-            <canvas id="output-preview" width="540" height="960"></canvas>
-            <div id="output-cam-area" class="output-cam-area" style="display:none; top:0; height:30%;">
-              <span class="output-cam-label">Camera Area</span>
-              <span id="output-cam-resize" class="output-cam-resize"></span>
-            </div>
-            <div id="output-game-area" class="output-game-area" style="display:none; top:30%; height:70%;">
-              <span id="output-game-resize" class="output-cam-resize"></span>
-              <span class="output-cam-label">Gameplay Area</span>
-            </div>
-            <div id="output-third-area" class="output-third-area" style="display:none; left:58%; top:56%; width:36%; height:30%;">
-              <span class="output-third-label">Third Area</span>
-              <span class="output-third-handle n" data-handle="n"></span>
-              <span class="output-third-handle s" data-handle="s"></span>
-              <span class="output-third-handle e" data-handle="e"></span>
-              <span class="output-third-handle w" data-handle="w"></span>
-              <span class="output-third-handle nw" data-handle="nw"></span>
-              <span class="output-third-handle ne" data-handle="ne"></span>
-              <span class="output-third-handle sw" data-handle="sw"></span>
-              <span class="output-third-handle se" data-handle="se"></span>
-            </div>
-            <button id="output-cam-move-handle" type="button" class="output-move-handle output-cam-move-handle" style="display:none;">Move Camera</button>
-            <button id="output-game-move-handle" type="button" class="output-move-handle output-game-move-handle" style="display:none;">Move Gameplay</button>
-            <button id="output-cam-resize-handle" type="button" class="output-resize-handle output-cam-resize-handle" style="display:none;" aria-label="Resize camera area"></button>
-            <button id="output-game-resize-handle" type="button" class="output-resize-handle output-game-resize-handle" style="display:none;" aria-label="Resize gameplay area"></button>
-            <div id="output-name-badge" class="output-name-badge">
-              <img id="output-name-badge-logo" src="/pictures/twitchLogo.png" alt="Twitch" draggable="false" />
-              <span id="output-name-badge-text"></span>
-            </div>
-            <div id="output-center-guide-x" class="output-center-guide output-center-guide-x"></div>
-            <div id="output-center-guide-y" class="output-center-guide output-center-guide-y"></div>
           </div>
         </div>
         <div class="crop-actions">
@@ -4305,6 +4414,7 @@
     let outputCamDragState = null;
     let outputGameplayDragState = null;
     let outputNameBadgeDragState = null;
+    let outputNameBadgeResizeState = null;
     let outputThirdDragState = null;
     let outputNameBadgeSnapState = { x: false, y: false };
     let outputNameBadgeLayout = null;
@@ -4409,6 +4519,7 @@
     camEnabled: true,
     twitchNameEnabled: false,
     twitchNameText: '',
+    twitchNameScale: 1,
     previewBordersEnabled: true,
     thirdAreaEnabled: false,
     twitchNamePos: { x: 0.04, y: 0.04 },
@@ -4425,6 +4536,18 @@
   };
 
   // ── Helpers ─────────────────────────────────────────────────────────────
+  const TWITCH_NAME_SCALE_MIN = 0.65;
+  const TWITCH_NAME_SCALE_MAX = 2.4;
+
+  function clampTwitchNameScale(value, fallback = 1) {
+    const n = Number(value);
+    if (!Number.isFinite(n)) {
+      const safeFallback = Number.isFinite(Number(fallback)) ? Number(fallback) : 1;
+      return Math.max(TWITCH_NAME_SCALE_MIN, Math.min(TWITCH_NAME_SCALE_MAX, safeFallback));
+    }
+    return Math.max(TWITCH_NAME_SCALE_MIN, Math.min(TWITCH_NAME_SCALE_MAX, n));
+  }
+
   function sanitizeTwitchNameText(value, fallback = '') {
     const primary = String(value ?? '').replace(/\s+/g, ' ').trim();
     const backup = String(fallback ?? '').replace(/\s+/g, ' ').trim();
@@ -7006,6 +7129,7 @@
     cropState.twitchNameEnabled = !!enabled;
     if (cropState.twitchNameEnabled) {
       cropState.twitchNameText = getActiveTwitchNameText();
+      cropState.twitchNameScale = clampTwitchNameScale(cropState.twitchNameScale, DEFAULT_CROP.twitchNameScale);
     }
     updateCropBoxes();
     if (!wasEnabled && cropState.twitchNameEnabled && twitchNameInput) {
@@ -7301,6 +7425,10 @@
     cropState = null;
     selectedSplitSegmentIndex = null;
     splitOverflowMenuOpen = false;
+    const previewEl = document.querySelector('.crop-preview');
+    if (previewEl instanceof HTMLElement) {
+      previewEl.style.setProperty('--crop-preview-aspect', '16 / 9');
+    }
     }
 
     function updateSplitOverflowMenuUI() {
@@ -7871,8 +7999,9 @@
 
   function stopOutputNameBadgeDrag() {
     outputNameBadgeDragState = null;
+    outputNameBadgeResizeState = null;
     outputNameBadgeSnapState = { x: false, y: false };
-    document.getElementById('output-name-badge')?.classList.remove('dragging');
+    document.getElementById('output-name-badge')?.classList.remove('dragging', 'resizing');
     updateOutputCenterGuides();
   }
 
@@ -7911,6 +8040,28 @@
     }
 
     return null;
+  }
+
+  function syncCropPreviewAspect() {
+    const previewEl = document.querySelector('.crop-preview');
+    if (!(previewEl instanceof HTMLElement)) return;
+
+    const video = document.getElementById('crop-preview-media');
+    let w = 0;
+    let h = 0;
+    if (video && video.videoWidth > 0 && video.videoHeight > 0) {
+      w = video.videoWidth;
+      h = video.videoHeight;
+    } else if (cropFallbackImage && cropFallbackImage.complete && cropFallbackImage.naturalWidth > 0 && cropFallbackImage.naturalHeight > 0) {
+      w = cropFallbackImage.naturalWidth;
+      h = cropFallbackImage.naturalHeight;
+    }
+
+    if (w > 0 && h > 0) {
+      previewEl.style.setProperty('--crop-preview-aspect', `${w} / ${h}`);
+    } else {
+      previewEl.style.setProperty('--crop-preview-aspect', '16 / 9');
+    }
   }
 
   // ...existing code...
@@ -8283,6 +8434,7 @@
       twitch_name_x: cropState.twitchNamePos?.x ?? DEFAULT_CROP.twitchNamePos.x,
       twitch_name_y: cropState.twitchNamePos?.y ?? DEFAULT_CROP.twitchNamePos.y,
       twitch_name_text: getActiveTwitchNameText(),
+      twitch_name_scale: clampTwitchNameScale(cropState.twitchNameScale, DEFAULT_CROP.twitchNameScale),
       gameplay_x: cropState.gameplay.x,
       gameplay_y: cropState.gameplay.y,
       gameplay_w: cropState.gameplay.w,
@@ -8336,6 +8488,10 @@
     cropState.twitchNameText = sanitizeTwitchNameText(
       payload.twitch_name_text,
       cropState.twitchNameText || activeCropClip?.broadcaster_name || ''
+    );
+    cropState.twitchNameScale = clampTwitchNameScale(
+      payload.twitch_name_scale,
+      cropState.twitchNameScale ?? DEFAULT_CROP.twitchNameScale
     );
     cropState.cam = normalizeCrop(
       { x: payload.cam_x, y: payload.cam_y, w: payload.cam_w, h: payload.cam_h },
@@ -8495,19 +8651,28 @@
     const posterUrl = thumbnailSrc(clip.thumbnail_url);
     video.poster = posterUrl;
     cropFallbackImage = new Image();
+    cropFallbackImage.onload = () => {
+      syncCropPreviewAspect();
+      if (document.getElementById('crop-modal')?.classList.contains('show')) {
+        renderOutputPreview();
+      }
+    };
     cropFallbackImage.src = posterUrl;
     video.onerror = () => {
       // Twitch preview MP4 is not always available; fallback image still powers crop preview.
       showToast('No MP4 preview for this clip. Using thumbnail fallback.');
+      syncCropPreviewAspect();
       renderOutputPreview();
     };
     video.src = clipVideoSrc(clip);
     video.load();
+    syncCropPreviewAspect();
 
     cropState = {
       camEnabled: clip.cam_enabled !== 0,
       twitchNameEnabled: clip.twitch_name_enabled === 1,
       twitchNameText: sanitizeTwitchNameText(clip.twitch_name_text, clip.broadcaster_name || ''),
+      twitchNameScale: clampTwitchNameScale(clip.twitch_name_scale, DEFAULT_CROP.twitchNameScale),
       previewBordersEnabled: true,
       thirdAreaEnabled: clip.third_area_enabled === 1,
       twitchNamePos: normalizeNamePos({ x: clip.twitch_name_x, y: clip.twitch_name_y }, DEFAULT_CROP.twitchNamePos),
@@ -8547,6 +8712,7 @@
           camEnabled: data.crop.cam_enabled !== 0,
           twitchNameEnabled: data.crop.twitch_name_enabled === 1,
           twitchNameText: sanitizeTwitchNameText(data.crop.twitch_name_text, cropState.twitchNameText || clip.broadcaster_name || ''),
+          twitchNameScale: clampTwitchNameScale(data.crop.twitch_name_scale, cropState.twitchNameScale ?? DEFAULT_CROP.twitchNameScale),
           previewBordersEnabled: cropState.previewBordersEnabled !== false,
           thirdAreaEnabled: data.crop.third_area_enabled === 1,
           twitchNamePos: normalizeNamePos({ x: data.crop.twitch_name_x, y: data.crop.twitch_name_y }, cropState.twitchNamePos),
@@ -8763,7 +8929,8 @@
     }
 
   function getOutputBadgeLayout(ctx, canvas, streamerName) {
-    const fontPx = Math.max(20, Math.round(canvas.height * 0.039));
+    const badgeScale = clampTwitchNameScale(cropState?.twitchNameScale, DEFAULT_CROP.twitchNameScale);
+    const fontPx = Math.max(14, Math.round(canvas.height * 0.039 * badgeScale));
     ctx.font = `700 ${fontPx}px Segoe UI, Arial, sans-serif`;
     const hasLogo = !!(twitchLogoImage.complete && twitchLogoImage.naturalWidth > 0 && twitchLogoImage.naturalHeight > 0);
     const padX = Math.round(fontPx * 0.60);
@@ -8792,6 +8959,7 @@
       iconHeight,
       gap,
       hasLogo,
+      badgeScale,
       xNorm,
       yNorm,
     };
@@ -8801,12 +8969,14 @@
     const badgeEl = document.getElementById('output-name-badge');
     const badgeTextEl = document.getElementById('output-name-badge-text');
     const badgeLogoEl = document.getElementById('output-name-badge-logo');
+    const badgeResizeEl = document.getElementById('output-name-badge-resize');
     const canvas = document.getElementById('output-preview');
-    if (!badgeEl || !badgeTextEl || !badgeLogoEl || !canvas) return;
+    if (!badgeEl || !badgeTextEl || !badgeLogoEl || !badgeResizeEl || !canvas) return;
 
     if (!cropState?.twitchNameEnabled || !outputNameBadgeLayout) {
       if (document.activeElement === badgeTextEl) badgeTextEl.blur();
       badgeEl.style.display = 'none';
+      badgeEl.classList.remove('resizing');
       outputNameBadgeSnapState = { x: false, y: false };
       updateOutputCenterGuides();
       return;
@@ -8830,12 +9000,17 @@
     badgeLogoEl.style.width = `${badge.iconWidth * scale}px`;
     badgeLogoEl.style.height = `${badge.iconHeight * scale}px`;
     badgeLogoEl.style.display = badge.hasLogo ? 'block' : 'none';
+    const resizePx = Math.max(10, 14 * scale);
+    badgeResizeEl.style.width = `${resizePx}px`;
+    badgeResizeEl.style.height = `${resizePx}px`;
+    badgeResizeEl.style.right = `${Math.round(-resizePx * 0.5)}px`;
+    badgeResizeEl.style.bottom = `${Math.round(-resizePx * 0.5)}px`;
     badgeTextEl.contentEditable = 'false';
     badgeTextEl.spellcheck = false;
     if (!outputNameBadgeEditing) {
       badgeTextEl.textContent = badge.text;
     }
-    badgeTextEl.title = 'Use the Twitch name field in Edit Instructions to change text.';
+    badgeTextEl.title = 'Use Display Name field to edit text. Drag badge to move. Drag corner to resize.';
   }
 
   function renderOutputPreview() {
@@ -8985,8 +9160,38 @@
   }
 
   const outputNameBadgeTextEl = document.getElementById('output-name-badge-text');
+  const outputNameBadgeResizeEl = document.getElementById('output-name-badge-resize');
+
+  outputNameBadgeResizeEl?.addEventListener('mousedown', (e) => {
+    if (!cropState?.twitchNameEnabled || !outputNameBadgeLayout) return;
+    const canvas = document.getElementById('output-preview');
+    if (!canvas) return;
+    const startScale = clampTwitchNameScale(cropState.twitchNameScale, DEFAULT_CROP.twitchNameScale);
+    const badgeWNorm = outputNameBadgeLayout.w / Math.max(1, canvas.width);
+    const badgeHNorm = outputNameBadgeLayout.h / Math.max(1, canvas.height);
+    const startXNorm = clamp01(outputNameBadgeLayout.xNorm);
+    const startYNorm = clamp01(outputNameBadgeLayout.yNorm);
+    outputNameBadgeResizeState = {
+      startMouseX: e.clientX,
+      startMouseY: e.clientY,
+      startScale,
+      startXNorm,
+      startYNorm,
+      badgeWNorm,
+      badgeHNorm,
+      centerXNorm: startXNorm + (badgeWNorm / 2),
+      centerYNorm: startYNorm + (badgeHNorm / 2),
+    };
+    outputNameBadgeDragState = null;
+    outputNameBadgeSnapState = { x: false, y: false };
+    updateOutputCenterGuides();
+    document.getElementById('output-name-badge')?.classList.add('resizing');
+    e.preventDefault();
+    e.stopPropagation();
+  });
 
   document.getElementById('output-name-badge').addEventListener('mousedown', (e) => {
+    if (outputNameBadgeResizeEl && (e.target === outputNameBadgeResizeEl || outputNameBadgeResizeEl.contains(e.target))) return;
     if (!cropState?.twitchNameEnabled || !outputNameBadgeLayout) return;
     const canvas = document.getElementById('output-preview');
     const rect = canvas.getBoundingClientRect();
@@ -9006,6 +9211,7 @@
   });
 
   document.getElementById('output-name-badge').addEventListener('dblclick', (e) => {
+    if (outputNameBadgeResizeEl && (e.target === outputNameBadgeResizeEl || outputNameBadgeResizeEl.contains(e.target))) return;
     if (!cropState?.twitchNameEnabled || !outputNameBadgeLayout) return;
     const badge = outputNameBadgeLayout;
     const canvas = document.getElementById('output-preview');
@@ -9028,6 +9234,30 @@
   });
 
   window.addEventListener('mousemove', (e) => {
+    if (outputNameBadgeResizeState && cropState) {
+      const canvas = document.getElementById('output-preview');
+      const rect = canvas.getBoundingClientRect();
+      const dxNorm = (e.clientX - outputNameBadgeResizeState.startMouseX) / Math.max(1, rect.width);
+      const dyNorm = (e.clientY - outputNameBadgeResizeState.startMouseY) / Math.max(1, rect.height);
+      const delta = dxNorm + (dyNorm * 0.75);
+      const nextScale = clampTwitchNameScale(
+        outputNameBadgeResizeState.startScale + (delta * 1.9),
+        outputNameBadgeResizeState.startScale
+      );
+      const startScale = Math.max(0.001, outputNameBadgeResizeState.startScale);
+      const scaleRatio = nextScale / startScale;
+      const nextWNorm = Math.max(0.02, outputNameBadgeResizeState.badgeWNorm * scaleRatio);
+      const nextHNorm = Math.max(0.02, outputNameBadgeResizeState.badgeHNorm * scaleRatio);
+      const maxX = Math.max(0, 1 - nextWNorm);
+      const maxY = Math.max(0, 1 - nextHNorm);
+      const nextX = Math.max(0, Math.min(maxX, outputNameBadgeResizeState.centerXNorm - (nextWNorm / 2)));
+      const nextY = Math.max(0, Math.min(maxY, outputNameBadgeResizeState.centerYNorm - (nextHNorm / 2)));
+      cropState.twitchNameScale = nextScale;
+      cropState.twitchNamePos = { x: nextX, y: nextY };
+      renderOutputPreview();
+      return;
+    }
+
     if (outputNameBadgeDragState && cropState) {
       const canvas = document.getElementById('output-preview');
       const rect = canvas.getBoundingClientRect();
@@ -9255,6 +9485,7 @@
   });
   document.querySelector('.output-preview-wrap')?.addEventListener('wheel', handleOutputZoomWheel, { passive: false });
   const handleCropPreviewMediaReady = () => {
+    syncCropPreviewAspect();
     renderSplitEditor();
     renderOutputPreview();
   };
