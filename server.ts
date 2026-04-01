@@ -2442,6 +2442,47 @@ function parseCamEnabled(value: unknown): number | null {
     return null;
 }
 
+const TWITCH_NAME_BLOCKED_WORDS = [
+    'fuck',
+    'shit',
+    'bitch',
+    'asshole',
+    'cunt',
+    'dick',
+    'pussy',
+    'slut',
+    'whore',
+    'faggot',
+    'retard',
+    'nigger',
+    'nigga',
+    'motherfucker',
+] as const;
+
+function normalizeTwitchNameForModeration(value: string): string {
+    return String(value || '')
+        .toLowerCase()
+        .replace(/[@4]/g, 'a')
+        .replace(/[0]/g, 'o')
+        .replace(/[1!|]/g, 'i')
+        .replace(/[3]/g, 'e')
+        .replace(/[5$]/g, 's')
+        .replace(/[7+]/g, 't')
+        .replace(/[^a-z0-9]+/g, ' ')
+        .replace(/\s+/g, ' ')
+        .trim();
+}
+
+function containsBlockedTwitchNameLanguage(value: string): boolean {
+    const normalized = normalizeTwitchNameForModeration(value);
+    if (!normalized) return false;
+    const compact = normalized.replace(/\s+/g, '');
+    return TWITCH_NAME_BLOCKED_WORDS.some((word) => {
+        const boundaryRe = new RegExp(`(^|\\s)${word}(\\s|$)`, 'i');
+        return boundaryRe.test(normalized) || compact.includes(word);
+    });
+}
+
 function parseTwitchNameEnabled(value: unknown): number | null {
     if (value === undefined || value === null || value === '') return 0;
     if (value === true || value === 1 || value === '1' || value === 'true') return 1;
@@ -2452,10 +2493,12 @@ function parseTwitchNameEnabled(value: unknown): number | null {
 function parseTwitchNameText(value: unknown): string | null {
     if (value === undefined || value === null) return '';
     if (typeof value !== 'string') return null;
-    return value
+    const sanitized = value
         .replace(/\s+/g, ' ')
         .trim()
         .slice(0, 64);
+    if (containsBlockedTwitchNameLanguage(sanitized)) return null;
+    return sanitized;
 }
 
 function parseTwitchNameScale(value: unknown): number | null {
@@ -4031,7 +4074,7 @@ app.post('/api/crop/:clipId', requireAuth, (req: Request, res: Response) => {
 
     const parsedTwitchNameText = parseTwitchNameText(twitch_name_text);
     if (parsedTwitchNameText === null) {
-        res.status(400).json({ error: 'Invalid twitch_name_text value. Use a string up to 64 characters.' });
+        res.status(400).json({ error: 'Invalid twitch_name_text value. Use a string up to 64 characters with no bad words.' });
         return;
     }
 
@@ -4196,4 +4239,3 @@ app.listen(PORT, () => {
     console.log(`🔎  Clip visibility filter: min_views=${MIN_CLIP_VIEWS}`);
     console.log(`🔐  Session mode: ${IS_PRODUCTION ? 'production secure cookies enabled' : 'development cookies (non-secure)'}`);
 });
-

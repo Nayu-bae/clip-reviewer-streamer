@@ -2659,6 +2659,7 @@
     .crop-handle.se { bottom: -8px; right: -8px; cursor: nwse-resize; }
 
     #cam-box {
+      z-index: 14;
       border-color: #00d4ff;
       background: rgba(0, 212, 255, 0.12);
     }
@@ -2668,6 +2669,7 @@
     }
 
     #game-box {
+      z-index: 13;
       border-color: #ffa500;
       background: rgba(255, 165, 0, 0.12);
     }
@@ -2677,6 +2679,7 @@
     }
 
     #third-box {
+      z-index: 15;
       border-color: #22c55e;
       background: rgba(34, 197, 94, 0.14);
     }
@@ -3950,7 +3953,7 @@
         <section id="setup-guide" class="setup-guide hidden" aria-live="polite">
           <div class="setup-guide-header">
             <h3>Quick Setup</h3>
-            <span id="setup-guide-progress" class="setup-guide-progress">0 / 4 complete</span>
+            <span id="setup-guide-progress" class="setup-guide-progress">0 / 8 complete</span>
           </div>
           <div class="setup-guide-grid">
             <div class="setup-step" id="setup-step-streamer">
@@ -3969,8 +3972,40 @@
               </div>
               <button id="setup-action-refresh" class="setup-step-action" type="button">Fetch</button>
             </div>
-            <div class="setup-step" id="setup-step-edit">
+            <div class="setup-step" id="setup-step-approve">
               <span class="setup-step-index">3</span>
+              <div class="setup-step-main">
+                <div class="setup-step-title">Approve a clip</div>
+                <div class="setup-step-sub">Mark one pending clip as approved to unlock editing.</div>
+              </div>
+              <button id="setup-action-approve" class="setup-step-action" type="button">Approve</button>
+            </div>
+            <div class="setup-step" id="setup-step-visit-approved">
+              <span class="setup-step-index">4</span>
+              <div class="setup-step-main">
+                <div class="setup-step-title">Visit Approve tab</div>
+                <div class="setup-step-sub">Switch status filter to Approved and review approved clips.</div>
+              </div>
+              <button id="setup-action-visit-approved" class="setup-step-action" type="button">Visit</button>
+            </div>
+            <div class="setup-step" id="setup-step-sortout">
+              <span class="setup-step-index">5</span>
+              <div class="setup-step-main">
+                <div class="setup-step-title">Sort a clip out</div>
+                <div class="setup-step-sub">Move one pending clip to Sorted Out when you do not want to keep it.</div>
+              </div>
+              <button id="setup-action-sortout" class="setup-step-action" type="button">Sort Out</button>
+            </div>
+            <div class="setup-step" id="setup-step-visit-sortout">
+              <span class="setup-step-index">6</span>
+              <div class="setup-step-main">
+                <div class="setup-step-title">Visit Sort Out tab</div>
+                <div class="setup-step-sub">Switch status filter to Sorted Out to review clipped rejects.</div>
+              </div>
+              <button id="setup-action-visit-sortout" class="setup-step-action" type="button">Visit</button>
+            </div>
+            <div class="setup-step" id="setup-step-edit">
+              <span class="setup-step-index">7</span>
               <div class="setup-step-main">
                 <div class="setup-step-title">Open your first edit</div>
                 <div class="setup-step-sub">Use the Edit button on an approved clip to configure layout.</div>
@@ -3978,7 +4013,7 @@
               <button id="setup-action-edit" class="setup-step-action" type="button">Open Edit</button>
             </div>
             <div class="setup-step" id="setup-step-download">
-              <span class="setup-step-index">4</span>
+              <span class="setup-step-index">8</span>
               <div class="setup-step-main">
                 <div class="setup-step-title">Export first cropped clip</div>
                 <div class="setup-step-sub">Generate a local MP4 to verify the final output.</div>
@@ -4423,6 +4458,8 @@
     let outputNameBadgeCancelEdit = false;
     let selectedSplitSegmentIndex = null;
     let splitOverflowMenuOpen = false;
+    let cropModalPointerDownOnBackdrop = false;
+    let cropModalDragStartedSincePointerDown = false;
   let cropPreviewRaf = null;
   let cropFallbackImage = null;
   const TWITCH_LOGO_PATH = '/pictures/twitchLogo.png';
@@ -4474,6 +4511,8 @@
   const SIDEBAR_COLLAPSE_KEY = 'clipReviewer.sidebarCollapsed.v1';
   const SESSION_PROGRESS_KEY_PREFIX = 'clipReviewer.sessionProgress.v1.user.';
   const BADGE_CENTER_SNAP_THRESHOLD = 0.015;
+  const OUTPUT_BADGE_MAX_WIDTH_RATIO = 0.82;
+  const OUTPUT_BADGE_MAX_HEIGHT_RATIO = 0.18;
   const ONBOARDING_PROGRESS_KEY_PREFIX = 'clipReviewer.onboardingProgress.v2.user.';
   const ONBOARDING_PROGRESS_KEY_LEGACY = 'clipReviewer.onboardingProgress.v1';
   const CROP_DRAFT_PREFIX = 'clipReviewer.cropDraft.v1.';
@@ -4538,6 +4577,22 @@
   // ── Helpers ─────────────────────────────────────────────────────────────
   const TWITCH_NAME_SCALE_MIN = 0.65;
   const TWITCH_NAME_SCALE_MAX = 2.4;
+  const TWITCH_NAME_BLOCKED_WORDS = Object.freeze([
+    'fuck',
+    'shit',
+    'bitch',
+    'asshole',
+    'cunt',
+    'dick',
+    'pussy',
+    'slut',
+    'whore',
+    'faggot',
+    'retard',
+    'nigger',
+    'nigga',
+    'motherfucker',
+  ]);
 
   function clampTwitchNameScale(value, fallback = 1) {
     const n = Number(value);
@@ -4548,11 +4603,44 @@
     return Math.max(TWITCH_NAME_SCALE_MIN, Math.min(TWITCH_NAME_SCALE_MAX, n));
   }
 
-  function sanitizeTwitchNameText(value, fallback = '') {
-    const primary = String(value ?? '').replace(/\s+/g, ' ').trim();
+  function normalizeTwitchNameForModeration(value) {
+    return String(value ?? '')
+      .toLowerCase()
+      .replace(/[@4]/g, 'a')
+      .replace(/[0]/g, 'o')
+      .replace(/[1!|]/g, 'i')
+      .replace(/[3]/g, 'e')
+      .replace(/[5$]/g, 's')
+      .replace(/[7+]/g, 't')
+      .replace(/[^a-z0-9]+/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+  }
+
+  function containsBlockedTwitchNameLanguage(value) {
+    const normalized = normalizeTwitchNameForModeration(value);
+    if (!normalized) return false;
+    const compact = normalized.replace(/\s+/g, '');
+    return TWITCH_NAME_BLOCKED_WORDS.some((word) => {
+      const boundaryRe = new RegExp(`(^|\\s)${word}(\\s|$)`, 'i');
+      return boundaryRe.test(normalized) || compact.includes(word);
+    });
+  }
+
+  function sanitizeTwitchNameTextWithModeration(value, fallback = '') {
+    const hasExplicitValue = value !== undefined && value !== null;
+    const primary = hasExplicitValue ? String(value).replace(/\s+/g, ' ').trim() : '';
     const backup = String(fallback ?? '').replace(/\s+/g, ' ').trim();
-    const resolved = primary || backup;
-    return resolved.slice(0, 64);
+    const resolved = (hasExplicitValue ? primary : backup).slice(0, 64);
+    if (!resolved) return { text: '', blockedLanguage: false };
+    if (!containsBlockedTwitchNameLanguage(resolved)) {
+      return { text: resolved, blockedLanguage: false };
+    }
+    return { text: '', blockedLanguage: true };
+  }
+
+  function sanitizeTwitchNameText(value, fallback = '') {
+    return sanitizeTwitchNameTextWithModeration(value, fallback).text;
   }
 
   function getActiveTwitchNameText() {
@@ -4843,6 +4931,10 @@
   function normalizeOnboardingProgress(raw) {
     const source = raw && typeof raw === 'object' ? raw : {};
     return {
+      approvedClip: !!source.approvedClip,
+      visitedApprovedTab: !!source.visitedApprovedTab,
+      sortedOutClip: !!source.sortedOutClip,
+      visitedSortedOutTab: !!source.visitedSortedOutTab,
       openedEdit: !!source.openedEdit,
       downloadedClip: !!source.downloadedClip,
     };
@@ -4941,6 +5033,14 @@
     return allClips.find((clip) => !clip.sorted_out) || null;
   }
 
+  function getFirstApprovableClip() {
+    return allClips.find((clip) => !clip.approved && !clip.sorted_out) || null;
+  }
+
+  function getFirstSortableClip() {
+    return allClips.find((clip) => !clip.approved && !clip.sorted_out) || null;
+  }
+
   function getFirstDownloadableClip() {
     return allClips.find((clip) => clip.approved && !clip.sorted_out) || null;
   }
@@ -4952,31 +5052,80 @@
 
     const hasStreamer = managedStreamerCount > 0;
     const hasFetchedClips = allClips.length > 0;
+    const approvedNow = allClips.some((clip) => clip.approved);
+    const sortedNow = allClips.some((clip) => clip.sorted_out);
+    const visitedApprovedNow = currentFilter === 'approved';
+    const visitedSortedNow = currentFilter === 'sorted-out';
+
+    if ((approvedNow || onboardingProgress.approvedClip) && !onboardingProgress.approvedClip) {
+      onboardingProgress.approvedClip = true;
+      saveOnboardingProgress();
+    }
+    if ((sortedNow || onboardingProgress.sortedOutClip) && !onboardingProgress.sortedOutClip) {
+      onboardingProgress.sortedOutClip = true;
+      saveOnboardingProgress();
+    }
+    if ((visitedApprovedNow || onboardingProgress.visitedApprovedTab) && !onboardingProgress.visitedApprovedTab) {
+      onboardingProgress.visitedApprovedTab = true;
+      saveOnboardingProgress();
+    }
+    if ((visitedSortedNow || onboardingProgress.visitedSortedOutTab) && !onboardingProgress.visitedSortedOutTab) {
+      onboardingProgress.visitedSortedOutTab = true;
+      saveOnboardingProgress();
+    }
+
+    const approvedClip = !!onboardingProgress.approvedClip;
+    const visitedApprovedTab = !!onboardingProgress.visitedApprovedTab;
+    const sortedOutClip = !!onboardingProgress.sortedOutClip;
+    const visitedSortedOutTab = !!onboardingProgress.visitedSortedOutTab;
     const openedEdit = !!onboardingProgress.openedEdit;
     const exported = !!onboardingProgress.downloadedClip;
 
-    const completion = [hasStreamer, hasFetchedClips, openedEdit, exported].filter(Boolean).length;
-    progressEl.textContent = `${completion} / 4 complete`;
+    const completion = [
+      hasStreamer,
+      hasFetchedClips,
+      approvedClip,
+      visitedApprovedTab,
+      sortedOutClip,
+      visitedSortedOutTab,
+      openedEdit,
+      exported,
+    ].filter(Boolean).length;
+    progressEl.textContent = `${completion} / 8 complete`;
 
     setSetupStepDone('setup-step-streamer', hasStreamer);
     setSetupStepDone('setup-step-refresh', hasFetchedClips);
+    setSetupStepDone('setup-step-approve', approvedClip);
+    setSetupStepDone('setup-step-visit-approved', visitedApprovedTab);
+    setSetupStepDone('setup-step-sortout', sortedOutClip);
+    setSetupStepDone('setup-step-visit-sortout', visitedSortedOutTab);
     setSetupStepDone('setup-step-edit', openedEdit);
     setSetupStepDone('setup-step-download', exported);
 
     const actionStreamer = document.getElementById('setup-action-streamer');
     const actionRefresh = document.getElementById('setup-action-refresh');
+    const actionApprove = document.getElementById('setup-action-approve');
+    const actionVisitApproved = document.getElementById('setup-action-visit-approved');
+    const actionSortOut = document.getElementById('setup-action-sortout');
+    const actionVisitSortOut = document.getElementById('setup-action-visit-sortout');
     const actionEdit = document.getElementById('setup-action-edit');
     const actionDownload = document.getElementById('setup-action-download');
 
+    const firstApprovable = getFirstApprovableClip();
+    const firstSortable = getFirstSortableClip();
     const firstEditable = getFirstEditableClip();
     const firstDownloadable = getFirstDownloadableClip();
 
     if (actionStreamer) actionStreamer.disabled = false;
     if (actionRefresh) actionRefresh.disabled = !hasStreamer;
+    if (actionApprove) actionApprove.disabled = !firstApprovable;
+    if (actionVisitApproved) actionVisitApproved.disabled = false;
+    if (actionSortOut) actionSortOut.disabled = !firstSortable;
+    if (actionVisitSortOut) actionVisitSortOut.disabled = false;
     if (actionEdit) actionEdit.disabled = !firstEditable;
     if (actionDownload) actionDownload.disabled = !firstDownloadable;
 
-    if (completion >= 4) {
+    if (completion >= 8) {
       wrap.classList.add('hidden');
     } else {
       wrap.classList.remove('hidden');
@@ -5036,6 +5185,10 @@
     timeDropdown.classList.toggle('disabled', !!disabled);
   }
 
+  function markCropModalDragStarted() {
+    cropModalDragStartedSincePointerDown = true;
+  }
+
   function updateControlDropdownLabels() {
     const timeLabel = document.getElementById('time-range-selected');
     const filterLabel = document.getElementById('filter-selected');
@@ -5043,6 +5196,31 @@
     const activeFilter = document.querySelector('.filter-btn.active');
     if (timeLabel && activePeriod) timeLabel.textContent = String(activePeriod.textContent || '').trim();
     if (filterLabel && activeFilter) filterLabel.textContent = String(activeFilter.textContent || '').trim();
+  }
+
+  function setCurrentFilter(nextFilter, options = {}) {
+    const filterKey = String(nextFilter || '').trim();
+    const filterButtons = Array.from(document.querySelectorAll('.filter-btn'));
+    const button = filterButtons.find((el) => el.dataset.filter === filterKey);
+    if (!(button instanceof HTMLElement)) return false;
+
+    filterButtons.forEach((el) => {
+      el.classList.toggle('active', el === button);
+    });
+    currentFilter = filterKey;
+    setTimeRangeDropdownDisabled(currentFilter === 'approved' || currentFilter === 'sorted-out');
+    saveDashboardPrefs();
+    updateControlDropdownLabels();
+    if (options.collapse) collapseDropdownAfterSelection(button);
+    if (currentFilter === 'approved') {
+      markOnboardingStep('visitedApprovedTab', true);
+    } else if (currentFilter === 'sorted-out') {
+      markOnboardingStep('visitedSortedOutTab', true);
+    } else {
+      updateSetupGuide();
+    }
+    renderClips();
+    return true;
   }
 
   function collapseDropdownAfterSelection(buttonEl) {
@@ -5102,6 +5280,36 @@
 
   document.getElementById('setup-action-refresh')?.addEventListener('click', () => {
     void refreshClipsFromTwitch();
+  });
+
+  document.getElementById('setup-action-approve')?.addEventListener('click', () => {
+    const clip = getFirstApprovableClip();
+    if (!clip) {
+      showToast('No pending clip available to approve yet.', 'error');
+      return;
+    }
+    void toggleApprove(clip.id, !!clip.approved);
+  });
+
+  document.getElementById('setup-action-visit-approved')?.addEventListener('click', () => {
+    if (!setCurrentFilter('approved')) {
+      showToast('Could not open Approved tab.', 'error');
+    }
+  });
+
+  document.getElementById('setup-action-sortout')?.addEventListener('click', () => {
+    const clip = getFirstSortableClip();
+    if (!clip) {
+      showToast('No pending clip available to sort out yet.', 'error');
+      return;
+    }
+    void toggleSortOut(clip.id, !!clip.sorted_out);
+  });
+
+  document.getElementById('setup-action-visit-sortout')?.addEventListener('click', () => {
+    if (!setCurrentFilter('sorted-out')) {
+      showToast('Could not open Sorted Out tab.', 'error');
+    }
   });
 
   document.getElementById('setup-action-edit')?.addEventListener('click', () => {
@@ -6135,14 +6343,7 @@
   // ── Filter buttons ───────────────────────────────────────────────────────
   document.querySelectorAll('.filter-btn').forEach(btn => {
     btn.addEventListener('click', () => {
-      document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
-      btn.classList.add('active');
-      currentFilter = btn.dataset.filter;
-      setTimeRangeDropdownDisabled(currentFilter === 'approved' || currentFilter === 'sorted-out');
-      saveDashboardPrefs();
-      updateControlDropdownLabels();
-      collapseDropdownAfterSelection(btn);
-      renderClips();
+      setCurrentFilter(btn.dataset.filter, { collapse: true });
     });
   });
 
@@ -6488,12 +6689,20 @@
   // ── Toast ─────────────────────────────────────────────────────────────────
   let toastTimer;
   let lastBuildBlockedToastAt = 0;
+  let lastTwitchNameFilterToastAt = 0;
   function showToast(msg, type = 'success') {
     const el = document.getElementById('toast');
     el.textContent = msg;
     el.className = `show ${type}`;
     clearTimeout(toastTimer);
     toastTimer = setTimeout(() => { el.className = ''; }, 3500);
+  }
+
+  function maybeShowTwitchNameFilterToast() {
+    const now = Date.now();
+    if ((now - lastTwitchNameFilterToastAt) < 1200) return;
+    lastTwitchNameFilterToastAt = now;
+    showToast('Display Name cannot include bad words.', 'error');
   }
 
   function setGlobalBuildLock(enabled) {
@@ -7038,6 +7247,7 @@
     const nextApproved = !currentlyApproved;
     const clip = allClips.find(c => c.id === clipId);
     if (clip) clip.approved = nextApproved;
+    if (nextApproved) markOnboardingStep('approvedClip', true);
     recordSessionProgressAction(clipId, 'approved', nextApproved);
 
     // Replace card in place
@@ -7083,6 +7293,7 @@
     const nextSortedOut = !currentlySortedOut;
     const clip = allClips.find(c => c.id === clipId);
     if (clip) clip.sorted_out = nextSortedOut;
+    if (nextSortedOut) markOnboardingStep('sortedOutClip', true);
     recordSessionProgressAction(clipId, 'sorted', nextSortedOut);
 
     // Replace card in place
@@ -7226,15 +7437,20 @@
   const commitTwitchNameInput = () => {
     if (!cropState || !twitchNameInput) return;
     const fallback = String(activeCropClip?.broadcaster_name || '').trim();
-    const next = sanitizeTwitchNameText(twitchNameInput.value, fallback);
+    const sanitized = sanitizeTwitchNameTextWithModeration(twitchNameInput.value, fallback);
+    const next = sanitized.text;
     cropState.twitchNameText = next;
     if (twitchNameInput.value !== next) twitchNameInput.value = next;
+    if (sanitized.blockedLanguage) maybeShowTwitchNameFilterToast();
     renderOutputPreview();
   };
   twitchNameInput?.addEventListener('input', () => {
     if (!cropState || !cropState.twitchNameEnabled) return;
     const raw = String(twitchNameInput.value || '').slice(0, 64);
-    cropState.twitchNameText = sanitizeTwitchNameText(raw, String(activeCropClip?.broadcaster_name || '').trim());
+    const sanitized = sanitizeTwitchNameTextWithModeration(raw, String(activeCropClip?.broadcaster_name || '').trim());
+    cropState.twitchNameText = sanitized.text;
+    if (twitchNameInput.value !== sanitized.text) twitchNameInput.value = sanitized.text;
+    if (sanitized.blockedLanguage) maybeShowTwitchNameFilterToast();
     renderOutputPreview();
   });
   twitchNameInput?.addEventListener('blur', () => {
@@ -7305,8 +7521,17 @@
       toggleThirdAreaEnabled();
     }
   });
-  document.getElementById('crop-modal').addEventListener('click', (e) => {
-    if (e.target.id === 'crop-modal') closeCropModal();
+  const cropModalEl = document.getElementById('crop-modal');
+  cropModalEl.addEventListener('mousedown', (e) => {
+    cropModalPointerDownOnBackdrop = e.target === cropModalEl;
+    cropModalDragStartedSincePointerDown = false;
+  }, true);
+  cropModalEl.addEventListener('click', (e) => {
+    if (e.target !== cropModalEl) return;
+    const shouldClose = cropModalPointerDownOnBackdrop && !cropModalDragStartedSincePointerDown;
+    cropModalPointerDownOnBackdrop = false;
+    cropModalDragStartedSincePointerDown = false;
+    if (shouldClose) closeCropModal();
   });
 
     document.getElementById('split-add-btn').addEventListener('click', () => addSplitPointAtCurrentTime());
@@ -7425,6 +7650,8 @@
     cropState = null;
     selectedSplitSegmentIndex = null;
     splitOverflowMenuOpen = false;
+    cropModalPointerDownOnBackdrop = false;
+    cropModalDragStartedSincePointerDown = false;
     const previewEl = document.querySelector('.crop-preview');
     if (previewEl instanceof HTMLElement) {
       previewEl.style.setProperty('--crop-preview-aspect', '16 / 9');
@@ -8078,6 +8305,7 @@
     if (!cropState) return;
     if (sectionName === 'cam' && !cropState.camEnabled) return;
     if (sectionName === 'third' && !cropState.thirdAreaEnabled) return;
+    markCropModalDragStarted();
     const handleEl = e.target.closest('.crop-handle');
     const mode = handleEl ? 'resize' : 'move';
     const handle = handleEl ? handleEl.dataset.handle : '';
@@ -8106,6 +8334,7 @@
     if (!cropState) return;
     const wrap = document.querySelector('.output-preview-wrap');
     if (!wrap) return;
+    markCropModalDragStarted();
     const rect = wrap.getBoundingClientRect();
     const zoomCtx = getActiveZoomSegmentContext();
     if (zoomCtx) {
@@ -8146,6 +8375,7 @@
         if (!cropState) return;
     const wrap = document.querySelector('.output-preview-wrap');
     if (!wrap) return;
+    markCropModalDragStarted();
     const rect = wrap.getBoundingClientRect();
         const gameplayY = clamp01(cropState.gameplayOutput?.y ?? DEFAULT_CROP.gameplayOutput.y);
         const gameplayH = Math.max(0.05, Math.min(0.95, clamp01(cropState.gameplayOutput?.h ?? DEFAULT_CROP.gameplayOutput.h)));
@@ -8171,6 +8401,7 @@
     if (!cropState) return;
     const wrap = document.querySelector('.output-preview-wrap');
     if (!wrap) return;
+    markCropModalDragStarted();
     const rect = wrap.getBoundingClientRect();
     outputGameplayDragState = {
       mode: 'move',
@@ -8196,6 +8427,7 @@
     if (zoomCtx) return;
     const wrap = document.querySelector('.output-preview-wrap');
     if (!wrap) return;
+    markCropModalDragStarted();
     const rect = wrap.getBoundingClientRect();
     const third = normalizeCrop(cropState.thirdOutput, DEFAULT_CROP.thirdOutput);
     cropState.thirdOutput = third;
@@ -8930,36 +9162,54 @@
 
   function getOutputBadgeLayout(ctx, canvas, streamerName) {
     const badgeScale = clampTwitchNameScale(cropState?.twitchNameScale, DEFAULT_CROP.twitchNameScale);
-    const fontPx = Math.max(14, Math.round(canvas.height * 0.039 * badgeScale));
-    ctx.font = `700 ${fontPx}px Segoe UI, Arial, sans-serif`;
     const hasLogo = !!(twitchLogoImage.complete && twitchLogoImage.naturalWidth > 0 && twitchLogoImage.naturalHeight > 0);
-    const padX = Math.round(fontPx * 0.60);
-    const iconHeight = Math.max(2, Math.round(fontPx * 1.26));
     const logoAspect = hasLogo ? (twitchLogoImage.naturalWidth / twitchLogoImage.naturalHeight) : 1;
-    const iconWidth = Math.max(2, Math.round(iconHeight * Math.max(0.4, Math.min(3, logoAspect))));
-    const gap = Math.round(fontPx * 0.24);
-    const badgeHeight = Math.round(fontPx * 1.78);
     const text = String(streamerName || '').trim();
-    const textWidth = Math.ceil(ctx.measureText(text).width + Math.max(8, fontPx * 0.18));
-    const badgeWidth = padX + (hasLogo ? (iconWidth + gap) : 0) + textWidth + padX;
+
+    const computeBadgeMetrics = (fontSize) => {
+      const safeFontPx = Math.max(12, Math.round(fontSize));
+      ctx.font = `700 ${safeFontPx}px Segoe UI, Arial, sans-serif`;
+      const padX = Math.round(safeFontPx * 0.60);
+      const iconHeight = Math.max(2, Math.round(safeFontPx * 1.26));
+      const iconWidth = Math.max(2, Math.round(iconHeight * Math.max(0.4, Math.min(3, logoAspect))));
+      const gap = Math.round(safeFontPx * 0.24);
+      const badgeHeight = Math.round(safeFontPx * 1.78);
+      const textWidth = Math.ceil(ctx.measureText(text).width + Math.max(8, safeFontPx * 0.18));
+      const badgeWidth = padX + (hasLogo ? (iconWidth + gap) : 0) + textWidth + padX;
+      return { fontPx: safeFontPx, padX, iconWidth, iconHeight, gap, badgeWidth, badgeHeight };
+    };
+
+    const initialFontPx = Math.max(14, Math.round(canvas.height * 0.039 * badgeScale));
+    let metrics = computeBadgeMetrics(initialFontPx);
+    const maxBadgeWidthPx = Math.max(120, Math.round(canvas.width * OUTPUT_BADGE_MAX_WIDTH_RATIO));
+    const maxBadgeHeightPx = Math.max(36, Math.round(canvas.height * OUTPUT_BADGE_MAX_HEIGHT_RATIO));
+    const widthFit = maxBadgeWidthPx / Math.max(1, metrics.badgeWidth);
+    const heightFit = maxBadgeHeightPx / Math.max(1, metrics.badgeHeight);
+    const fitRatio = Math.max(0.2, Math.min(1, widthFit, heightFit));
+    if (fitRatio < 0.999) {
+      metrics = computeBadgeMetrics(metrics.fontPx * fitRatio);
+    }
+    const badgeWidth = Math.min(metrics.badgeWidth, maxBadgeWidthPx);
+    const badgeHeight = Math.min(metrics.badgeHeight, maxBadgeHeightPx);
+
     const maxX = Math.max(0, 1 - (badgeWidth / canvas.width));
     const maxY = Math.max(0, 1 - (badgeHeight / canvas.height));
     const pos = normalizeNamePos(cropState?.twitchNamePos, DEFAULT_CROP.twitchNamePos);
-    const xNorm = Math.min(pos.x, maxX);
-    const yNorm = Math.min(pos.y, maxY);
+    const xNorm = Math.max(0, Math.min(pos.x, maxX));
+    const yNorm = Math.max(0, Math.min(pos.y, maxY));
     return {
       x: Math.round(canvas.width * xNorm),
       y: Math.round(canvas.height * yNorm),
       w: badgeWidth,
       h: badgeHeight,
       text,
-      fontPx,
-      padX,
-      iconWidth,
-      iconHeight,
-      gap,
+      fontPx: metrics.fontPx,
+      padX: metrics.padX,
+      iconWidth: metrics.iconWidth,
+      iconHeight: metrics.iconHeight,
+      gap: metrics.gap,
       hasLogo,
-      badgeScale,
+      badgeScale: badgeScale * fitRatio,
       xNorm,
       yNorm,
     };
@@ -9166,6 +9416,7 @@
     if (!cropState?.twitchNameEnabled || !outputNameBadgeLayout) return;
     const canvas = document.getElementById('output-preview');
     if (!canvas) return;
+    markCropModalDragStarted();
     const startScale = clampTwitchNameScale(cropState.twitchNameScale, DEFAULT_CROP.twitchNameScale);
     const badgeWNorm = outputNameBadgeLayout.w / Math.max(1, canvas.width);
     const badgeHNorm = outputNameBadgeLayout.h / Math.max(1, canvas.height);
@@ -9194,6 +9445,7 @@
     if (outputNameBadgeResizeEl && (e.target === outputNameBadgeResizeEl || outputNameBadgeResizeEl.contains(e.target))) return;
     if (!cropState?.twitchNameEnabled || !outputNameBadgeLayout) return;
     const canvas = document.getElementById('output-preview');
+    markCropModalDragStarted();
     const rect = canvas.getBoundingClientRect();
     const x = ((e.clientX - rect.left) / rect.width) * canvas.width;
     const y = ((e.clientY - rect.top) / rect.height) * canvas.height;
@@ -9246,8 +9498,14 @@
       );
       const startScale = Math.max(0.001, outputNameBadgeResizeState.startScale);
       const scaleRatio = nextScale / startScale;
-      const nextWNorm = Math.max(0.02, outputNameBadgeResizeState.badgeWNorm * scaleRatio);
-      const nextHNorm = Math.max(0.02, outputNameBadgeResizeState.badgeHNorm * scaleRatio);
+      const nextWNorm = Math.min(
+        OUTPUT_BADGE_MAX_WIDTH_RATIO,
+        Math.max(0.02, outputNameBadgeResizeState.badgeWNorm * scaleRatio)
+      );
+      const nextHNorm = Math.min(
+        OUTPUT_BADGE_MAX_HEIGHT_RATIO,
+        Math.max(0.02, outputNameBadgeResizeState.badgeHNorm * scaleRatio)
+      );
       const maxX = Math.max(0, 1 - nextWNorm);
       const maxY = Math.max(0, 1 - nextHNorm);
       const nextX = Math.max(0, Math.min(maxX, outputNameBadgeResizeState.centerXNorm - (nextWNorm / 2)));
