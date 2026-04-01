@@ -4415,7 +4415,11 @@
   <div class="w-full max-w-md rounded-2xl border border-zinc-700 bg-zinc-900 p-5 shadow-2xl shadow-black/50">
     <h3 class="text-lg font-semibold mb-1">Account Security</h3>
     <p id="account-modal-email" class="text-sm text-zinc-400 mb-3">Loading account details...</p>
-    <p class="text-xs text-zinc-500 mb-3">We will email a one-time secure link where you can update username, email, and password.</p>
+    <div class="mb-3 rounded-xl border border-zinc-700 bg-zinc-950/60 p-3">
+      <p id="account-link-target" class="text-xs text-zinc-400 mb-2">Send one-time secure account link to your website email.</p>
+      <button id="account-send-link-btn" class="w-full rounded-lg border border-indigo-500 bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-500">Send Account Link</button>
+    </div>
+    <p class="text-xs text-zinc-500 mb-3">The secure link lets you update username, email, and password.</p>
     <div id="account-add-email-wrap" class="hidden rounded-xl border border-zinc-700 bg-zinc-950/60 p-3 mb-3">
       <p class="text-xs text-zinc-400 mb-2">No email found on this account. Add one to receive verification.</p>
       <input id="account-add-email-input" class="w-full rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm mb-2" placeholder="you@example.com" autocomplete="email" />
@@ -4429,9 +4433,38 @@
         <button id="account-verify-resend-btn" class="flex-1 rounded-lg border border-zinc-600 bg-zinc-800 px-4 py-2 text-sm font-semibold text-zinc-100 hover:bg-zinc-700">Resend Code</button>
       </div>
     </div>
+    <div id="account-tiktok-wrap" class="rounded-xl border border-zinc-700 bg-zinc-950/60 p-3 mb-3">
+      <div class="flex items-center gap-3">
+        <img id="account-tiktok-avatar-img" class="hidden h-10 w-10 rounded-full border border-zinc-700 object-cover" alt="TikTok avatar" />
+        <div id="account-tiktok-avatar-fallback" class="flex h-10 w-10 items-center justify-center rounded-full border border-zinc-700 bg-zinc-900 text-sm font-semibold text-zinc-200">TT</div>
+        <div class="min-w-0 flex-1">
+          <p class="text-xs uppercase tracking-wide text-zinc-400">TikTok</p>
+          <p id="account-tiktok-name" class="truncate text-sm font-semibold text-zinc-100">Not connected</p>
+          <p id="account-tiktok-handle" class="truncate text-xs text-zinc-400">@-</p>
+        </div>
+        <div class="flex flex-col items-end gap-1">
+          <span id="account-tiktok-status" class="rounded-full border border-zinc-600 bg-zinc-900 px-2 py-1 text-[11px] font-semibold uppercase tracking-wide text-zinc-300">Not connected</span>
+          <span id="account-tiktok-demo-badge" class="hidden rounded-full border border-amber-500/70 bg-amber-500/15 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-200">Demo Mode</span>
+        </div>
+      </div>
+      <p class="mt-2 text-[11px] uppercase tracking-wide text-zinc-500">Granted Scopes</p>
+      <div id="account-tiktok-scopes" class="mt-1 flex flex-wrap gap-1 text-[11px]"></div>
+      <div class="mt-3">
+        <p class="text-xs uppercase tracking-wide text-zinc-400">Upload Mode</p>
+        <div id="account-tiktok-mode-switch" tabindex="0" role="group" aria-label="TikTok upload mode" class="relative mt-2 overflow-hidden rounded-full border border-zinc-700/80 bg-zinc-950/70 p-1 shadow-inner shadow-black/50 cursor-pointer select-none">
+          <div id="account-tiktok-mode-slider" class="absolute inset-y-1 left-1 w-[calc(50%-0.25rem)] rounded-full bg-gradient-to-r from-indigo-600 to-blue-600 transition-transform duration-200 ease-out shadow-lg shadow-indigo-700/40"></div>
+          <div class="relative z-10 grid grid-cols-2 text-xs font-semibold">
+            <button id="account-tiktok-mode-draft" type="button" class="px-3 py-2 text-white">Draft</button>
+            <button id="account-tiktok-mode-direct" type="button" class="px-3 py-2 text-zinc-400">Direct Publish</button>
+          </div>
+        </div>
+        <p id="account-tiktok-mode-hint" class="mt-2 text-xs text-zinc-400">Draft keeps uploads in TikTok inbox for final review.</p>
+      </div>
+      <button id="account-tiktok-connect-btn" class="mt-3 w-full rounded-lg border border-indigo-500 bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-500">Connect TikTok</button>
+      <button id="account-tiktok-logout-btn" class="mt-2 hidden w-full rounded-lg border border-zinc-600 bg-zinc-800 px-4 py-2 text-sm font-semibold text-zinc-100 hover:bg-zinc-700">Logout TikTok</button>
+    </div>
     <div class="mt-3 flex gap-2 justify-end">
       <button id="account-close-btn" class="rounded-lg border border-zinc-700 px-3 py-2 text-sm text-zinc-300">Close</button>
-      <button id="account-send-link-btn" class="rounded-lg border border-indigo-500 bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-500">Send Account Link</button>
     </div>
     <div id="account-modal-status" class="mt-2 text-sm text-zinc-300 hidden"></div>
   </div>
@@ -4477,9 +4510,17 @@
   let pendingVerificationEmailMasked = '';
   let verificationResendTimer = null;
   let resendAvailableInSeconds = 0;
+  let accountModalEmail = '';
   let accountModalEmailMasked = '';
   let accountModalHasEmail = false;
   let accountModalEmailVerified = true;
+  let tiktokConnected = false;
+  let tiktokDemoMode = false;
+  let tiktokUploadMode = 'draft';
+  let tiktokDisplayName = '';
+  let tiktokUsername = '';
+  let tiktokAvatarUrl = '';
+  let tiktokScopes = [];
   let sidebarProfileEmailMasked = '';
   let needsStreamerSetup = false;
   let activeUploadJobId = null;
@@ -4707,6 +4748,175 @@
     subEl.textContent = sidebarProfileEmailMasked || (username ? `@${username}` : '@-');
   }
 
+  function normalizeTikTokUploadModeClient(value) {
+    return String(value || '').trim().toLowerCase() === 'direct' ? 'direct' : 'draft';
+  }
+
+  function updateTikTokModeSwitchUI() {
+    const slider = document.getElementById('account-tiktok-mode-slider');
+    const draftBtn = document.getElementById('account-tiktok-mode-draft');
+    const directBtn = document.getElementById('account-tiktok-mode-direct');
+    const hint = document.getElementById('account-tiktok-mode-hint');
+    if (!slider || !draftBtn || !directBtn || !hint) return;
+
+    const direct = tiktokUploadMode === 'direct';
+    slider.style.transform = direct ? 'translateX(100%)' : 'translateX(0%)';
+    draftBtn.classList.toggle('text-white', !direct);
+    draftBtn.classList.toggle('text-zinc-400', direct);
+    directBtn.classList.toggle('text-white', direct);
+    directBtn.classList.toggle('text-zinc-400', !direct);
+    hint.textContent = direct
+      ? 'Direct Publish posts immediately to TikTok using your allowed privacy settings.'
+      : 'Draft keeps uploads in TikTok inbox for final review.';
+  }
+
+  function updateAccountTikTokSection() {
+    const statusEl = document.getElementById('account-tiktok-status');
+    const demoBadgeEl = document.getElementById('account-tiktok-demo-badge');
+    const nameEl = document.getElementById('account-tiktok-name');
+    const handleEl = document.getElementById('account-tiktok-handle');
+    const avatarImgEl = document.getElementById('account-tiktok-avatar-img');
+    const avatarFallbackEl = document.getElementById('account-tiktok-avatar-fallback');
+    const scopesEl = document.getElementById('account-tiktok-scopes');
+    const connectBtn = document.getElementById('account-tiktok-connect-btn');
+    const logoutBtn = document.getElementById('account-tiktok-logout-btn');
+    if (!statusEl || !demoBadgeEl || !nameEl || !handleEl || !avatarImgEl || !avatarFallbackEl || !scopesEl || !connectBtn || !logoutBtn) return;
+
+    const display = String(tiktokDisplayName || '').trim();
+    const handle = String(tiktokUsername || '').trim();
+    const avatarUrl = String(tiktokAvatarUrl || '').trim();
+    const initialSeed = (display || handle || 'TT').replace(/[^a-zA-Z0-9]/g, '');
+    const initials = (initialSeed.slice(0, 2) || 'TT').toUpperCase();
+
+    statusEl.textContent = tiktokConnected ? 'Connected' : 'Not connected';
+    statusEl.classList.toggle('border-emerald-500/60', tiktokConnected);
+    statusEl.classList.toggle('bg-emerald-500/20', tiktokConnected);
+    statusEl.classList.toggle('text-emerald-200', tiktokConnected);
+    statusEl.classList.toggle('border-zinc-600', !tiktokConnected);
+    statusEl.classList.toggle('bg-zinc-900', !tiktokConnected);
+    statusEl.classList.toggle('text-zinc-300', !tiktokConnected);
+    demoBadgeEl.classList.toggle('hidden', !tiktokDemoMode);
+    nameEl.textContent = display || (tiktokConnected ? 'TikTok account linked' : 'Not connected');
+    handleEl.textContent = handle ? `@${handle}` : '@-';
+    connectBtn.textContent = tiktokConnected
+      ? (tiktokDemoMode ? 'Reconnect TikTok (Demo)' : 'Reconnect TikTok')
+      : (tiktokDemoMode ? 'Connect TikTok (Demo)' : 'Connect TikTok');
+    logoutBtn.classList.toggle('hidden', !tiktokConnected);
+
+    if (avatarUrl) {
+      avatarImgEl.src = avatarUrl;
+      avatarImgEl.classList.remove('hidden');
+      avatarFallbackEl.classList.add('hidden');
+    } else {
+      avatarImgEl.removeAttribute('src');
+      avatarImgEl.classList.add('hidden');
+      avatarFallbackEl.classList.remove('hidden');
+      avatarFallbackEl.textContent = initials;
+    }
+
+    const scopeList = Array.isArray(tiktokScopes) && tiktokScopes.length
+      ? tiktokScopes
+      : (tiktokConnected ? ['unknown'] : ['not_connected']);
+    scopesEl.innerHTML = scopeList.map((scope) => {
+      const safeScope = String(scope || '').replace(/[^a-zA-Z0-9._-]/g, '') || 'unknown';
+      return `<span class="rounded-full border border-zinc-600 bg-zinc-900 px-2 py-0.5 text-zinc-300">${safeScope}</span>`;
+    }).join('');
+
+    updateTikTokModeSwitchUI();
+  }
+
+  function applyTikTokAccountState(rawTikTok) {
+    const data = rawTikTok && typeof rawTikTok === 'object' ? rawTikTok : {};
+    tiktokConnected = !!data.connected;
+    tiktokDemoMode = !!data.demoMode;
+    tiktokUploadMode = normalizeTikTokUploadModeClient(data.uploadMode || 'draft');
+    tiktokDisplayName = String(data.displayName || '').trim();
+    tiktokUsername = String(data.username || '').trim();
+    tiktokAvatarUrl = String(data.avatarUrl || '').trim();
+    tiktokScopes = Array.isArray(data.scopes) ? data.scopes.map((v) => String(v || '').trim()).filter(Boolean) : [];
+    if (!activeUploadJobId) updateUploadControls(null);
+    updateAccountTikTokSection();
+  }
+
+  function startTikTokOAuthFlow() {
+    window.location.assign('/api/tiktok/oauth/start?returnTo=/app');
+  }
+
+  async function saveTikTokUploadMode(nextMode) {
+    const desired = normalizeTikTokUploadModeClient(nextMode);
+    if (desired === tiktokUploadMode) return;
+    const previous = tiktokUploadMode;
+    tiktokUploadMode = desired;
+    updateTikTokModeSwitchUI();
+    if (!activeUploadJobId) updateUploadControls(null);
+
+    const status = document.getElementById('account-modal-status');
+    try {
+      const r = await fetch('/api/tiktok/upload-mode', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ mode: desired }),
+      });
+      const data = await r.json().catch(() => ({}));
+      if (!r.ok) throw new Error(data.error || 'Could not save TikTok upload mode.');
+      tiktokUploadMode = normalizeTikTokUploadModeClient(data.uploadMode || desired);
+      updateTikTokModeSwitchUI();
+      if (!activeUploadJobId) updateUploadControls(null);
+      if (status) {
+        status.textContent = `TikTok upload mode set to ${tiktokUploadMode === 'direct' ? 'Direct Publish' : 'Draft'}.`;
+        status.classList.remove('hidden');
+      }
+    } catch (err) {
+      tiktokUploadMode = previous;
+      updateTikTokModeSwitchUI();
+      if (!activeUploadJobId) updateUploadControls(null);
+      if (status) {
+        status.textContent = err instanceof Error ? err.message : 'Could not save TikTok upload mode.';
+        status.classList.remove('hidden');
+      }
+      showToast(`Mode update failed: ${err instanceof Error ? err.message : 'Unknown error'}`, 'error');
+    }
+  }
+
+  async function disconnectTikTokFromAccountPanel() {
+    const status = document.getElementById('account-modal-status');
+    try {
+      const r = await fetch('/api/tiktok/disconnect', { method: 'POST' });
+      const data = await r.json().catch(() => ({}));
+      if (!r.ok) throw new Error(data.error || 'Could not disconnect TikTok.');
+      applyTikTokAccountState(data.tiktok || null);
+      if (status) {
+        status.textContent = 'TikTok account disconnected.';
+        status.classList.remove('hidden');
+      }
+      showToast('TikTok disconnected.');
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Could not disconnect TikTok.';
+      if (status) {
+        status.textContent = msg;
+        status.classList.remove('hidden');
+      }
+      showToast(msg, 'error');
+    }
+  }
+
+  function consumeTikTokOAuthFeedbackFromUrl() {
+    const url = new URL(window.location.href);
+    const result = String(url.searchParams.get('tiktok') || '').trim().toLowerCase();
+    if (!result) return;
+
+    const message = String(url.searchParams.get('tiktok_message') || '').trim();
+    if (result === 'success') {
+      showToast('TikTok connected successfully.');
+    } else {
+      showToast(message || 'TikTok connect failed. Please try again.', 'error');
+    }
+    url.searchParams.delete('tiktok');
+    url.searchParams.delete('tiktok_message');
+    history.replaceState({}, '', url.toString());
+    void refreshSidebarProfileDetails();
+  }
+
   function setSidebarProfileMenu(open) {
     const menu = document.getElementById('sidebar-profile-menu');
     const btn = document.getElementById('sidebar-profile-btn');
@@ -4722,6 +4932,7 @@
   async function refreshSidebarProfileDetails() {
     if (!currentUsername) {
       sidebarProfileEmailMasked = '';
+      applyTikTokAccountState(null);
       updateSidebarProfileCard();
       return;
     }
@@ -4730,6 +4941,7 @@
       const data = await r.json().catch(() => ({}));
       if (!r.ok) return;
       sidebarProfileEmailMasked = String(data.email || data.emailMasked || '').trim();
+      applyTikTokAccountState(data.tiktok || null);
       updateSidebarProfileCard();
     } catch {
       // Keep previously rendered profile details.
@@ -5893,6 +6105,7 @@
     clearDashboardState();
     updateDashboardStatusRow();
     void refreshSidebarProfileDetails();
+    consumeTikTokOAuthFeedbackFromUrl();
     updateSetupGuide();
     void refreshManagedStreamerCount();
     restoreActiveUploadJob();
@@ -5939,6 +6152,7 @@
     const modal = document.getElementById('account-modal');
     const status = document.getElementById('account-modal-status');
     const emailEl = document.getElementById('account-modal-email');
+    const accountLinkTargetEl = document.getElementById('account-link-target');
     const addEmailWrap = document.getElementById('account-add-email-wrap');
     const addEmailInput = document.getElementById('account-add-email-input');
     const verifyWrap = document.getElementById('account-verify-wrap');
@@ -5948,6 +6162,7 @@
     status.classList.add('hidden');
     status.textContent = '';
     emailEl.textContent = 'Loading account details...';
+    accountLinkTargetEl.textContent = 'Loading website email...';
     addEmailWrap.classList.add('hidden');
     verifyWrap.classList.add('hidden');
     addEmailInput.value = '';
@@ -5955,6 +6170,7 @@
     verifyResendBtn.textContent = 'Resend Code';
     verifyResendBtn.disabled = false;
     sendLinkBtn.disabled = false;
+    updateAccountTikTokSection();
     modal.classList.remove('hidden');
     modal.classList.add('flex');
     void loadAccountModalDetails();
@@ -5968,6 +6184,7 @@
 
   async function loadAccountModalDetails() {
     const emailEl = document.getElementById('account-modal-email');
+    const accountLinkTargetEl = document.getElementById('account-link-target');
     const addEmailWrap = document.getElementById('account-add-email-wrap');
     const verifyWrap = document.getElementById('account-verify-wrap');
     const sendLinkBtn = document.getElementById('account-send-link-btn');
@@ -5975,30 +6192,43 @@
       const r = await fetch('/api/me/account');
       const data = await r.json().catch(() => ({}));
       if (!r.ok) throw new Error(data.error || 'Could not load account details.');
+      accountModalEmail = String(data.email || '').trim();
       accountModalEmailMasked = String(data.emailMasked || '').trim();
       sidebarProfileEmailMasked = String(data.email || accountModalEmailMasked || '').trim();
-      accountModalHasEmail = Boolean(String(data.email || '').trim());
+      accountModalHasEmail = Boolean(accountModalEmail);
       accountModalEmailVerified = !!data.emailVerified;
+      applyTikTokAccountState(data.tiktok || null);
       updateSidebarProfileCard();
       const username = String(data.username || '').trim();
+      const visibleEmail = accountModalEmail || accountModalEmailMasked || '';
       if (accountModalHasEmail) {
         emailEl.textContent = accountModalEmailVerified
-          ? `Signed in as @${username}. Email verified (${accountModalEmailMasked}).`
-          : `Signed in as @${username}. Email pending verification (${accountModalEmailMasked}).`;
+          ? `Signed in as @${username}. Email verified (${visibleEmail}).`
+          : `Signed in as @${username}. Email pending verification (${visibleEmail}).`;
+        accountLinkTargetEl.textContent = visibleEmail
+          ? `Send one-time secure account link to ${visibleEmail}.`
+          : 'Send one-time secure account link to your website email.';
+        sendLinkBtn.textContent = visibleEmail ? `Send Account Link to ${visibleEmail}` : 'Send Account Link';
         addEmailWrap.classList.add('hidden');
         verifyWrap.classList.toggle('hidden', accountModalEmailVerified);
         sendLinkBtn.disabled = !accountModalEmailVerified;
       } else {
         emailEl.textContent = `Signed in as @${username}. No email found on this account.`;
+        accountLinkTargetEl.textContent = 'Add and verify an email first to send your account link.';
+        sendLinkBtn.textContent = 'Send Account Link';
         addEmailWrap.classList.remove('hidden');
         verifyWrap.classList.add('hidden');
         sendLinkBtn.disabled = true;
       }
+      updateAccountTikTokSection();
     } catch (err) {
       emailEl.textContent = err instanceof Error ? err.message : 'Could not load account details.';
+      accountLinkTargetEl.textContent = 'Could not load website email.';
+      sendLinkBtn.textContent = 'Send Account Link';
       addEmailWrap.classList.add('hidden');
       verifyWrap.classList.add('hidden');
       sendLinkBtn.disabled = true;
+      updateAccountTikTokSection();
     }
   }
 
@@ -6028,9 +6258,9 @@
       status.classList.remove('hidden');
       return;
     }
-    const emailMasked = String(data.email || accountModalEmailMasked || '').trim();
-    status.textContent = emailMasked
-      ? `Secure account link sent to ${emailMasked}.`
+    const emailShown = String(accountModalEmail || accountModalEmailMasked || data.email || '').trim();
+    status.textContent = emailShown
+      ? `Secure account link sent to ${emailShown}.`
       : 'Secure account link sent. Check your inbox.';
     status.classList.remove('hidden');
   }
@@ -6159,6 +6389,40 @@
   });
   document.getElementById('account-verify-code-input').addEventListener('keydown', (e) => {
     if (e.key === 'Enter') void verifyAccountEmailInModal();
+  });
+  document.getElementById('account-tiktok-connect-btn').addEventListener('click', () => {
+    startTikTokOAuthFlow();
+  });
+  document.getElementById('account-tiktok-logout-btn').addEventListener('click', () => {
+    void disconnectTikTokFromAccountPanel();
+  });
+  document.getElementById('account-tiktok-mode-draft').addEventListener('click', () => {
+    void saveTikTokUploadMode('draft');
+  });
+  document.getElementById('account-tiktok-mode-direct').addEventListener('click', () => {
+    void saveTikTokUploadMode('direct');
+  });
+  document.getElementById('account-tiktok-mode-switch').addEventListener('click', (e) => {
+    if (e.target?.id === 'account-tiktok-mode-draft' || e.target?.id === 'account-tiktok-mode-direct') return;
+    const rect = e.currentTarget.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    void saveTikTokUploadMode(x < rect.width / 2 ? 'draft' : 'direct');
+  });
+  document.getElementById('account-tiktok-mode-switch').addEventListener('keydown', (e) => {
+    if (e.key === 'ArrowLeft') {
+      e.preventDefault();
+      void saveTikTokUploadMode('draft');
+      return;
+    }
+    if (e.key === 'ArrowRight') {
+      e.preventDefault();
+      void saveTikTokUploadMode('direct');
+      return;
+    }
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      void saveTikTokUploadMode(tiktokUploadMode === 'direct' ? 'draft' : 'direct');
+    }
   });
   document.getElementById('add-streamer-modal').addEventListener('click', (e) => {
     if (e.target.id === 'add-streamer-modal') closeAddStreamerModal();
@@ -6482,10 +6746,14 @@
     const extraControls = document.getElementById('upload-extra-controls');
 
     if (!job) {
-      statusEl.textContent = 'Upload queue idle';
+      statusEl.textContent = tiktokConnected
+        ? `Upload queue idle (${tiktokUploadMode === 'direct' ? 'Direct Publish' : 'Draft'}${tiktokDemoMode ? ', Demo' : ''})`
+        : 'Connect TikTok to enable uploads';
       statusEl.dataset.state = 'idle';
       startBtn.disabled = false;
-      startBtn.textContent = 'Start Upload';
+      startBtn.textContent = tiktokConnected
+        ? 'Start Upload'
+        : (tiktokDemoMode ? 'Connect TikTok (Demo)' : 'Connect TikTok');
       pauseBtn.disabled = true;
       resumeBtn.disabled = true;
       cancelBtn.disabled = true;
@@ -6515,7 +6783,9 @@
 
     const active = job.status === 'running' || job.status === 'paused';
     startBtn.disabled = active;
-    startBtn.textContent = active ? 'Upload Running' : 'Start Upload';
+    startBtn.textContent = active
+      ? 'Upload Running'
+      : (tiktokConnected ? 'Start Upload' : (tiktokDemoMode ? 'Connect TikTok (Demo)' : 'Connect TikTok'));
     pauseBtn.disabled = job.status !== 'running';
     resumeBtn.disabled = job.status !== 'paused';
     cancelBtn.disabled = !active;
@@ -7157,6 +7427,21 @@
     });
   }
 
+  async function ensureActiveCropSavedBeforeDownload(clipId) {
+    const clipKey = String(clipId || '');
+    if (!activeCropClip || !cropState) return true;
+    if (String(activeCropClip.id || '') !== clipKey) return true;
+    const payload = buildCropSavePayload();
+    if (!payload) return true;
+    const fingerprint = getCropPayloadFingerprint(payload);
+    if (!fingerprint || fingerprint === cropLastSavedFingerprint) return true;
+    return persistCropSettings({
+      closeOnSuccess: false,
+      toastOnSuccess: false,
+      toastOnError: true,
+    });
+  }
+
   async function downloadCroppedVideo(clipId, buttonEl = null) {
     const clipKey = String(clipId || '');
     const clip = allClips.find(c => c.id === clipKey);
@@ -7171,6 +7456,12 @@
       maybeShowBuildInProgressToast();
       showToast('This clip is already being prepared.');
       updateActionProgressChip();
+      return;
+    }
+
+    const cropSaved = await ensureActiveCropSavedBeforeDownload(clipKey);
+    if (!cropSaved) {
+      showToast('Could not save current edit before download.', 'error');
       return;
     }
 
@@ -7583,6 +7874,11 @@
   });
 
   document.getElementById('bulk-upload-btn').addEventListener('click', async () => {
+    if (!tiktokConnected) {
+      startTikTokOAuthFlow();
+      return;
+    }
+
     const approvedCount = allClips.filter(c => c.approved && !c.sorted_out).length;
     if (approvedCount === 0) {
       showToast('No approved clips to upload yet.', 'error');

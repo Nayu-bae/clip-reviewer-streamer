@@ -38,11 +38,12 @@ const TWITCH_CLIPS_MAX_PAGES = getPositiveNumberEnv('TWITCH_CLIPS_MAX_PAGES', 20
 const TWITCH_CLIPS_LOOKBACK_DAYS = getPositiveNumberEnv('TWITCH_CLIPS_LOOKBACK_DAYS', 90);
 const MIN_CLIP_VIEWS = getPositiveNumberEnv('MIN_CLIP_VIEWS', 10);
 const TIKTOK_API_BASE = process.env.TIKTOK_API_BASE || 'https://open.tiktokapis.com';
-const TIKTOK_ACCESS_TOKEN = process.env.TIKTOK_ACCESS_TOKEN || '';
 const TIKTOK_CLIENT_KEY = process.env.TIKTOK_CLIENT_KEY || process.env.TIKTOK_CLIENT_ID || '';
 const TIKTOK_CLIENT_SECRET = process.env.TIKTOK_CLIENT_SECRET || '';
 const TIKTOK_LOGIN_REDIRECT_URI = process.env.TIKTOK_LOGIN_REDIRECT_URI || '';
 const TIKTOK_PRIVACY_LEVEL = process.env.TIKTOK_PRIVACY_LEVEL || 'SELF_ONLY';
+const TIKTOK_OAUTH_SCOPES = ['user.info.basic', 'video.upload', 'video.publish'];
+const TIKTOK_DEMO_MODE = ['1', 'true', 'yes', 'on'].includes(String(process.env.TIKTOK_DEMO_MODE || '').trim().toLowerCase());
 const RESEND_API_KEY = process.env.RESEND_API_KEY || '';
 const MAIL_FROM = process.env.MAIL_FROM || '';
 const APP_BASE_URL = String(process.env.APP_BASE_URL || '').replace(/\/+$/g, '');
@@ -55,6 +56,8 @@ const PASSWORD_RESET_LINK_TTL_MINUTES = Math.max(5, Math.floor(getPositiveNumber
 const VIDEO_WORK_DIR = path.join(__dirname, 'tmp', 'videos');
 const TWITCH_LOGO_RELATIVE_PATH = path.join('pictures', 'twitchLogo.png');
 const YTDLP_BIN = process.env.YTDLP_BIN || 'yt-dlp';
+const FFMPEG_BIN = process.env.FFMPEG_BIN || 'ffmpeg';
+const FFPROBE_BIN = process.env.FFPROBE_BIN || 'ffprobe';
 const TWITCH_GQL_URL = 'https://gql.twitch.tv/gql';
 const CLIP_GQL_CACHE_TTL_MS = 10 * 60 * 1000;
 const LEGACY_STREAMER_IDS = getStreamerIdsFromEnv();
@@ -160,6 +163,7 @@ interface UploadJobSnapshot {
 interface UploadJobState extends UploadJobSnapshot {
     userId: number;
     clips: DbClipRow[];
+    uploadMode: TikTokUploadMode;
     pauseRequested: boolean;
     cancelRequested: boolean;
 }
@@ -171,6 +175,32 @@ interface UserRow {
     email_verified: number;
     email_verified_at: string | null;
     password_hash: string;
+}
+
+type TikTokUploadMode = 'draft' | 'direct';
+
+interface TikTokAccountRow {
+    user_id: number;
+    open_id: string | null;
+    scope: string | null;
+    access_token: string | null;
+    refresh_token: string | null;
+    access_token_expires_at: string | null;
+    refresh_token_expires_at: string | null;
+    token_type: string | null;
+    username: string | null;
+    display_name: string | null;
+    avatar_url: string | null;
+    upload_mode: string | null;
+    created_at: string;
+    updated_at: string;
+}
+
+interface TikTokCreatorInfo {
+    privacyLevelOptions: string[];
+    commentDisabled: boolean;
+    duetDisabled: boolean;
+    stitchDisabled: boolean;
 }
 
 interface EmailVerificationCodeRow {
@@ -213,6 +243,9 @@ declare module 'express-session' {
         pendingVerificationUserId?: number;
         pendingVerificationEmail?: string;
         pendingVerificationUsername?: string;
+        tiktokOauthState?: string;
+        tiktokOauthUserId?: number;
+        tiktokOauthReturnTo?: string;
     }
 }
 
@@ -271,6 +304,26 @@ db.exec(`
         attempts    INTEGER NOT NULL DEFAULT 0,
         last_sent_at TEXT NOT NULL,
         created_at  TEXT NOT NULL,
+        FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
+    )
+`);
+
+db.exec(`
+    CREATE TABLE IF NOT EXISTS user_tiktok_accounts (
+        user_id                    INTEGER PRIMARY KEY,
+        open_id                    TEXT,
+        scope                      TEXT,
+        access_token               TEXT,
+        refresh_token              TEXT,
+        access_token_expires_at    TEXT,
+        refresh_token_expires_at   TEXT,
+        token_type                 TEXT,
+        username                   TEXT,
+        display_name               TEXT,
+        avatar_url                 TEXT,
+        upload_mode                TEXT NOT NULL DEFAULT 'draft',
+        created_at                 TEXT NOT NULL,
+        updated_at                 TEXT NOT NULL,
         FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
     )
 `);
@@ -392,10 +445,24 @@ addColumnIfMissing('ALTER TABLE user_clip_state ADD COLUMN split_zoom_layouts_js
 addColumnIfMissing('ALTER TABLE users ADD COLUMN email TEXT');
 addColumnIfMissing('ALTER TABLE users ADD COLUMN email_verified INTEGER NOT NULL DEFAULT 0');
 addColumnIfMissing('ALTER TABLE users ADD COLUMN email_verified_at TEXT');
+addColumnIfMissing('ALTER TABLE user_tiktok_accounts ADD COLUMN open_id TEXT');
+addColumnIfMissing('ALTER TABLE user_tiktok_accounts ADD COLUMN scope TEXT');
+addColumnIfMissing('ALTER TABLE user_tiktok_accounts ADD COLUMN access_token TEXT');
+addColumnIfMissing('ALTER TABLE user_tiktok_accounts ADD COLUMN refresh_token TEXT');
+addColumnIfMissing('ALTER TABLE user_tiktok_accounts ADD COLUMN access_token_expires_at TEXT');
+addColumnIfMissing('ALTER TABLE user_tiktok_accounts ADD COLUMN refresh_token_expires_at TEXT');
+addColumnIfMissing('ALTER TABLE user_tiktok_accounts ADD COLUMN token_type TEXT');
+addColumnIfMissing('ALTER TABLE user_tiktok_accounts ADD COLUMN username TEXT');
+addColumnIfMissing('ALTER TABLE user_tiktok_accounts ADD COLUMN display_name TEXT');
+addColumnIfMissing('ALTER TABLE user_tiktok_accounts ADD COLUMN avatar_url TEXT');
+addColumnIfMissing('ALTER TABLE user_tiktok_accounts ADD COLUMN upload_mode TEXT NOT NULL DEFAULT \'draft\'');
+addColumnIfMissing('ALTER TABLE user_tiktok_accounts ADD COLUMN created_at TEXT');
+addColumnIfMissing('ALTER TABLE user_tiktok_accounts ADD COLUMN updated_at TEXT');
 db.exec('CREATE UNIQUE INDEX IF NOT EXISTS users_email_unique_nocase ON users(email COLLATE NOCASE) WHERE email IS NOT NULL AND email <> \'\'');
 db.exec('CREATE INDEX IF NOT EXISTS email_verification_codes_expires_idx ON email_verification_codes(expires_at)');
 db.exec('CREATE INDEX IF NOT EXISTS account_action_tokens_expires_idx ON account_action_tokens(expires_at)');
 db.exec('CREATE INDEX IF NOT EXISTS account_action_tokens_user_idx ON account_action_tokens(user_id)');
+db.exec('CREATE UNIQUE INDEX IF NOT EXISTS user_tiktok_accounts_open_id_unique ON user_tiktok_accounts(open_id) WHERE open_id IS NOT NULL AND open_id <> \'\'');
 
 function hashPassword(plain: string): string {
     const salt = randomBytes(16).toString('hex');
@@ -467,6 +534,247 @@ function getUserByIdentifier(identifier: string): UserRow | undefined {
 function getUserById(userId: number): UserRow | undefined {
     return db.prepare('SELECT id, username, email, COALESCE(email_verified, 0) AS email_verified, email_verified_at, password_hash FROM users WHERE id = $id')
         .get({ $id: userId }) as UserRow | undefined;
+}
+
+function normalizeTikTokUploadMode(value: unknown): TikTokUploadMode {
+    return String(value || '').trim().toLowerCase() === 'direct' ? 'direct' : 'draft';
+}
+
+function normalizeTikTokScopes(rawScopes: unknown): string[] {
+    if (Array.isArray(rawScopes)) {
+        return [...new Set(rawScopes.map(scope => String(scope || '').trim()).filter(Boolean))];
+    }
+    return [...new Set(String(rawScopes || '')
+        .split(/[\s,]+/g)
+        .map(scope => scope.trim())
+        .filter(Boolean))];
+}
+
+function getTikTokAccountByUserId(userId: number): TikTokAccountRow | undefined {
+    return db.prepare(`
+        SELECT
+            user_id,
+            open_id,
+            scope,
+            access_token,
+            refresh_token,
+            access_token_expires_at,
+            refresh_token_expires_at,
+            token_type,
+            username,
+            display_name,
+            avatar_url,
+            COALESCE(upload_mode, 'draft') AS upload_mode,
+            COALESCE(created_at, $now) AS created_at,
+            COALESCE(updated_at, $now) AS updated_at
+        FROM user_tiktok_accounts
+        WHERE user_id = $user_id
+        LIMIT 1
+    `).get({
+        $user_id: userId,
+        $now: new Date().toISOString(),
+    }) as TikTokAccountRow | undefined;
+}
+
+function getTikTokUploadModeForUser(userId: number): TikTokUploadMode {
+    const row = db.prepare(`
+        SELECT COALESCE(upload_mode, 'draft') AS upload_mode
+        FROM user_tiktok_accounts
+        WHERE user_id = $user_id
+        LIMIT 1
+    `).get({ $user_id: userId }) as { upload_mode?: string } | undefined;
+    return normalizeTikTokUploadMode(row?.upload_mode || 'draft');
+}
+
+function saveTikTokUploadModeForUser(userId: number, mode: TikTokUploadMode): TikTokUploadMode {
+    const normalized = normalizeTikTokUploadMode(mode);
+    const now = new Date().toISOString();
+    db.prepare(`
+        INSERT INTO user_tiktok_accounts (user_id, upload_mode, created_at, updated_at)
+        VALUES ($user_id, $upload_mode, $created_at, $updated_at)
+        ON CONFLICT(user_id) DO UPDATE SET
+            upload_mode = excluded.upload_mode,
+            updated_at = excluded.updated_at
+    `).run({
+        $user_id: userId,
+        $upload_mode: normalized,
+        $created_at: now,
+        $updated_at: now,
+    });
+    return normalized;
+}
+
+function upsertTikTokOAuthAccount(params: {
+    userId: number;
+    openId: string;
+    scopes: string[];
+    accessToken: string;
+    refreshToken: string;
+    accessTokenExpiresAt: string | null;
+    refreshTokenExpiresAt: string | null;
+    tokenType: string;
+    username: string;
+    displayName: string;
+    avatarUrl: string;
+}): void {
+    const existing = getTikTokAccountByUserId(params.userId);
+    const now = new Date().toISOString();
+    const uploadMode = normalizeTikTokUploadMode(existing?.upload_mode || 'draft');
+    const createdAt = existing?.created_at || now;
+    const scope = normalizeTikTokScopes(params.scopes).join(' ');
+
+    db.prepare(`
+        INSERT INTO user_tiktok_accounts (
+            user_id,
+            open_id,
+            scope,
+            access_token,
+            refresh_token,
+            access_token_expires_at,
+            refresh_token_expires_at,
+            token_type,
+            username,
+            display_name,
+            avatar_url,
+            upload_mode,
+            created_at,
+            updated_at
+        ) VALUES (
+            $user_id,
+            $open_id,
+            $scope,
+            $access_token,
+            $refresh_token,
+            $access_token_expires_at,
+            $refresh_token_expires_at,
+            $token_type,
+            $username,
+            $display_name,
+            $avatar_url,
+            $upload_mode,
+            $created_at,
+            $updated_at
+        )
+        ON CONFLICT(user_id) DO UPDATE SET
+            open_id = excluded.open_id,
+            scope = excluded.scope,
+            access_token = excluded.access_token,
+            refresh_token = excluded.refresh_token,
+            access_token_expires_at = excluded.access_token_expires_at,
+            refresh_token_expires_at = excluded.refresh_token_expires_at,
+            token_type = excluded.token_type,
+            username = excluded.username,
+            display_name = excluded.display_name,
+            avatar_url = excluded.avatar_url,
+            upload_mode = excluded.upload_mode,
+            updated_at = excluded.updated_at
+    `).run({
+        $user_id: params.userId,
+        $open_id: params.openId || null,
+        $scope: scope,
+        $access_token: params.accessToken || null,
+        $refresh_token: params.refreshToken || null,
+        $access_token_expires_at: params.accessTokenExpiresAt,
+        $refresh_token_expires_at: params.refreshTokenExpiresAt,
+        $token_type: params.tokenType || null,
+        $username: params.username || null,
+        $display_name: params.displayName || null,
+        $avatar_url: params.avatarUrl || null,
+        $upload_mode: uploadMode,
+        $created_at: createdAt,
+        $updated_at: now,
+    });
+}
+
+function connectDemoTikTokAccount(userId: number): void {
+    const user = getUserById(userId);
+    if (!user) {
+        throw new Error('User not found for demo TikTok connect.');
+    }
+
+    const seed = String(user.username || `user${userId}`).replace(/[^a-zA-Z0-9._-]/g, '').toLowerCase() || `user${userId}`;
+    const now = new Date();
+    const accessExpiresAt = new Date(now.getTime() + (365 * 24 * 60 * 60 * 1000));
+    const refreshExpiresAt = new Date(now.getTime() + (5 * 365 * 24 * 60 * 60 * 1000));
+
+    upsertTikTokOAuthAccount({
+        userId,
+        openId: `demo-open-${userId}`,
+        scopes: [...TIKTOK_OAUTH_SCOPES],
+        accessToken: `demo_access_${userId}_${now.getTime()}`,
+        refreshToken: `demo_refresh_${userId}_${now.getTime()}`,
+        accessTokenExpiresAt: accessExpiresAt.toISOString(),
+        refreshTokenExpiresAt: refreshExpiresAt.toISOString(),
+        tokenType: 'Bearer',
+        username: `${seed}_demo`,
+        displayName: `${user.username} Demo`,
+        avatarUrl: '',
+    });
+}
+
+function disconnectTikTokAccount(userId: number): void {
+    const now = new Date().toISOString();
+    db.prepare(`
+        UPDATE user_tiktok_accounts
+        SET
+            open_id = NULL,
+            scope = NULL,
+            access_token = NULL,
+            refresh_token = NULL,
+            access_token_expires_at = NULL,
+            refresh_token_expires_at = NULL,
+            token_type = NULL,
+            username = NULL,
+            display_name = NULL,
+            avatar_url = NULL,
+            updated_at = $updated_at
+        WHERE user_id = $user_id
+    `).run({
+        $updated_at: now,
+        $user_id: userId,
+    });
+}
+
+function hasTikTokScope(account: TikTokAccountRow | undefined, scope: string): boolean {
+    if (!account) return false;
+    const granted = new Set(normalizeTikTokScopes(account.scope));
+    return granted.has(scope);
+}
+
+function getTikTokAccountView(userId: number): {
+    connected: boolean;
+    demoMode: boolean;
+    openId: string;
+    username: string;
+    displayName: string;
+    avatarUrl: string;
+    scopes: string[];
+    uploadMode: TikTokUploadMode;
+} {
+    const account = getTikTokAccountByUserId(userId);
+    return {
+        connected: Boolean(account?.access_token),
+        demoMode: TIKTOK_DEMO_MODE,
+        openId: String(account?.open_id || ''),
+        username: String(account?.username || ''),
+        displayName: String(account?.display_name || ''),
+        avatarUrl: String(account?.avatar_url || ''),
+        scopes: normalizeTikTokScopes(account?.scope),
+        uploadMode: normalizeTikTokUploadMode(account?.upload_mode || 'draft'),
+    };
+}
+
+function clearTikTokOAuthSessionState(req: Request): void {
+    delete req.session.tiktokOauthState;
+    delete req.session.tiktokOauthUserId;
+    delete req.session.tiktokOauthReturnTo;
+}
+
+function sanitizeRelativeReturnPath(rawPath: string): string {
+    const candidate = String(rawPath || '').trim();
+    if (!candidate.startsWith('/')) return '/app';
+    if (candidate.startsWith('//')) return '/app';
+    return candidate;
 }
 
 function clearPendingVerificationSession(req: Request): void {
@@ -656,6 +964,25 @@ async function issueVerificationCode(user: UserRow, enforceCooldown: boolean): P
 
 function getAppBaseUrl(): string {
     return APP_BASE_URL || `http://localhost:${PORT}`;
+}
+
+function maskCredential(raw: string, visible = 4): string {
+    const value = String(raw || '').trim();
+    if (!value) return '';
+    if (value.length <= (visible * 2)) return `${value.slice(0, Math.max(1, Math.floor(value.length / 3)))}***`;
+    return `${value.slice(0, visible)}...${value.slice(-visible)}`;
+}
+
+function buildTikTokReturnPath(pathname: string, result: 'success' | 'error', message = ''): string {
+    const url = new URL(pathname, getAppBaseUrl());
+    url.searchParams.set('tiktok', result);
+    const text = String(message || '').trim();
+    if (text) {
+        url.searchParams.set('tiktok_message', text.slice(0, 180));
+    } else {
+        url.searchParams.delete('tiktok_message');
+    }
+    return `${url.pathname}${url.search}${url.hash}`;
 }
 
 function hashAccountActionToken(rawToken: string): string {
@@ -1215,7 +1542,7 @@ async function runUploadJob(job: UploadJobState): Promise<void> {
             job.currentTitle = clip.title;
             job.updatedAt = new Date().toISOString();
 
-            const result = await uploadSingleClipToTikTok(clip, job.dryRun);
+            const result = await uploadSingleClipToTikTok(job.userId, clip, job.uploadMode, job.dryRun);
             job.results.push(result);
             job.processed += 1;
             if (result.status === 'uploaded') job.uploaded += 1;
@@ -1243,7 +1570,7 @@ async function runUploadJob(job: UploadJobState): Promise<void> {
     }
 }
 
-function startUploadJob(userId: number, limit: number, dryRun: boolean): UploadJobState {
+async function startUploadJob(userId: number, limit: number, dryRun: boolean): Promise<UploadJobState> {
     const activeUploadJobId = activeUploadJobByUser.get(userId);
     if (activeUploadJobId) {
         const current = uploadJobs.get(activeUploadJobId);
@@ -1254,12 +1581,17 @@ function startUploadJob(userId: number, limit: number, dryRun: boolean): UploadJ
     }
 
     const approved = getApprovedClips(userId, limit);
+    const uploadMode = getTikTokUploadModeForUser(userId);
+    if (approved.length > 0) {
+        await ensureTikTokUploadReady(userId, uploadMode);
+    }
     const now = new Date().toISOString();
     const job: UploadJobState = {
         jobId: randomUUID(),
         userId,
         status: approved.length > 0 ? 'running' : 'completed',
         dryRun,
+        uploadMode,
         total: approved.length,
         processed: 0,
         uploaded: 0,
@@ -1495,7 +1827,7 @@ function normalizeSplitDeletedSegments(indices: number[], maxSegments: number | 
 
 async function probeMediaDurationSeconds(inputPath: string): Promise<number | null> {
     try {
-        const { stdout } = await runCommandCaptureOutput('ffprobe', [
+        const { stdout } = await runCommandCaptureOutput(FFPROBE_BIN, [
             '-v', 'error',
             '-show_entries', 'format=duration',
             '-of', 'default=noprint_wrappers=1:nokey=1',
@@ -1510,7 +1842,7 @@ async function probeMediaDurationSeconds(inputPath: string): Promise<number | nu
 
 async function hasAudioStream(inputPath: string): Promise<boolean> {
     try {
-        const { stdout } = await runCommandCaptureOutput('ffprobe', [
+        const { stdout } = await runCommandCaptureOutput(FFPROBE_BIN, [
             '-v', 'error',
             '-select_streams', 'a:0',
             '-show_entries', 'stream=codec_type',
@@ -1675,18 +2007,180 @@ function escapeFfmpegDrawtext(value: string): string {
         .replace(/\r?\n/g, ' ');
 }
 
+let cachedDrawtextFontPath: string | null | undefined;
+let warnedInvalidDrawtextOverride = false;
+let cachedDrawtextFilterSupported: boolean | undefined;
+let drawtextFilterProbePromise: Promise<boolean> | null = null;
+let warnedDrawtextUnavailable = false;
+
 function resolveDrawtextFontPath(): string | null {
+    if (cachedDrawtextFontPath !== undefined) return cachedDrawtextFontPath;
+
+    const override = String(process.env.DRAWTEXT_FONT_PATH || '').trim();
+    if (override) {
+        if (fs.existsSync(override)) {
+            cachedDrawtextFontPath = override;
+            return cachedDrawtextFontPath;
+        }
+        if (!warnedInvalidDrawtextOverride) {
+            warnedInvalidDrawtextOverride = true;
+            console.warn(`[drawtext] DRAWTEXT_FONT_PATH does not exist: ${override}`);
+        }
+    }
+
     const candidates = [
         // Windows defaults
         'C:\\Windows\\Fonts\\segoeui.ttf',
         'C:\\Windows\\Fonts\\arial.ttf',
-        // Common Linux fallback
+        // Common Linux fallbacks
         '/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf',
+        '/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf',
+        '/usr/share/fonts/truetype/noto/NotoSans-Regular.ttf',
+        // macOS fallbacks
+        '/System/Library/Fonts/Supplemental/Arial.ttf',
+        '/System/Library/Fonts/Supplemental/Arial Unicode.ttf',
+        '/System/Library/Fonts/SFNS.ttf',
     ];
     for (const candidate of candidates) {
-        if (fs.existsSync(candidate)) return candidate;
+        if (fs.existsSync(candidate)) {
+            cachedDrawtextFontPath = candidate;
+            return cachedDrawtextFontPath;
+        }
     }
-    return null;
+    cachedDrawtextFontPath = null;
+    return cachedDrawtextFontPath;
+}
+
+async function isDrawtextFilterSupported(): Promise<boolean> {
+    if (cachedDrawtextFilterSupported !== undefined) return cachedDrawtextFilterSupported;
+    if (drawtextFilterProbePromise) return drawtextFilterProbePromise;
+
+    drawtextFilterProbePromise = (async () => {
+        try {
+            const { stdout, stderr } = await runCommandCaptureOutput(FFMPEG_BIN, ['-hide_banner', '-filters']);
+            const output = `${stdout}\n${stderr}`.toLowerCase();
+            return /\bdrawtext\b/.test(output);
+        } catch {
+            return false;
+        }
+    })();
+
+    const supported = await drawtextFilterProbePromise;
+    cachedDrawtextFilterSupported = supported;
+    drawtextFilterProbePromise = null;
+    return supported;
+}
+
+const BITMAP_FONT_5X7: Record<string, readonly string[]> = {
+    'A': ['01110', '10001', '10001', '11111', '10001', '10001', '10001'],
+    'B': ['11110', '10001', '10001', '11110', '10001', '10001', '11110'],
+    'C': ['01111', '10000', '10000', '10000', '10000', '10000', '01111'],
+    'D': ['11110', '10001', '10001', '10001', '10001', '10001', '11110'],
+    'E': ['11111', '10000', '10000', '11110', '10000', '10000', '11111'],
+    'F': ['11111', '10000', '10000', '11110', '10000', '10000', '10000'],
+    'G': ['01111', '10000', '10000', '10111', '10001', '10001', '01111'],
+    'H': ['10001', '10001', '10001', '11111', '10001', '10001', '10001'],
+    'I': ['11111', '00100', '00100', '00100', '00100', '00100', '11111'],
+    'J': ['00111', '00010', '00010', '00010', '00010', '10010', '01100'],
+    'K': ['10001', '10010', '10100', '11000', '10100', '10010', '10001'],
+    'L': ['10000', '10000', '10000', '10000', '10000', '10000', '11111'],
+    'M': ['10001', '11011', '10101', '10101', '10001', '10001', '10001'],
+    'N': ['10001', '10001', '11001', '10101', '10011', '10001', '10001'],
+    'O': ['01110', '10001', '10001', '10001', '10001', '10001', '01110'],
+    'P': ['11110', '10001', '10001', '11110', '10000', '10000', '10000'],
+    'Q': ['01110', '10001', '10001', '10001', '10101', '10010', '01101'],
+    'R': ['11110', '10001', '10001', '11110', '10100', '10010', '10001'],
+    'S': ['01111', '10000', '10000', '01110', '00001', '00001', '11110'],
+    'T': ['11111', '00100', '00100', '00100', '00100', '00100', '00100'],
+    'U': ['10001', '10001', '10001', '10001', '10001', '10001', '01110'],
+    'V': ['10001', '10001', '10001', '10001', '10001', '01010', '00100'],
+    'W': ['10001', '10001', '10001', '10101', '10101', '10101', '01010'],
+    'X': ['10001', '10001', '01010', '00100', '01010', '10001', '10001'],
+    'Y': ['10001', '10001', '01010', '00100', '00100', '00100', '00100'],
+    'Z': ['11111', '00001', '00010', '00100', '01000', '10000', '11111'],
+    '0': ['01110', '10001', '10011', '10101', '11001', '10001', '01110'],
+    '1': ['00100', '01100', '00100', '00100', '00100', '00100', '01110'],
+    '2': ['01110', '10001', '00001', '00010', '00100', '01000', '11111'],
+    '3': ['11110', '00001', '00001', '01110', '00001', '00001', '11110'],
+    '4': ['00010', '00110', '01010', '10010', '11111', '00010', '00010'],
+    '5': ['11111', '10000', '10000', '11110', '00001', '00001', '11110'],
+    '6': ['01110', '10000', '10000', '11110', '10001', '10001', '01110'],
+    '7': ['11111', '00001', '00010', '00100', '01000', '01000', '01000'],
+    '8': ['01110', '10001', '10001', '01110', '10001', '10001', '01110'],
+    '9': ['01110', '10001', '10001', '01111', '00001', '00001', '01110'],
+    '.': ['00000', '00000', '00000', '00000', '00000', '00110', '00110'],
+    '_': ['00000', '00000', '00000', '00000', '00000', '00000', '11111'],
+    '-': ['00000', '00000', '00000', '11111', '00000', '00000', '00000'],
+    '?': ['01110', '10001', '00001', '00010', '00100', '00000', '00100'],
+    ' ': ['00000', '00000', '00000', '00000', '00000', '00000', '00000'],
+};
+
+function buildBitmapNameFallbackFilters(
+    inputLabel: string,
+    text: string,
+    x: number,
+    y: number,
+    pixelSize: number,
+    maxWidthPx: number,
+    enableExpr: string | null
+): { filters: string[]; outLabel: string; rendered: boolean } {
+    const raw = String(text || '').toUpperCase();
+    if (!raw) return { filters: [], outLabel: inputLabel, rendered: false };
+
+    const px = Math.max(1, Math.round(pixelSize));
+    const glyphW = 5 * px;
+    const glyphH = 7 * px;
+    const charGap = px;
+    const spaceW = 3 * px;
+    if (glyphH <= 0 || maxWidthPx <= 0) return { filters: [], outLabel: inputLabel, rendered: false };
+
+    const normalizedChars = Array.from(raw).map((char) => {
+        if (char === ' ') return ' ';
+        return BITMAP_FONT_5X7[char] ? char : '?';
+    });
+
+    const filters: string[] = [];
+    const enableOpt = enableExpr ? `:enable='${enableExpr}'` : '';
+    let currentLabel = inputLabel;
+    let labelCounter = 0;
+    let cursorX = x;
+    let rendered = false;
+
+    for (const char of normalizedChars) {
+        const charAdvance = char === ' ' ? (spaceW + charGap) : (glyphW + charGap);
+        if ((cursorX - x + charAdvance) > maxWidthPx) break;
+        if (char === ' ') {
+            cursorX += charAdvance;
+            continue;
+        }
+
+        const glyph = BITMAP_FONT_5X7[char] || BITMAP_FONT_5X7['?'];
+        for (let row = 0; row < glyph.length; row += 1) {
+            const pattern = glyph[row] || '00000';
+            let col = 0;
+            while (col < pattern.length) {
+                while (col < pattern.length && pattern[col] !== '1') col += 1;
+                if (col >= pattern.length) break;
+                const segStart = col;
+                while (col < pattern.length && pattern[col] === '1') col += 1;
+                const segLen = col - segStart;
+                if (segLen <= 0) continue;
+
+                const boxX = cursorX + (segStart * px);
+                const boxY = y + (row * px);
+                const boxW = segLen * px;
+                const nextLabel = `name_bitmap_${labelCounter}`;
+                labelCounter += 1;
+                filters.push(`[${currentLabel}]drawbox=x=${boxX}:y=${boxY}:w=${boxW}:h=${px}:color=white@0.96:t=fill${enableOpt}[${nextLabel}]`);
+                currentLabel = nextLabel;
+                rendered = true;
+            }
+        }
+
+        cursorX += charAdvance;
+    }
+
+    return { filters, outLabel: currentLabel, rendered };
 }
 
 function toFfmpegFilterPath(filePath: string): string {
@@ -2064,6 +2558,7 @@ async function processClipToTikTokFormat(inputPath: string, outputPath: string, 
     const thirdOutputYPx = Math.max(0, Math.round(outputH * thirdOutput.y));
     const logoPath = twitchName.enabled ? resolveTwitchLogoPath() : null;
     const showNameBadge = twitchName.enabled;
+    const drawtextSupported = await isDrawtextFilterSupported();
     const drawtextFontPath = resolveDrawtextFontPath();
     const drawtextFontOpt = drawtextFontPath ? `:fontfile='${toFfmpegFilterPath(drawtextFontPath)}'` : '';
 
@@ -2091,7 +2586,11 @@ async function processClipToTikTokFormat(inputPath: string, outputPath: string, 
     const textX = nameBadgeX + namePadX + (logoPath ? (nameIconWPx + nameGapPx) : 0);
     const textY = nameBadgeY + Math.round((nameBadgeH - nameFontPx) / 2 + (nameFontPx * 0.08));
     const safeTwitchName = escapeFfmpegDrawtext(twitchName.text);
-    const canDrawNameText = Boolean(drawtextFontPath && safeTwitchName);
+    const canDrawNameText = Boolean(drawtextSupported && safeTwitchName);
+    if (!drawtextSupported && safeTwitchName && !warnedDrawtextUnavailable) {
+        warnedDrawtextUnavailable = true;
+        console.warn('[drawtext] ffmpeg drawtext filter is not available in this build. Using bitmap-text fallback for Twitch name overlay.');
+    }
     const roundedMask = (alpha: number) => `if(lte(abs(X-W/2),W/2-H/2),${alpha},if(lte((X-H/2)*(X-H/2)+(Y-H/2)*(Y-H/2),(H/2)*(H/2)),${alpha},if(lte((X-(W-H/2))*(X-(W-H/2))+(Y-H/2)*(Y-H/2),(H/2)*(H/2)),${alpha},0)))`;
     const badgeSourceDurationSec = 86400;
 
@@ -2228,7 +2727,27 @@ async function processClipToTikTokFormat(inputPath: string, outputPath: string, 
             filterSteps.push(`[${badgeOutLabel}]drawtext=text='${safeTwitchName}':x=${textX}:y=${textY}:fontsize=${nameFontPx}${drawtextFontOpt}:fontcolor=white:borderw=1:bordercolor=black@0.55:shadowcolor=black@0.45:shadowx=1:shadowy=1${drawTextEnableOpt}[name_out]`);
             filterSteps.push('[name_out]format=yuv420p[v]');
         } else {
-            filterSteps.push(`[${badgeOutLabel}]format=yuv420p[v]`);
+            const bitmapPx = Math.max(1, Math.round(nameFontPx / 8));
+            const bitmapTextHeight = 7 * bitmapPx;
+            const bitmapTextY = nameBadgeY + Math.max(0, Math.floor((nameBadgeH - bitmapTextHeight) / 2));
+            const textRightEdge = nameBadgeX + nameBadgeW - namePadX;
+            const bitmapMaxWidth = Math.max(0, textRightEdge - textX);
+            const bitmapEnableExpr = hasZoomEffect ? notZoomExpr : null;
+            const bitmapFallback = buildBitmapNameFallbackFilters(
+                badgeOutLabel,
+                twitchName.text,
+                textX,
+                bitmapTextY,
+                bitmapPx,
+                bitmapMaxWidth,
+                bitmapEnableExpr
+            );
+            if (bitmapFallback.rendered) {
+                filterSteps.push(...bitmapFallback.filters);
+                filterSteps.push(`[${bitmapFallback.outLabel}]format=yuv420p[v]`);
+            } else {
+                filterSteps.push(`[${badgeOutLabel}]format=yuv420p[v]`);
+            }
         }
     } else {
         filterSteps.push('[base]format=yuv420p[v]');
@@ -2261,26 +2780,171 @@ async function processClipToTikTokFormat(inputPath: string, outputPath: string, 
         outputPath,
     );
 
-    await runCommand('ffmpeg', args);
+    await runCommand(FFMPEG_BIN, args);
 }
 
-async function uploadProcessedVideoToTikTok(processedPath: string, title: string): Promise<{ publishId?: string; message: string }> {
-    if (!TIKTOK_ACCESS_TOKEN) {
-        throw new Error('Missing TIKTOK_ACCESS_TOKEN in environment');
+function toFutureIso(secondsRaw: unknown): string | null {
+    const seconds = Number(secondsRaw || 0);
+    if (!Number.isFinite(seconds) || seconds <= 0) return null;
+    return new Date(Date.now() + (seconds * 1000)).toISOString();
+}
+
+async function refreshTikTokAccessToken(account: TikTokAccountRow): Promise<TikTokAccountRow> {
+    if (!account.refresh_token) {
+        throw new Error('TikTok refresh token missing. Please reconnect TikTok.');
+    }
+    if (!TIKTOK_CLIENT_KEY || !TIKTOK_CLIENT_SECRET) {
+        throw new Error('Missing TIKTOK_CLIENT_KEY or TIKTOK_CLIENT_SECRET in environment.');
     }
 
+    const body = new URLSearchParams({
+        client_key: TIKTOK_CLIENT_KEY,
+        client_secret: TIKTOK_CLIENT_SECRET,
+        grant_type: 'refresh_token',
+        refresh_token: account.refresh_token,
+    });
+
+    const tokenResponse = await axios.post(`${TIKTOK_API_BASE}/v2/oauth/token/`, body.toString(), {
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        validateStatus: () => true,
+    });
+
+    if (tokenResponse.status < 200 || tokenResponse.status >= 300) {
+        throw new Error(`TikTok token refresh failed (${tokenResponse.status}): ${JSON.stringify(tokenResponse.data)}`);
+    }
+
+    const refreshedAccessToken = String(tokenResponse.data?.access_token || '').trim();
+    if (!refreshedAccessToken) {
+        throw new Error(`TikTok token refresh did not return access_token: ${JSON.stringify(tokenResponse.data)}`);
+    }
+
+    const refreshedRefreshToken = String(tokenResponse.data?.refresh_token || account.refresh_token || '').trim();
+    const refreshedScopes = normalizeTikTokScopes(tokenResponse.data?.scope || account.scope);
+    const now = new Date().toISOString();
+
+    db.prepare(`
+        UPDATE user_tiktok_accounts
+        SET
+            access_token = $access_token,
+            refresh_token = $refresh_token,
+            access_token_expires_at = $access_token_expires_at,
+            refresh_token_expires_at = $refresh_token_expires_at,
+            token_type = $token_type,
+            scope = $scope,
+            updated_at = $updated_at
+        WHERE user_id = $user_id
+    `).run({
+        $access_token: refreshedAccessToken,
+        $refresh_token: refreshedRefreshToken || null,
+        $access_token_expires_at: toFutureIso(tokenResponse.data?.expires_in),
+        $refresh_token_expires_at: toFutureIso(tokenResponse.data?.refresh_expires_in),
+        $token_type: String(tokenResponse.data?.token_type || account.token_type || 'Bearer'),
+        $scope: refreshedScopes.join(' '),
+        $updated_at: now,
+        $user_id: account.user_id,
+    });
+
+    const refreshed = getTikTokAccountByUserId(account.user_id);
+    if (!refreshed || !refreshed.access_token) {
+        throw new Error('TikTok token refresh succeeded but account tokens were not persisted.');
+    }
+    return refreshed;
+}
+
+async function getValidTikTokAccountForUpload(userId: number): Promise<TikTokAccountRow> {
+    const account = getTikTokAccountByUserId(userId);
+    if (!account || !account.access_token) {
+        throw new Error('TikTok is not connected. Connect TikTok before uploading.');
+    }
+
+    const expiresAt = Date.parse(String(account.access_token_expires_at || ''));
+    const mustRefresh = Number.isFinite(expiresAt) && expiresAt <= (Date.now() + 60 * 1000);
+    if (!mustRefresh) return account;
+
+    if (!account.refresh_token) {
+        throw new Error('TikTok access token expired. Reconnect TikTok to continue uploading.');
+    }
+
+    return refreshTikTokAccessToken(account);
+}
+
+async function queryTikTokCreatorInfo(accessToken: string): Promise<TikTokCreatorInfo> {
+    const response = await axios.post(
+        `${TIKTOK_API_BASE}/v2/post/publish/creator_info/query/`,
+        {},
+        {
+            headers: {
+                Authorization: `Bearer ${accessToken}`,
+                'Content-Type': 'application/json',
+            },
+            validateStatus: () => true,
+        }
+    );
+
+    if (response.status < 200 || response.status >= 300) {
+        throw new Error(`TikTok creator info query failed (${response.status}): ${JSON.stringify(response.data)}`);
+    }
+
+    const data = response.data?.data || {};
+    const privacyLevelOptions = Array.isArray(data?.privacy_level_options)
+        ? data.privacy_level_options.map((v: unknown) => String(v || '').trim()).filter(Boolean)
+        : [];
+    const asBool = (v: unknown) => v === true || v === 1 || v === '1' || String(v || '').toLowerCase() === 'true';
+
+    return {
+        privacyLevelOptions,
+        commentDisabled: asBool(data?.comment_disabled),
+        duetDisabled: asBool(data?.duet_disabled),
+        stitchDisabled: asBool(data?.stitch_disabled),
+    };
+}
+
+async function uploadProcessedVideoToTikTok(
+    processedPath: string,
+    title: string,
+    accessToken: string,
+    uploadMode: TikTokUploadMode
+): Promise<{ publishId?: string; message: string }> {
     const stat = await fs.promises.stat(processedPath);
     const fileSize = stat.size;
 
-    const initResponse = await axios.post(
-        `${TIKTOK_API_BASE}/v2/post/publish/video/init/`,
-        {
+    if (TIKTOK_DEMO_MODE) {
+        await sleep(300);
+        const publishId = uploadMode === 'direct' ? `demo_publish_${randomUUID().slice(0, 12)}` : undefined;
+        return {
+            publishId,
+            message: uploadMode === 'direct'
+                ? `Demo upload complete (direct publish, publish_id=${publishId})`
+                : 'Demo upload complete (draft inbox)',
+        };
+    }
+
+    let endpoint = `${TIKTOK_API_BASE}/v2/post/publish/inbox/video/init/`;
+    let body: Record<string, unknown> = {
+        source_info: {
+            source: 'FILE_UPLOAD',
+            video_size: fileSize,
+            chunk_size: fileSize,
+            total_chunk_count: 1,
+        },
+    };
+    let modeLabel = 'draft';
+
+    if (uploadMode === 'direct') {
+        const creatorInfo = await queryTikTokCreatorInfo(accessToken);
+        const privacyLevelFallback = creatorInfo.privacyLevelOptions[0] || 'SELF_ONLY';
+        const privacyLevel = creatorInfo.privacyLevelOptions.includes(TIKTOK_PRIVACY_LEVEL)
+            ? TIKTOK_PRIVACY_LEVEL
+            : privacyLevelFallback;
+
+        endpoint = `${TIKTOK_API_BASE}/v2/post/publish/video/init/`;
+        body = {
             post_info: {
                 title: title.slice(0, 150),
-                privacy_level: TIKTOK_PRIVACY_LEVEL,
-                disable_duet: false,
-                disable_comment: false,
-                disable_stitch: false,
+                privacy_level: privacyLevel,
+                disable_duet: creatorInfo.duetDisabled,
+                disable_comment: creatorInfo.commentDisabled,
+                disable_stitch: creatorInfo.stitchDisabled,
             },
             source_info: {
                 source: 'FILE_UPLOAD',
@@ -2288,10 +2952,16 @@ async function uploadProcessedVideoToTikTok(processedPath: string, title: string
                 chunk_size: fileSize,
                 total_chunk_count: 1,
             },
-        },
+        };
+        modeLabel = 'direct publish';
+    }
+
+    const initResponse = await axios.post(
+        endpoint,
+        body,
         {
             headers: {
-                Authorization: `Bearer ${TIKTOK_ACCESS_TOKEN}`,
+                Authorization: `Bearer ${accessToken}`,
                 'Content-Type': 'application/json',
             },
             validateStatus: () => true,
@@ -2299,7 +2969,7 @@ async function uploadProcessedVideoToTikTok(processedPath: string, title: string
     );
 
     if (initResponse.status < 200 || initResponse.status >= 300) {
-        throw new Error(`TikTok init failed (${initResponse.status}): ${JSON.stringify(initResponse.data)}`);
+        throw new Error(`TikTok upload init failed (${initResponse.status}): ${JSON.stringify(initResponse.data)}`);
     }
 
     const uploadUrl = initResponse.data?.data?.upload_url as string | undefined;
@@ -2321,11 +2991,30 @@ async function uploadProcessedVideoToTikTok(processedPath: string, title: string
 
     return {
         publishId,
-        message: publishId ? `Uploaded to TikTok (publish_id=${publishId})` : 'Uploaded to TikTok',
+        message: publishId
+            ? `Uploaded to TikTok (${modeLabel}, publish_id=${publishId})`
+            : `Uploaded to TikTok (${modeLabel})`,
     };
 }
 
-async function uploadSingleClipToTikTok(clip: DbClipRow, dryRun = false): Promise<ClipUploadResult> {
+function assertTikTokUploadScope(account: TikTokAccountRow, uploadMode: TikTokUploadMode): void {
+    const requiredScope = uploadMode === 'direct' ? 'video.publish' : 'video.upload';
+    if (!hasTikTokScope(account, requiredScope)) {
+        throw new Error(`TikTok permission missing: ${requiredScope}. Reconnect TikTok and grant required scope.`);
+    }
+}
+
+async function ensureTikTokUploadReady(userId: number, uploadMode: TikTokUploadMode): Promise<void> {
+    const account = await getValidTikTokAccountForUpload(userId);
+    assertTikTokUploadScope(account, uploadMode);
+}
+
+async function uploadSingleClipToTikTok(
+    userId: number,
+    clip: DbClipRow,
+    uploadMode: TikTokUploadMode,
+    dryRun = false
+): Promise<ClipUploadResult> {
     await fs.promises.mkdir(VIDEO_WORK_DIR, { recursive: true });
 
     const inPath = path.join(VIDEO_WORK_DIR, `${clip.id}.source.mp4`);
@@ -2361,6 +3050,7 @@ async function uploadSingleClipToTikTok(clip: DbClipRow, dryRun = false): Promis
         await processClipToTikTokFormat(inPath, outPath, clip);
 
         if (dryRun) {
+            await ensureTikTokUploadReady(userId, uploadMode);
             return {
                 clipId: clip.id,
                 title: clip.title,
@@ -2369,7 +3059,9 @@ async function uploadSingleClipToTikTok(clip: DbClipRow, dryRun = false): Promis
             };
         }
 
-        const uploaded = await uploadProcessedVideoToTikTok(outPath, clip.title);
+        const account = await getValidTikTokAccountForUpload(userId);
+        assertTikTokUploadScope(account, uploadMode);
+        const uploaded = await uploadProcessedVideoToTikTok(outPath, clip.title, String(account.access_token || ''), uploadMode);
 
         return {
             clipId: clip.id,
@@ -3015,16 +3707,19 @@ app.get('/api/auth', (req: Request, res: Response) => {
 });
 
 app.get('/api/me/account', requireAuth, (req: Request, res: Response) => {
-    const user = getUserById(getRequiredUserId(req));
+    const userId = getRequiredUserId(req);
+    const user = getUserById(userId);
     if (!user) {
         res.status(404).json({ error: 'User not found' });
         return;
     }
+    const tiktok = getTikTokAccountView(userId);
     res.json({
         username: user.username,
         email: user.email || '',
         emailMasked: maskEmail(user.email || ''),
         emailVerified: isEmailVerified(user),
+        tiktok,
     });
 });
 
@@ -3391,32 +4086,83 @@ app.post('/api/account/link/complete', async (req: Request, res: Response) => {
 
 app.post('/api/logout', (req: Request, res: Response) => {
     clearPendingVerificationSession(req);
+    clearTikTokOAuthSessionState(req);
     req.session.destroy(() => {});
     res.json({ success: true });
 });
 
+app.get('/api/tiktok/oauth/start', requireAuth, (req: Request, res: Response) => {
+    const returnTo = sanitizeRelativeReturnPath(String(req.query.returnTo || '/app'));
+    const userId = getRequiredUserId(req);
+
+    if (TIKTOK_DEMO_MODE) {
+        try {
+            connectDemoTikTokAccount(userId);
+            res.redirect(buildTikTokReturnPath(returnTo, 'success', 'TikTok demo account connected.'));
+        } catch (err) {
+            res.redirect(buildTikTokReturnPath(returnTo, 'error', err instanceof Error ? err.message : 'TikTok demo connect failed.'));
+        }
+        return;
+    }
+
+    if (!TIKTOK_CLIENT_KEY || !TIKTOK_CLIENT_SECRET || !TIKTOK_LOGIN_REDIRECT_URI) {
+        res.redirect(buildTikTokReturnPath(returnTo, 'error', 'TikTok OAuth is not configured on the server.'));
+        return;
+    }
+
+    const state = randomBytes(24).toString('hex');
+    req.session.tiktokOauthState = state;
+    req.session.tiktokOauthUserId = userId;
+    req.session.tiktokOauthReturnTo = returnTo;
+
+    const params = new URLSearchParams({
+        client_key: TIKTOK_CLIENT_KEY,
+        response_type: 'code',
+        scope: TIKTOK_OAUTH_SCOPES.join(','),
+        redirect_uri: TIKTOK_LOGIN_REDIRECT_URI,
+        state,
+    });
+
+    res.redirect(`https://www.tiktok.com/v2/auth/authorize/?${params.toString()}`);
+});
+
 app.get('/api/tiktok/oauth/callback', async (req: Request, res: Response) => {
+    const returnTo = sanitizeRelativeReturnPath(String(req.session.tiktokOauthReturnTo || '/app'));
     const code = String(req.query.code || '').trim();
+    const state = String(req.query.state || '').trim();
     const error = String(req.query.error || '').trim();
     const errorDescription = String(req.query.error_description || '').trim();
+    const expectedState = String(req.session.tiktokOauthState || '').trim();
+    const expectedUserId = Number(req.session.tiktokOauthUserId || 0);
+
+    const redirectWithError = (message: string): void => {
+        clearTikTokOAuthSessionState(req);
+        res.redirect(buildTikTokReturnPath(returnTo, 'error', message));
+    };
+
+    if (!expectedState || !expectedUserId) {
+        redirectWithError('TikTok connect session expired. Start from Connect TikTok again.');
+        return;
+    }
 
     if (error) {
-        res.status(400).send(
-            `<h1>TikTok authorization failed</h1><p>${error}</p><p>${errorDescription || 'No error description provided.'}</p>`
-        );
+        const detail = [error, errorDescription].filter(Boolean).join(': ');
+        redirectWithError(detail || 'TikTok authorization was cancelled.');
+        return;
+    }
+
+    if (!state || state !== expectedState) {
+        redirectWithError('Invalid TikTok authorization state. Please try again.');
         return;
     }
 
     if (!code) {
-        res.status(400).send('<h1>Missing authorization code</h1><p>No code query parameter found.</p>');
+        redirectWithError('Missing TikTok authorization code.');
         return;
     }
 
-    // Keep callback usable even before full OAuth wiring is enabled in app config.
     if (!TIKTOK_CLIENT_KEY || !TIKTOK_CLIENT_SECRET || !TIKTOK_LOGIN_REDIRECT_URI) {
-        res.status(200).send(
-            '<h1>TikTok callback reachable</h1><p>Code received. Set TIKTOK_CLIENT_KEY, TIKTOK_CLIENT_SECRET, and TIKTOK_LOGIN_REDIRECT_URI to auto-exchange tokens here.</p>'
-        );
+        redirectWithError('TikTok OAuth is not configured on the server.');
         return;
     }
 
@@ -3435,21 +4181,126 @@ app.get('/api/tiktok/oauth/callback', async (req: Request, res: Response) => {
         });
 
         if (tokenResponse.status < 200 || tokenResponse.status >= 300) {
-            res.status(502).send(
-                `<h1>TikTok token exchange failed</h1><p>Status: ${tokenResponse.status}</p><pre>${JSON.stringify(tokenResponse.data, null, 2)}</pre>`
-            );
+            redirectWithError(`TikTok token exchange failed (${tokenResponse.status}).`);
             return;
         }
 
-        const tokenType = String(tokenResponse.data?.token_type || 'unknown');
-        const expiresIn = Number(tokenResponse.data?.expires_in || 0);
-        const refreshExpiresIn = Number(tokenResponse.data?.refresh_expires_in || 0);
-        res.status(200).send(
-            `<h1>TikTok connected</h1><p>Token exchange succeeded.</p><p>token_type=${tokenType}, expires_in=${expiresIn}s, refresh_expires_in=${refreshExpiresIn}s</p><p>Next step: store this token per user in DB and use it for upload APIs.</p>`
-        );
+        const accessToken = String(tokenResponse.data?.access_token || '').trim();
+        const refreshToken = String(tokenResponse.data?.refresh_token || '').trim();
+        const tokenType = String(tokenResponse.data?.token_type || 'Bearer').trim();
+        const scopeList = normalizeTikTokScopes(tokenResponse.data?.scope);
+        const scopes = scopeList.length > 0 ? scopeList : [...TIKTOK_OAUTH_SCOPES];
+        const openIdFromToken = String(tokenResponse.data?.open_id || '').trim();
+
+        if (!accessToken) {
+            redirectWithError('TikTok token exchange did not return an access token.');
+            return;
+        }
+
+        let profileOpenId = openIdFromToken;
+        let profileUsername = '';
+        let profileDisplayName = '';
+        let profileAvatarUrl = '';
+
+        try {
+            const userInfoResponse = await axios.get(
+                `${TIKTOK_API_BASE}/v2/user/info/?fields=open_id,username,display_name,avatar_url`,
+                {
+                    headers: { Authorization: `Bearer ${accessToken}` },
+                    validateStatus: () => true,
+                }
+            );
+            if (userInfoResponse.status >= 200 && userInfoResponse.status < 300) {
+                const userInfo = userInfoResponse.data?.data?.user || {};
+                profileOpenId = String(userInfo?.open_id || profileOpenId || '').trim();
+                profileUsername = String(userInfo?.username || '').trim();
+                profileDisplayName = String(userInfo?.display_name || '').trim();
+                profileAvatarUrl = String(userInfo?.avatar_url || '').trim();
+            }
+        } catch {
+            // Keep OAuth successful even if profile fetch fails.
+        }
+
+        upsertTikTokOAuthAccount({
+            userId: expectedUserId,
+            openId: profileOpenId,
+            scopes,
+            accessToken,
+            refreshToken,
+            accessTokenExpiresAt: toFutureIso(tokenResponse.data?.expires_in),
+            refreshTokenExpiresAt: toFutureIso(tokenResponse.data?.refresh_expires_in),
+            tokenType,
+            username: profileUsername,
+            displayName: profileDisplayName,
+            avatarUrl: profileAvatarUrl,
+        });
+
+        clearTikTokOAuthSessionState(req);
+        res.redirect(buildTikTokReturnPath(returnTo, 'success'));
     } catch (err) {
-        res.status(500).send(`<h1>TikTok callback error</h1><p>${err instanceof Error ? err.message : 'Unknown error'}</p>`);
+        redirectWithError(err instanceof Error ? err.message : 'TikTok callback error');
     }
+});
+
+app.post('/api/tiktok/upload-mode', requireAuth, (req: Request, res: Response) => {
+    const userId = getRequiredUserId(req);
+    const rawMode = String((req.body as { mode?: string } | undefined)?.mode || '').trim().toLowerCase();
+    if (rawMode && rawMode !== 'draft' && rawMode !== 'direct') {
+        res.status(400).json({ error: 'Invalid upload mode. Use "draft" or "direct".' });
+        return;
+    }
+
+    const mode = saveTikTokUploadModeForUser(userId, normalizeTikTokUploadMode(rawMode || 'draft'));
+    res.json({ success: true, uploadMode: mode });
+});
+
+app.post('/api/tiktok/demo/connect', requireAuth, (req: Request, res: Response) => {
+    if (!TIKTOK_DEMO_MODE) {
+        res.status(403).json({ error: 'TikTok demo mode is disabled.' });
+        return;
+    }
+    const userId = getRequiredUserId(req);
+    try {
+        connectDemoTikTokAccount(userId);
+        res.json({ success: true, tiktok: getTikTokAccountView(userId) });
+    } catch (err) {
+        res.status(500).json({ error: err instanceof Error ? err.message : 'Could not connect TikTok demo account.' });
+    }
+});
+
+app.post('/api/tiktok/disconnect', requireAuth, (req: Request, res: Response) => {
+    const userId = getRequiredUserId(req);
+    disconnectTikTokAccount(userId);
+    res.json({ success: true, tiktok: getTikTokAccountView(userId) });
+});
+
+app.get('/api/tiktok/debug', requireAuth, (req: Request, res: Response) => {
+    const userId = getRequiredUserId(req);
+    const account = getTikTokAccountView(userId);
+    const authorizeParams = new URLSearchParams({
+        client_key: maskCredential(TIKTOK_CLIENT_KEY),
+        response_type: 'code',
+        scope: TIKTOK_OAUTH_SCOPES.join(','),
+        redirect_uri: TIKTOK_LOGIN_REDIRECT_URI,
+        state: 'debug-state',
+    });
+
+    res.json({
+        configured: Boolean(TIKTOK_CLIENT_KEY && TIKTOK_CLIENT_SECRET && TIKTOK_LOGIN_REDIRECT_URI),
+        demoMode: TIKTOK_DEMO_MODE,
+        apiBase: TIKTOK_API_BASE,
+        redirectUri: TIKTOK_LOGIN_REDIRECT_URI,
+        oauthScopes: TIKTOK_OAUTH_SCOPES,
+        clientKeyMasked: maskCredential(TIKTOK_CLIENT_KEY),
+        clientSecretSet: Boolean(TIKTOK_CLIENT_SECRET),
+        authorizeUrlPreview: `https://www.tiktok.com/v2/auth/authorize/?${authorizeParams.toString()}`,
+        sessionState: {
+            hasTikTokOauthState: Boolean(req.session.tiktokOauthState),
+            tiktokOauthUserId: Number(req.session.tiktokOauthUserId || 0) || null,
+            tiktokOauthReturnTo: String(req.session.tiktokOauthReturnTo || ''),
+        },
+        account,
+    });
 });
 
 app.get('/api/me/streamers', requireAuth, async (req: Request, res: Response) => {
@@ -3817,17 +4668,25 @@ app.post('/api/tiktok/upload-approved', requireAuth, async (req: Request, res: R
     const limitRaw = (req.body as { limit?: number | string } | undefined)?.limit;
     const dryRun = Boolean((req.body as { dryRun?: boolean } | undefined)?.dryRun);
     const limit = parseUploadLimit(limitRaw);
+    const uploadMode = getTikTokUploadModeForUser(userId);
 
     const approved = getApprovedClips(userId, limit);
 
     if (approved.length === 0) {
-        res.json({ success: true, total: 0, uploaded: 0, failed: 0, results: [] });
+        res.json({ success: true, total: 0, uploaded: 0, failed: 0, uploadMode, results: [] });
+        return;
+    }
+
+    try {
+        await ensureTikTokUploadReady(userId, uploadMode);
+    } catch (err) {
+        res.status(400).json({ error: err instanceof Error ? err.message : 'TikTok upload is not ready.' });
         return;
     }
 
     const results: ClipUploadResult[] = [];
     for (const clip of approved) {
-        const result = await uploadSingleClipToTikTok(clip, dryRun);
+        const result = await uploadSingleClipToTikTok(userId, clip, uploadMode, dryRun);
         results.push(result);
     }
 
@@ -3836,6 +4695,7 @@ app.post('/api/tiktok/upload-approved', requireAuth, async (req: Request, res: R
     res.json({
         success: failed === 0,
         dryRun,
+        uploadMode,
         total: results.length,
         uploaded,
         failed,
@@ -3843,17 +4703,19 @@ app.post('/api/tiktok/upload-approved', requireAuth, async (req: Request, res: R
     });
 });
 
-app.post('/api/tiktok/upload-jobs', requireAuth, (req: Request, res: Response) => {
+app.post('/api/tiktok/upload-jobs', requireAuth, async (req: Request, res: Response) => {
     try {
         const userId = getRequiredUserId(req);
         const limitRaw = (req.body as { limit?: number | string } | undefined)?.limit;
         const dryRun = Boolean((req.body as { dryRun?: boolean } | undefined)?.dryRun);
         const limit = parseUploadLimit(limitRaw);
-        const job = startUploadJob(userId, limit, dryRun);
+        const job = await startUploadJob(userId, limit, dryRun);
 
         res.status(202).json({ success: true, job: toJobSnapshot(job) });
     } catch (err) {
-        res.status(409).json({ error: err instanceof Error ? err.message : 'Could not start upload job' });
+        const message = err instanceof Error ? err.message : 'Could not start upload job';
+        const statusCode = /scope|connect tiktok|permission|expired/i.test(message) ? 400 : 409;
+        res.status(statusCode).json({ error: message });
     }
 });
 
