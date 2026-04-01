@@ -4449,6 +4449,7 @@
       </div>
       <p class="mt-2 text-[11px] uppercase tracking-wide text-zinc-500">Granted Scopes</p>
       <div id="account-tiktok-scopes" class="mt-1 flex flex-wrap gap-1 text-[11px]"></div>
+      <p id="account-tiktok-reconnect-msg" class="mt-2 hidden rounded-lg border border-amber-500/40 bg-amber-500/10 px-2.5 py-2 text-xs text-amber-100"></p>
       <div class="mt-3">
         <p class="text-xs uppercase tracking-wide text-zinc-400">Upload Mode</p>
         <div id="account-tiktok-mode-switch" tabindex="0" role="group" aria-label="TikTok upload mode" class="relative mt-2 overflow-hidden rounded-full border border-zinc-700/80 bg-zinc-950/70 p-1 shadow-inner shadow-black/50 cursor-pointer select-none">
@@ -4521,6 +4522,8 @@
   let tiktokUsername = '';
   let tiktokAvatarUrl = '';
   let tiktokScopes = [];
+  let tiktokNeedsReconnect = false;
+  let tiktokReconnectReason = '';
   let sidebarProfileEmailMasked = '';
   let needsStreamerSetup = false;
   let activeUploadJobId = null;
@@ -4778,29 +4781,38 @@
     const avatarImgEl = document.getElementById('account-tiktok-avatar-img');
     const avatarFallbackEl = document.getElementById('account-tiktok-avatar-fallback');
     const scopesEl = document.getElementById('account-tiktok-scopes');
+    const reconnectMsgEl = document.getElementById('account-tiktok-reconnect-msg');
     const connectBtn = document.getElementById('account-tiktok-connect-btn');
     const logoutBtn = document.getElementById('account-tiktok-logout-btn');
-    if (!statusEl || !demoBadgeEl || !nameEl || !handleEl || !avatarImgEl || !avatarFallbackEl || !scopesEl || !connectBtn || !logoutBtn) return;
+    if (!statusEl || !demoBadgeEl || !nameEl || !handleEl || !avatarImgEl || !avatarFallbackEl || !scopesEl || !reconnectMsgEl || !connectBtn || !logoutBtn) return;
 
     const display = String(tiktokDisplayName || '').trim();
     const handle = String(tiktokUsername || '').trim();
     const avatarUrl = String(tiktokAvatarUrl || '').trim();
     const initialSeed = (display || handle || 'TT').replace(/[^a-zA-Z0-9]/g, '');
     const initials = (initialSeed.slice(0, 2) || 'TT').toUpperCase();
+    const reconnectRequired = tiktokConnected && tiktokNeedsReconnect;
 
-    statusEl.textContent = tiktokConnected ? 'Connected' : 'Not connected';
-    statusEl.classList.toggle('border-emerald-500/60', tiktokConnected);
-    statusEl.classList.toggle('bg-emerald-500/20', tiktokConnected);
-    statusEl.classList.toggle('text-emerald-200', tiktokConnected);
+    statusEl.textContent = reconnectRequired ? 'Reconnect required' : (tiktokConnected ? 'Connected' : 'Not connected');
+    statusEl.classList.toggle('border-amber-500/60', reconnectRequired);
+    statusEl.classList.toggle('bg-amber-500/20', reconnectRequired);
+    statusEl.classList.toggle('text-amber-200', reconnectRequired);
+    statusEl.classList.toggle('border-emerald-500/60', tiktokConnected && !reconnectRequired);
+    statusEl.classList.toggle('bg-emerald-500/20', tiktokConnected && !reconnectRequired);
+    statusEl.classList.toggle('text-emerald-200', tiktokConnected && !reconnectRequired);
     statusEl.classList.toggle('border-zinc-600', !tiktokConnected);
     statusEl.classList.toggle('bg-zinc-900', !tiktokConnected);
     statusEl.classList.toggle('text-zinc-300', !tiktokConnected);
     demoBadgeEl.classList.toggle('hidden', !tiktokDemoMode);
     nameEl.textContent = display || (tiktokConnected ? 'TikTok account linked' : 'Not connected');
     handleEl.textContent = handle ? `@${handle}` : '@-';
-    connectBtn.textContent = tiktokConnected
-      ? (tiktokDemoMode ? 'Reconnect TikTok (Demo)' : 'Reconnect TikTok')
-      : (tiktokDemoMode ? 'Connect TikTok (Demo)' : 'Connect TikTok');
+    if (reconnectRequired) {
+      connectBtn.textContent = tiktokDemoMode ? 'Reconnect TikTok (Demo)' : 'Reconnect TikTok';
+    } else if (tiktokConnected) {
+      connectBtn.textContent = tiktokDemoMode ? 'Connected (Demo)' : 'Connected';
+    } else {
+      connectBtn.textContent = tiktokDemoMode ? 'Connect TikTok (Demo)' : 'Connect TikTok';
+    }
     logoutBtn.classList.toggle('hidden', !tiktokConnected);
 
     if (avatarUrl) {
@@ -4822,6 +4834,14 @@
       return `<span class="rounded-full border border-zinc-600 bg-zinc-900 px-2 py-0.5 text-zinc-300">${safeScope}</span>`;
     }).join('');
 
+    if (reconnectRequired) {
+      reconnectMsgEl.textContent = tiktokReconnectReason || 'TikTok authorization needs to be refreshed before uploading.';
+      reconnectMsgEl.classList.remove('hidden');
+    } else {
+      reconnectMsgEl.textContent = '';
+      reconnectMsgEl.classList.add('hidden');
+    }
+
     updateTikTokModeSwitchUI();
   }
 
@@ -4834,6 +4854,8 @@
     tiktokUsername = String(data.username || '').trim();
     tiktokAvatarUrl = String(data.avatarUrl || '').trim();
     tiktokScopes = Array.isArray(data.scopes) ? data.scopes.map((v) => String(v || '').trim()).filter(Boolean) : [];
+    tiktokNeedsReconnect = !!data.needsReconnect;
+    tiktokReconnectReason = String(data.reconnectReason || '').trim();
     if (!activeUploadJobId) updateUploadControls(null);
     updateAccountTikTokSection();
   }
@@ -4859,9 +4881,13 @@
       });
       const data = await r.json().catch(() => ({}));
       if (!r.ok) throw new Error(data.error || 'Could not save TikTok upload mode.');
-      tiktokUploadMode = normalizeTikTokUploadModeClient(data.uploadMode || desired);
-      updateTikTokModeSwitchUI();
-      if (!activeUploadJobId) updateUploadControls(null);
+      if (data.tiktok && typeof data.tiktok === 'object') {
+        applyTikTokAccountState(data.tiktok);
+      } else {
+        tiktokUploadMode = normalizeTikTokUploadModeClient(data.uploadMode || desired);
+        updateTikTokModeSwitchUI();
+        if (!activeUploadJobId) updateUploadControls(null);
+      }
       if (status) {
         status.textContent = `TikTok upload mode set to ${tiktokUploadMode === 'direct' ? 'Direct Publish' : 'Draft'}.`;
         status.classList.remove('hidden');
@@ -6391,6 +6417,10 @@
     if (e.key === 'Enter') void verifyAccountEmailInModal();
   });
   document.getElementById('account-tiktok-connect-btn').addEventListener('click', () => {
+    if (tiktokConnected && !tiktokNeedsReconnect) {
+      showToast('TikTok is already connected.');
+      return;
+    }
     startTikTokOAuthFlow();
   });
   document.getElementById('account-tiktok-logout-btn').addEventListener('click', () => {
@@ -6747,12 +6777,16 @@
 
     if (!job) {
       statusEl.textContent = tiktokConnected
-        ? `Upload queue idle (${tiktokUploadMode === 'direct' ? 'Direct Publish' : 'Draft'}${tiktokDemoMode ? ', Demo' : ''})`
+        ? (tiktokNeedsReconnect
+          ? 'Reconnect TikTok to continue uploads'
+          : `Upload queue idle (${tiktokUploadMode === 'direct' ? 'Direct Publish' : 'Draft'}${tiktokDemoMode ? ', Demo' : ''})`)
         : 'Connect TikTok to enable uploads';
       statusEl.dataset.state = 'idle';
       startBtn.disabled = false;
       startBtn.textContent = tiktokConnected
-        ? 'Start Upload'
+        ? (tiktokNeedsReconnect
+          ? (tiktokDemoMode ? 'Reconnect TikTok (Demo)' : 'Reconnect TikTok')
+          : 'Start Upload')
         : (tiktokDemoMode ? 'Connect TikTok (Demo)' : 'Connect TikTok');
       pauseBtn.disabled = true;
       resumeBtn.disabled = true;
@@ -6785,7 +6819,11 @@
     startBtn.disabled = active;
     startBtn.textContent = active
       ? 'Upload Running'
-      : (tiktokConnected ? 'Start Upload' : (tiktokDemoMode ? 'Connect TikTok (Demo)' : 'Connect TikTok'));
+      : (tiktokConnected
+        ? (tiktokNeedsReconnect
+          ? (tiktokDemoMode ? 'Reconnect TikTok (Demo)' : 'Reconnect TikTok')
+          : 'Start Upload')
+        : (tiktokDemoMode ? 'Connect TikTok (Demo)' : 'Connect TikTok'));
     pauseBtn.disabled = job.status !== 'running';
     resumeBtn.disabled = job.status !== 'paused';
     cancelBtn.disabled = !active;
@@ -7874,7 +7912,7 @@
   });
 
   document.getElementById('bulk-upload-btn').addEventListener('click', async () => {
-    if (!tiktokConnected) {
+    if (!tiktokConnected || tiktokNeedsReconnect) {
       startTikTokOAuthFlow();
       return;
     }

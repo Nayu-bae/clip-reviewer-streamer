@@ -741,6 +741,49 @@ function hasTikTokScope(account: TikTokAccountRow | undefined, scope: string): b
     return granted.has(scope);
 }
 
+function getTikTokReconnectState(
+    account: TikTokAccountRow | undefined,
+    uploadMode: TikTokUploadMode
+): { needsReconnect: boolean; reconnectReason: string } {
+    if (!account || !account.access_token) {
+        return { needsReconnect: false, reconnectReason: '' };
+    }
+
+    const requiredScope = uploadMode === 'direct' ? 'video.publish' : 'video.upload';
+    if (!hasTikTokScope(account, requiredScope)) {
+        return {
+            needsReconnect: true,
+            reconnectReason: `Missing TikTok permission: ${requiredScope}. Reconnect TikTok and grant the required permission.`,
+        };
+    }
+
+    const nowPlusBuffer = Date.now() + (60 * 1000);
+    const accessExpiresAt = Date.parse(String(account.access_token_expires_at || ''));
+    const accessExpiringSoon = Number.isFinite(accessExpiresAt) && accessExpiresAt <= nowPlusBuffer;
+    if (!accessExpiringSoon) {
+        return { needsReconnect: false, reconnectReason: '' };
+    }
+
+    const refreshToken = String(account.refresh_token || '').trim();
+    if (!refreshToken) {
+        return {
+            needsReconnect: true,
+            reconnectReason: 'TikTok access token expired and no refresh token is available. Reconnect TikTok to keep uploading.',
+        };
+    }
+
+    const refreshExpiresAt = Date.parse(String(account.refresh_token_expires_at || ''));
+    const refreshExpired = Number.isFinite(refreshExpiresAt) && refreshExpiresAt <= nowPlusBuffer;
+    if (refreshExpired) {
+        return {
+            needsReconnect: true,
+            reconnectReason: 'TikTok refresh token expired. Reconnect TikTok to continue uploading.',
+        };
+    }
+
+    return { needsReconnect: false, reconnectReason: '' };
+}
+
 function getTikTokAccountView(userId: number): {
     connected: boolean;
     demoMode: boolean;
@@ -750,8 +793,12 @@ function getTikTokAccountView(userId: number): {
     avatarUrl: string;
     scopes: string[];
     uploadMode: TikTokUploadMode;
+    needsReconnect: boolean;
+    reconnectReason: string;
 } {
     const account = getTikTokAccountByUserId(userId);
+    const uploadMode = normalizeTikTokUploadMode(account?.upload_mode || 'draft');
+    const reconnectState = getTikTokReconnectState(account, uploadMode);
     return {
         connected: Boolean(account?.access_token),
         demoMode: TIKTOK_DEMO_MODE,
@@ -760,7 +807,9 @@ function getTikTokAccountView(userId: number): {
         displayName: String(account?.display_name || ''),
         avatarUrl: String(account?.avatar_url || ''),
         scopes: normalizeTikTokScopes(account?.scope),
-        uploadMode: normalizeTikTokUploadMode(account?.upload_mode || 'draft'),
+        uploadMode,
+        needsReconnect: reconnectState.needsReconnect,
+        reconnectReason: reconnectState.reconnectReason,
     };
 }
 
@@ -4251,7 +4300,7 @@ app.post('/api/tiktok/upload-mode', requireAuth, (req: Request, res: Response) =
     }
 
     const mode = saveTikTokUploadModeForUser(userId, normalizeTikTokUploadMode(rawMode || 'draft'));
-    res.json({ success: true, uploadMode: mode });
+    res.json({ success: true, uploadMode: mode, tiktok: getTikTokAccountView(userId) });
 });
 
 app.post('/api/tiktok/demo/connect', requireAuth, (req: Request, res: Response) => {
