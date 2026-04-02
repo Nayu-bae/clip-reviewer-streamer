@@ -80,12 +80,19 @@ const DEFAULT_UPLOAD_VIDEO_PRESET = String(process.env.FFMPEG_UPLOAD_PRESET || '
 const DEFAULT_DOWNLOAD_VIDEO_PRESET = String(process.env.FFMPEG_DOWNLOAD_PRESET || 'veryfast').trim() || 'veryfast';
 const DEFAULT_UPLOAD_VIDEO_CRF = Math.max(17, Math.min(28, Math.round(getPositiveNumberEnv('FFMPEG_UPLOAD_CRF', 21))));
 const DEFAULT_DOWNLOAD_VIDEO_CRF = Math.max(17, Math.min(30, Math.round(getPositiveNumberEnv('FFMPEG_DOWNLOAD_CRF', 22))));
+const DEFAULT_MAX_CONCURRENT_RENDERS = Math.max(1, Math.min(4, Math.ceil(LOGICAL_CPU_COUNT / 4)));
+const MAX_CONCURRENT_RENDERS = Math.max(1, Math.min(16, Math.floor(getPositiveNumberEnv('FFMPEG_MAX_CONCURRENT_RENDERS', DEFAULT_MAX_CONCURRENT_RENDERS))));
+const OVERLAY_MEDIA_RETENTION_DAYS = Math.max(1, Math.min(365, Math.floor(getPositiveNumberEnv('OVERLAY_MEDIA_RETENTION_DAYS', 30))));
+const OVERLAY_MEDIA_CLEANUP_INTERVAL_MINUTES = Math.max(10, Math.min(24 * 60, Math.floor(getPositiveNumberEnv('OVERLAY_MEDIA_CLEANUP_INTERVAL_MINUTES', 180))));
 const TWITCH_GQL_URL = 'https://gql.twitch.tv/gql';
 const CLIP_GQL_CACHE_TTL_MS = 10 * 60 * 1000;
 const LEGACY_STREAMER_IDS = getStreamerIdsFromEnv();
 const clipVideoUrlCache = new Map<string, { url: string; expiresAt: number }>();
 const previewBuildJobs = new Map<string, Promise<string>>();
 const activeDownloadJobs = new Set<string>();
+const pendingRenderResolvers: Array<() => void> = [];
+let activeRenderCount = 0;
+let overlayCleanupInFlight = false;
 const OVERLAY_MIME_TO_EXTENSION: Record<string, string> = {
     'image/png': 'png',
     'image/jpeg': 'jpg',
@@ -2018,6 +2025,90 @@ function parseOverlayDataUrl(raw: unknown): { mime: string; buffer: Buffer } | n
     }
 }
 
+function getReferencedOverlayMediaRefs(): Set<string> {
+    const refs = new Set<string>();
+    const rows = db.prepare(`
+        SELECT overlay_items_json, overlay_enabled, overlay_media_path
+        FROM user_clip_state
+    `).all() as Array<{ overlay_items_json?: string | null; overlay_enabled?: number | null; overlay_media_path?: string | null }>;
+
+    rows.forEach((row) => {
+        parseOverlayItemsJson(row.overlay_items_json).forEach((item) => {
+            if (item.mediaRef) refs.add(item.mediaRef);
+        });
+        if (Number(row.overlay_enabled || 0) === 1) {
+            const legacyPath = resolveSafeOverlayMediaPath(row.overlay_media_path);
+            if (!legacyPath) return;
+            const legacyRef = sanitizeOverlayMediaRef(path.basename(legacyPath));
+            if (legacyRef) refs.add(legacyRef);
+        }
+    });
+
+    return refs;
+}
+
+async function pruneOverlayMediaFiles(): Promise<{ removed: number; keptReferenced: number; keptFresh: number; errors: number }> {
+    if (overlayCleanupInFlight) {
+        return { removed: 0, keptReferenced: 0, keptFresh: 0, errors: 0 };
+    }
+    overlayCleanupInFlight = true;
+    let removed = 0;
+    let keptReferenced = 0;
+    let keptFresh = 0;
+    let errors = 0;
+
+    try {
+        await fs.promises.mkdir(OVERLAY_MEDIA_DIR, { recursive: true });
+        const referencedRefs = getReferencedOverlayMediaRefs();
+        const entries = await fs.promises.readdir(OVERLAY_MEDIA_DIR, { withFileTypes: true });
+        const cutoffMs = Date.now() - (OVERLAY_MEDIA_RETENTION_DAYS * 24 * 60 * 60 * 1000);
+
+        for (const entry of entries) {
+            if (!entry.isFile()) continue;
+            const mediaRef = sanitizeOverlayMediaRef(entry.name);
+            if (!mediaRef) continue;
+            if (!inferOverlayMimeFromRef(mediaRef)) continue;
+            if (referencedRefs.has(mediaRef)) {
+                keptReferenced += 1;
+                continue;
+            }
+            const filePath = resolveOverlayPathFromRef(mediaRef);
+            if (!filePath) continue;
+            try {
+                const stat = await fs.promises.stat(filePath);
+                if (!stat.isFile()) continue;
+                if (stat.mtimeMs > cutoffMs) {
+                    keptFresh += 1;
+                    continue;
+                }
+                await fs.promises.rm(filePath, { force: true });
+                removed += 1;
+            } catch {
+                errors += 1;
+            }
+        }
+    } finally {
+        overlayCleanupInFlight = false;
+    }
+
+    if (removed > 0 || errors > 0) {
+        console.log(`[cleanup] overlay-media: removed=${removed}, kept_referenced=${keptReferenced}, kept_fresh=${keptFresh}, errors=${errors}`);
+    }
+    return { removed, keptReferenced, keptFresh, errors };
+}
+
+function scheduleOverlayMediaCleanup(): void {
+    const run = (): void => {
+        void pruneOverlayMediaFiles().catch((err) => {
+            console.warn('[cleanup] overlay-media prune failed:', err instanceof Error ? err.message : err);
+        });
+    };
+    run();
+    const intervalMs = OVERLAY_MEDIA_CLEANUP_INTERVAL_MINUTES * 60 * 1000;
+    const timer = setInterval(run, intervalMs);
+    if (typeof timer.unref === 'function') timer.unref();
+}
+
 function buildClipVideoCandidates(thumbnailUrl: string): string[] {
     const raw = String(thumbnailUrl || '').trim();
     if (!raw) return [];
@@ -2984,6 +3075,25 @@ function runCommandCaptureOutput(command: string, args: string[]): Promise<{ std
     });
 }
 
+async function withRenderSlot<T>(job: () => Promise<T>): Promise<T> {
+    if (activeRenderCount >= MAX_CONCURRENT_RENDERS) {
+        await new Promise<void>((resolve) => {
+            pendingRenderResolvers.push(resolve);
+        });
+    }
+    activeRenderCount += 1;
+    try {
+        return await job();
+    } finally {
+        activeRenderCount = Math.max(0, activeRenderCount - 1);
+        while (activeRenderCount < MAX_CONCURRENT_RENDERS && pendingRenderResolvers.length > 0) {
+            const next = pendingRenderResolvers.shift();
+            if (!next) break;
+            next();
+        }
+    }
+}
+
 async function processClipToTikTokFormat(
     inputPath: string,
     outputPath: string,
@@ -3564,7 +3674,7 @@ async function uploadSingleClipToTikTok(
         }
 
         // Keep upload quality defaults for TikTok pipeline.
-        await processClipToTikTokFormat(inPath, outPath, clip);
+        await withRenderSlot(() => processClipToTikTokFormat(inPath, outPath, clip));
 
         if (dryRun) {
             await ensureTikTokUploadReady(userId, uploadMode);
@@ -3628,7 +3738,7 @@ async function buildProcessedClipForDownload(clip: DbClipRow): Promise<string> {
         }
 
         // Download path prioritizes faster turnaround over encode efficiency.
-        await processClipToTikTokFormat(inPath, outPath, clip, DEFAULT_DOWNLOAD_VIDEO_PRESET, DEFAULT_DOWNLOAD_VIDEO_CRF);
+        await withRenderSlot(() => processClipToTikTokFormat(inPath, outPath, clip, DEFAULT_DOWNLOAD_VIDEO_PRESET, DEFAULT_DOWNLOAD_VIDEO_CRF));
         return outPath;
     } finally {
         await fs.promises.rm(inPath, { force: true }).catch(() => {});
@@ -5941,12 +6051,14 @@ app.post('/api/crop/:clipId', requireAuth, (req: Request, res: Response) => {
 
 app.listen(PORT, () => {
     validateEnvironment();
+    scheduleOverlayMediaCleanup();
     console.log(`✅  Server running at http://localhost:${PORT}`);
     console.log(`🗄️  Database: ${DB_PATH}`);
     console.log(`🧩  Public assets: ${PUBLIC_DIR}`);
     console.log('👥  Multi-user mode enabled: each account manages its own streamer list.');
     console.log(`🧰  Twitch fetch config: lookback=${TWITCH_CLIPS_LOOKBACK_DAYS} days, max_pages=${TWITCH_CLIPS_MAX_PAGES}, page_size=${TWITCH_CLIPS_PAGE_SIZE}`);
     console.log(`🔎  Clip visibility filter: min_views=${MIN_CLIP_VIEWS}`);
-    console.log(`[ffmpeg] render tuning: fps=${FFMPEG_OUTPUT_FPS}, gif_fps=${FFMPEG_GIF_FPS}, threads=${FFMPEG_THREAD_CAP || 'auto'}, filter_threads=${FFMPEG_FILTER_THREAD_CAP || 'auto'}, upload_preset=${DEFAULT_UPLOAD_VIDEO_PRESET}, download_preset=${DEFAULT_DOWNLOAD_VIDEO_PRESET}, upload_crf=${DEFAULT_UPLOAD_VIDEO_CRF}, download_crf=${DEFAULT_DOWNLOAD_VIDEO_CRF}`);
+    console.log(`[ffmpeg] render tuning: fps=${FFMPEG_OUTPUT_FPS}, gif_fps=${FFMPEG_GIF_FPS}, threads=${FFMPEG_THREAD_CAP || 'auto'}, filter_threads=${FFMPEG_FILTER_THREAD_CAP || 'auto'}, max_concurrent_renders=${MAX_CONCURRENT_RENDERS}, upload_preset=${DEFAULT_UPLOAD_VIDEO_PRESET}, download_preset=${DEFAULT_DOWNLOAD_VIDEO_PRESET}, upload_crf=${DEFAULT_UPLOAD_VIDEO_CRF}, download_crf=${DEFAULT_DOWNLOAD_VIDEO_CRF}`);
+    console.log(`[cleanup] overlay-media retention=${OVERLAY_MEDIA_RETENTION_DAYS}d, interval=${OVERLAY_MEDIA_CLEANUP_INTERVAL_MINUTES}m, dir=${OVERLAY_MEDIA_DIR}`);
     console.log(`🔐  Session mode: ${IS_PRODUCTION ? 'production secure cookies enabled' : 'development cookies (non-secure)'}`);
 });
