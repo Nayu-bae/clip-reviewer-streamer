@@ -3,6 +3,7 @@ import session from 'express-session';
 import axios from 'axios';
 import * as dotenv from 'dotenv';
 import * as fs from 'fs';
+import * as os from 'os';
 import * as path from 'path';
 import { spawn } from 'child_process';
 import { randomUUID } from 'crypto';
@@ -33,10 +34,18 @@ function getPositiveNumberEnv(name: string, fallback: number): number {
     return Number.isFinite(n) && n > 0 ? n : fallback;
 }
 
+function getNonNegativeIntEnv(name: string, fallback: number): number {
+    const raw = process.env[name];
+    if (raw === undefined || raw === null || String(raw).trim() === '') return fallback;
+    const n = Math.floor(Number(raw));
+    return Number.isFinite(n) && n >= 0 ? n : fallback;
+}
+
 const TWITCH_CLIPS_PAGE_SIZE = 100;
 const TWITCH_CLIPS_MAX_PAGES = getPositiveNumberEnv('TWITCH_CLIPS_MAX_PAGES', 20);
 const TWITCH_CLIPS_LOOKBACK_DAYS = getPositiveNumberEnv('TWITCH_CLIPS_LOOKBACK_DAYS', 90);
 const MIN_CLIP_VIEWS = getPositiveNumberEnv('MIN_CLIP_VIEWS', 10);
+const CLIP_TAG_OPTIONS = ['funny', 'clutch', 'fail', 'skill'] as const;
 const TIKTOK_API_BASE = process.env.TIKTOK_API_BASE || 'https://open.tiktokapis.com';
 const TIKTOK_CLIENT_KEY = process.env.TIKTOK_CLIENT_KEY || process.env.TIKTOK_CLIENT_ID || '';
 const TIKTOK_CLIENT_SECRET = process.env.TIKTOK_CLIENT_SECRET || '';
@@ -54,16 +63,57 @@ const EMAIL_VERIFICATION_RESEND_COOLDOWN_SECONDS = Math.max(1, Math.floor(getPos
 const ACCOUNT_MANAGE_LINK_TTL_MINUTES = Math.max(5, Math.floor(getPositiveNumberEnv('ACCOUNT_MANAGE_LINK_TTL_MINUTES', 30)));
 const PASSWORD_RESET_LINK_TTL_MINUTES = Math.max(5, Math.floor(getPositiveNumberEnv('PASSWORD_RESET_LINK_TTL_MINUTES', 30)));
 const VIDEO_WORK_DIR = path.join(__dirname, 'tmp', 'videos');
+const OVERLAY_MEDIA_DIR = path.join(__dirname, 'tmp', 'overlay-media');
+const OVERLAY_MEDIA_MAX_BYTES = 24 * 1024 * 1024;
 const TWITCH_LOGO_RELATIVE_PATH = path.join('pictures', 'twitchLogo.png');
 const YTDLP_BIN = process.env.YTDLP_BIN || 'yt-dlp';
 const FFMPEG_BIN = process.env.FFMPEG_BIN || 'ffmpeg';
 const FFPROBE_BIN = process.env.FFPROBE_BIN || 'ffprobe';
+const LOGICAL_CPU_COUNT = Math.max(1, (os.cpus()?.length || 8));
+const DEFAULT_FFMPEG_THREAD_CAP = Math.max(2, Math.min(LOGICAL_CPU_COUNT, Math.max(6, Math.round(LOGICAL_CPU_COUNT * 0.6))));
+const FFMPEG_THREAD_CAP = Math.max(0, Math.min(LOGICAL_CPU_COUNT, getNonNegativeIntEnv('FFMPEG_THREAD_CAP', DEFAULT_FFMPEG_THREAD_CAP)));
+const DEFAULT_FFMPEG_FILTER_THREAD_CAP = Math.max(1, Math.min(4, Math.ceil((FFMPEG_THREAD_CAP || LOGICAL_CPU_COUNT) / 3)));
+const FFMPEG_FILTER_THREAD_CAP = Math.max(0, Math.min(LOGICAL_CPU_COUNT, getNonNegativeIntEnv('FFMPEG_FILTER_THREAD_CAP', DEFAULT_FFMPEG_FILTER_THREAD_CAP)));
+const FFMPEG_OUTPUT_FPS = Math.max(24, Math.min(60, Math.round(getPositiveNumberEnv('FFMPEG_OUTPUT_FPS', 30))));
+const FFMPEG_GIF_FPS = Math.max(6, Math.min(30, Math.round(getPositiveNumberEnv('FFMPEG_GIF_FPS', 15))));
+const DEFAULT_UPLOAD_VIDEO_PRESET = String(process.env.FFMPEG_UPLOAD_PRESET || 'faster').trim() || 'faster';
+const DEFAULT_DOWNLOAD_VIDEO_PRESET = String(process.env.FFMPEG_DOWNLOAD_PRESET || 'veryfast').trim() || 'veryfast';
+const DEFAULT_UPLOAD_VIDEO_CRF = Math.max(17, Math.min(28, Math.round(getPositiveNumberEnv('FFMPEG_UPLOAD_CRF', 21))));
+const DEFAULT_DOWNLOAD_VIDEO_CRF = Math.max(17, Math.min(30, Math.round(getPositiveNumberEnv('FFMPEG_DOWNLOAD_CRF', 22))));
 const TWITCH_GQL_URL = 'https://gql.twitch.tv/gql';
 const CLIP_GQL_CACHE_TTL_MS = 10 * 60 * 1000;
 const LEGACY_STREAMER_IDS = getStreamerIdsFromEnv();
 const clipVideoUrlCache = new Map<string, { url: string; expiresAt: number }>();
 const previewBuildJobs = new Map<string, Promise<string>>();
 const activeDownloadJobs = new Set<string>();
+const OVERLAY_MIME_TO_EXTENSION: Record<string, string> = {
+    'image/png': 'png',
+    'image/jpeg': 'jpg',
+    'image/jpg': 'jpg',
+    'image/webp': 'webp',
+    'image/gif': 'gif',
+};
+const OVERLAY_EXTENSION_TO_MIME: Record<string, string> = {
+    png: 'image/png',
+    jpg: 'image/jpeg',
+    jpeg: 'image/jpeg',
+    webp: 'image/webp',
+    gif: 'image/gif',
+};
+
+interface OverlayItemConfig {
+    id: string;
+    enabled: boolean;
+    mediaRef: string;
+    label: string;
+    mediaMime: string;
+    startSec: number;
+    endSec: number;
+    x: number;
+    y: number;
+    w: number;
+    h: number;
+}
 
 function getStreamerIdsFromEnv(): string[] {
     const entries = Object.entries(process.env);
@@ -135,6 +185,19 @@ interface DbClipRow {
     split_deleted_segments_json: string | null;
     split_zoom_segments_json: string | null;
     split_zoom_layouts_json: string | null;
+    overlay_items_json?: string | null;
+    overlay_enabled?: number | null;
+    overlay_media_path?: string | null;
+    overlay_media_mime?: string | null;
+    overlay_start_sec?: number | null;
+    overlay_end_sec?: number | null;
+    overlay_x?: number | null;
+    overlay_y?: number | null;
+    overlay_w?: number | null;
+    overlay_h?: number | null;
+    clip_tags_json?: string | null;
+    uploaded_to_tiktok?: number | null;
+    uploaded_at?: string | null;
 }
 
 interface ClipUploadResult {
@@ -391,6 +454,19 @@ db.exec(`
         split_deleted_segments_json TEXT,
         split_zoom_segments_json TEXT,
         split_zoom_layouts_json TEXT,
+        overlay_items_json TEXT NOT NULL DEFAULT '[]',
+        overlay_enabled INTEGER NOT NULL DEFAULT 0,
+        overlay_media_path TEXT,
+        overlay_media_mime TEXT,
+        overlay_start_sec REAL,
+        overlay_end_sec REAL,
+        overlay_x REAL,
+        overlay_y REAL,
+        overlay_w REAL,
+        overlay_h REAL,
+        clip_tags_json TEXT NOT NULL DEFAULT '[]',
+        uploaded_to_tiktok INTEGER NOT NULL DEFAULT 0,
+        uploaded_at TEXT,
         fetched_at    TEXT NOT NULL,
         PRIMARY KEY (user_id, clip_id),
         FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE,
@@ -442,6 +518,19 @@ addColumnIfMissing('ALTER TABLE user_clip_state ADD COLUMN split_points_json TEX
 addColumnIfMissing('ALTER TABLE user_clip_state ADD COLUMN split_deleted_segments_json TEXT');
 addColumnIfMissing('ALTER TABLE user_clip_state ADD COLUMN split_zoom_segments_json TEXT');
 addColumnIfMissing('ALTER TABLE user_clip_state ADD COLUMN split_zoom_layouts_json TEXT');
+addColumnIfMissing('ALTER TABLE user_clip_state ADD COLUMN overlay_items_json TEXT NOT NULL DEFAULT \'[]\'');
+addColumnIfMissing('ALTER TABLE user_clip_state ADD COLUMN overlay_enabled INTEGER NOT NULL DEFAULT 0');
+addColumnIfMissing('ALTER TABLE user_clip_state ADD COLUMN overlay_media_path TEXT');
+addColumnIfMissing('ALTER TABLE user_clip_state ADD COLUMN overlay_media_mime TEXT');
+addColumnIfMissing('ALTER TABLE user_clip_state ADD COLUMN overlay_start_sec REAL');
+addColumnIfMissing('ALTER TABLE user_clip_state ADD COLUMN overlay_end_sec REAL');
+addColumnIfMissing('ALTER TABLE user_clip_state ADD COLUMN overlay_x REAL');
+addColumnIfMissing('ALTER TABLE user_clip_state ADD COLUMN overlay_y REAL');
+addColumnIfMissing('ALTER TABLE user_clip_state ADD COLUMN overlay_w REAL');
+addColumnIfMissing('ALTER TABLE user_clip_state ADD COLUMN overlay_h REAL');
+addColumnIfMissing('ALTER TABLE user_clip_state ADD COLUMN clip_tags_json TEXT NOT NULL DEFAULT \'[]\'');
+addColumnIfMissing('ALTER TABLE user_clip_state ADD COLUMN uploaded_to_tiktok INTEGER NOT NULL DEFAULT 0');
+addColumnIfMissing('ALTER TABLE user_clip_state ADD COLUMN uploaded_at TEXT');
 addColumnIfMissing('ALTER TABLE users ADD COLUMN email TEXT');
 addColumnIfMissing('ALTER TABLE users ADD COLUMN email_verified INTEGER NOT NULL DEFAULT 0');
 addColumnIfMissing('ALTER TABLE users ADD COLUMN email_verified_at TEXT');
@@ -1397,7 +1486,14 @@ function linkClipsToUser(userId: number, clips: Clip[]): void {
     }
 }
 
-function getAllClips(userId: number): (Clip & { approved: boolean; sorted_out: boolean; fetched_at: string })[] {
+function getAllClips(userId: number): (Clip & {
+    approved: boolean;
+    sorted_out: boolean;
+    fetched_at: string;
+    clip_tags: string[];
+    uploaded_to_tiktok: boolean;
+    uploaded_at: string | null;
+})[] {
     const rows = db.prepare(`
         SELECT
             c.id,
@@ -1440,14 +1536,50 @@ function getAllClips(userId: number): (Clip & { approved: boolean; sorted_out: b
             s.split_points_json,
             s.split_deleted_segments_json,
             s.split_zoom_segments_json,
-            s.split_zoom_layouts_json
+            s.split_zoom_layouts_json,
+            s.overlay_items_json,
+            s.overlay_enabled,
+            s.overlay_media_mime,
+            s.overlay_start_sec,
+            s.overlay_end_sec,
+            s.overlay_x,
+            s.overlay_y,
+            s.overlay_w,
+            s.overlay_h,
+            s.clip_tags_json,
+            s.uploaded_to_tiktok,
+            s.uploaded_at
         FROM user_clip_state s
         JOIN clips c ON c.id = s.clip_id
         WHERE s.user_id = $user_id
         ORDER BY c.broadcaster_name COLLATE NOCASE ASC, c.view_count DESC
     `).all({ $user_id: userId }) as DbClipRow[];
     const allowedStreamerNames = listUserStreamerNameKeys(userId);
-    const mapped = rows.map(r => ({ ...r, approved: r.approved === 1, sorted_out: r.sorted_out === 1 }));
+    const mapped = rows.map(r => {
+        const overlayItems = getOverlayItemsForClipRow(r).map((item) => ({
+            id: item.id,
+            enabled: item.enabled ? 1 : 0,
+            media_ref: item.mediaRef,
+            label: item.label,
+            media_mime: item.mediaMime,
+            media_url: buildOverlayMediaUrlByRef(r.id, item.mediaRef, false),
+            start_sec: item.startSec,
+            end_sec: item.endSec,
+            x: item.x,
+            y: item.y,
+            w: item.w,
+            h: item.h,
+        }));
+        return {
+            ...r,
+            approved: r.approved === 1,
+            sorted_out: r.sorted_out === 1,
+            overlay_items: overlayItems,
+            clip_tags: parseClipTagsJson(r.clip_tags_json),
+            uploaded_to_tiktok: r.uploaded_to_tiktok === 1,
+            uploaded_at: typeof r.uploaded_at === 'string' && r.uploaded_at ? r.uploaded_at : null,
+        };
+    });
     if (allowedStreamerNames.size === 0) return [];
 
     return mapped.filter(row => {
@@ -1505,6 +1637,19 @@ function parseUploadLimit(limitRaw: number | string | undefined): number {
     return Math.max(1, Math.min(100, Number(limitRaw) || 25));
 }
 
+function markClipUploadedForUser(userId: number, clipId: string): void {
+    db.prepare(`
+        UPDATE user_clip_state
+        SET uploaded_to_tiktok = 1,
+            uploaded_at = $uploaded_at
+        WHERE user_id = $user_id AND clip_id = $clip_id
+    `).run({
+        $uploaded_at: new Date().toISOString(),
+        $user_id: userId,
+        $clip_id: clipId,
+    });
+}
+
 function getApprovedClips(userId: number, limit: number): DbClipRow[] {
     const rows = db.prepare(`
         SELECT
@@ -1548,7 +1693,17 @@ function getApprovedClips(userId: number, limit: number): DbClipRow[] {
             s.split_points_json,
             s.split_deleted_segments_json,
             s.split_zoom_segments_json,
-            s.split_zoom_layouts_json
+            s.split_zoom_layouts_json,
+            s.overlay_items_json,
+            s.overlay_enabled,
+            s.overlay_media_path,
+            s.overlay_media_mime,
+            s.overlay_start_sec,
+            s.overlay_end_sec,
+            s.overlay_x,
+            s.overlay_y,
+            s.overlay_w,
+            s.overlay_h
         FROM user_clip_state s
         JOIN clips c ON c.id = s.clip_id
         WHERE s.user_id = $user_id AND s.approved = 1 AND s.sorted_out = 0
@@ -1594,8 +1749,14 @@ async function runUploadJob(job: UploadJobState): Promise<void> {
             const result = await uploadSingleClipToTikTok(job.userId, clip, job.uploadMode, job.dryRun);
             job.results.push(result);
             job.processed += 1;
-            if (result.status === 'uploaded') job.uploaded += 1;
-            else job.failed += 1;
+            if (result.status === 'uploaded') {
+                job.uploaded += 1;
+                if (!job.dryRun) {
+                    markClipUploadedForUser(job.userId, clip.id);
+                }
+            } else {
+                job.failed += 1;
+            }
             job.updatedAt = new Date().toISOString();
         }
 
@@ -1668,6 +1829,195 @@ function isValidCropNumber(value: unknown): value is number {
     return typeof value === 'number' && Number.isFinite(value) && value >= 0 && value <= 1;
 }
 
+function normalizeOverlayMime(value: unknown): string | null {
+    const normalized = String(value || '').trim().toLowerCase();
+    if (!normalized) return null;
+    return Object.prototype.hasOwnProperty.call(OVERLAY_MIME_TO_EXTENSION, normalized) ? normalized : null;
+}
+
+function extensionForOverlayMime(mime: string | null | undefined): string | null {
+    const normalized = normalizeOverlayMime(mime);
+    if (!normalized) return null;
+    return OVERLAY_MIME_TO_EXTENSION[normalized] || null;
+}
+
+function resolveSafeOverlayMediaPath(rawPath: string | null | undefined): string | null {
+    const candidate = String(rawPath || '').trim();
+    if (!candidate) return null;
+    const resolved = path.resolve(candidate);
+    const root = path.resolve(OVERLAY_MEDIA_DIR);
+    if (!(resolved === root || resolved.startsWith(`${root}${path.sep}`))) {
+        return null;
+    }
+    return resolved;
+}
+
+function buildOverlayMediaUrl(clipId: string, cacheBuster = true): string {
+    const base = `/api/crop/${encodeURIComponent(String(clipId || ''))}/overlay-media`;
+    if (!cacheBuster) return base;
+    return `${base}?v=${Date.now()}`;
+}
+
+function buildOverlayMediaUrlByRef(clipId: string, mediaRef: string, cacheBuster = true): string {
+    const safeRef = String(mediaRef || '').trim();
+    const base = `/api/crop/${encodeURIComponent(String(clipId || ''))}/overlay-media/${encodeURIComponent(safeRef)}`;
+    if (!cacheBuster) return base;
+    return `${base}?v=${Date.now()}`;
+}
+
+function sanitizeOverlayMediaRef(raw: unknown): string | null {
+    const value = String(raw || '').trim();
+    if (!value) return null;
+    if (!/^[a-zA-Z0-9._-]{1,180}$/.test(value)) return null;
+    return value;
+}
+
+function resolveOverlayPathFromRef(rawRef: unknown): string | null {
+    const mediaRef = sanitizeOverlayMediaRef(rawRef);
+    if (!mediaRef) return null;
+    const candidate = path.resolve(path.join(OVERLAY_MEDIA_DIR, mediaRef));
+    const root = path.resolve(OVERLAY_MEDIA_DIR);
+    if (!(candidate === root || candidate.startsWith(`${root}${path.sep}`))) {
+        return null;
+    }
+    return candidate;
+}
+
+function inferOverlayMimeFromRef(mediaRef: string): string | null {
+    const clean = String(mediaRef || '').trim().toLowerCase();
+    const ext = clean.includes('.') ? clean.slice(clean.lastIndexOf('.') + 1) : '';
+    if (!ext) return null;
+    return OVERLAY_EXTENSION_TO_MIME[ext] || null;
+}
+
+function sanitizeOverlayLabel(raw: unknown, fallback = ''): string {
+    const chosen = String(raw || fallback || '').trim();
+    if (!chosen) return '';
+    const basename = chosen.replace(/\\/g, '/').split('/').pop() || chosen;
+    return basename
+        .replace(/[\u0000-\u001f\u007f]/g, '')
+        .replace(/\s+/g, ' ')
+        .trim()
+        .slice(0, 120);
+}
+
+function normalizeOverlayItems(raw: unknown, maxItems = 24): OverlayItemConfig[] {
+    const source = Array.isArray(raw) ? raw : [];
+    const out: OverlayItemConfig[] = [];
+    const seenIds = new Set<string>();
+    const maxCount = Math.max(1, Math.min(60, Number(maxItems) || 24));
+
+    for (let i = 0; i < source.length && out.length < maxCount; i += 1) {
+        const itemRaw = source[i];
+        if (!itemRaw || typeof itemRaw !== 'object' || Array.isArray(itemRaw)) continue;
+        const item = itemRaw as Record<string, unknown>;
+        const mediaRef = sanitizeOverlayMediaRef(item.media_ref ?? item.mediaRef);
+        if (!mediaRef) continue;
+        const label = sanitizeOverlayLabel(item.label ?? item.file_name, mediaRef);
+        const mediaMime = normalizeOverlayMime(item.media_mime ?? item.mediaMime) || inferOverlayMimeFromRef(mediaRef);
+        if (!mediaMime) continue;
+
+        const startRaw = Number(item.start_sec ?? item.startSec ?? 0);
+        const endRaw = Number(item.end_sec ?? item.endSec ?? (startRaw + 4));
+        const startSec = Math.max(0, Math.min(600, Number.isFinite(startRaw) ? startRaw : 0));
+        const endSec = Math.max(startSec + 0.05, Math.min(600, Number.isFinite(endRaw) ? endRaw : (startSec + 4)));
+
+        const xRaw = Number(item.x ?? 0.06);
+        const yRaw = Number(item.y ?? 0.06);
+        const wRaw = Number(item.w ?? 0.34);
+        const hRaw = Number(item.h ?? 0.24);
+        if (!Number.isFinite(xRaw) || !Number.isFinite(yRaw) || !Number.isFinite(wRaw) || !Number.isFinite(hRaw)) continue;
+        const w = Math.max(0.05, Math.min(1, wRaw));
+        const h = Math.max(0.05, Math.min(1, hRaw));
+        const x = Math.max(0, Math.min(1 - w, xRaw));
+        const y = Math.max(0, Math.min(1 - h, yRaw));
+
+        const enabled = Number(item.enabled ?? 1) !== 0;
+        const rawId = String(item.id || '').trim();
+        const safeBaseId = /^[a-zA-Z0-9_-]{1,80}$/.test(rawId) ? rawId : `ov_${i + 1}`;
+        let id = safeBaseId;
+        let suffix = 2;
+        while (seenIds.has(id)) {
+            id = `${safeBaseId}_${suffix}`;
+            suffix += 1;
+        }
+        seenIds.add(id);
+
+        out.push({
+            id,
+            enabled,
+            mediaRef,
+            label,
+            mediaMime,
+            startSec,
+            endSec,
+            x,
+            y,
+            w,
+            h,
+        });
+    }
+
+    return out;
+}
+
+function parseOverlayItemsJson(raw: string | null | undefined): OverlayItemConfig[] {
+    if (!raw) return [];
+    try {
+        const parsed = JSON.parse(raw);
+        return normalizeOverlayItems(parsed);
+    } catch {
+        return [];
+    }
+}
+
+function buildLegacyOverlayItemsFromRow(row: DbClipRow): OverlayItemConfig[] {
+    const enabled = Number(row.overlay_enabled || 0) === 1;
+    if (!enabled) return [];
+    const mediaPath = resolveSafeOverlayMediaPath(row.overlay_media_path);
+    if (!mediaPath || !fs.existsSync(mediaPath)) return [];
+    const mediaRef = sanitizeOverlayMediaRef(path.basename(mediaPath));
+    if (!mediaRef) return [];
+    const mediaMime = normalizeOverlayMime(row.overlay_media_mime) || inferOverlayMimeFromRef(mediaRef);
+    if (!mediaMime) return [];
+    return normalizeOverlayItems([{
+        id: 'ov_legacy_1',
+        enabled: 1,
+        media_ref: mediaRef,
+        label: sanitizeOverlayLabel(mediaRef),
+        media_mime: mediaMime,
+        start_sec: Number(row.overlay_start_sec ?? 0),
+        end_sec: Number(row.overlay_end_sec ?? 4),
+        x: Number(row.overlay_x ?? 0.06),
+        y: Number(row.overlay_y ?? 0.06),
+        w: Number(row.overlay_w ?? 0.34),
+        h: Number(row.overlay_h ?? 0.24),
+    }], 1);
+}
+
+function getOverlayItemsForClipRow(row: DbClipRow): OverlayItemConfig[] {
+    const fromJson = parseOverlayItemsJson(row.overlay_items_json);
+    if (fromJson.length > 0) return fromJson;
+    return buildLegacyOverlayItemsFromRow(row);
+}
+
+function parseOverlayDataUrl(raw: unknown): { mime: string; buffer: Buffer } | null {
+    if (typeof raw !== 'string') return null;
+    const trimmed = raw.trim();
+    const match = /^data:([^;,]+);base64,([a-z0-9+/=\s]+)$/i.exec(trimmed);
+    if (!match) return null;
+    const mime = normalizeOverlayMime(match[1]);
+    if (!mime) return null;
+    try {
+        const payload = match[2].replace(/\s+/g, '');
+        const buffer = Buffer.from(payload, 'base64');
+        if (!buffer || buffer.length === 0 || buffer.length > OVERLAY_MEDIA_MAX_BYTES) return null;
+        return { mime, buffer };
+    } catch {
+        return null;
+    }
+}
+
 function buildClipVideoCandidates(thumbnailUrl: string): string[] {
     const raw = String(thumbnailUrl || '').trim();
     if (!raw) return [];
@@ -1702,6 +2052,7 @@ function getCropOrDefault(clip: DbClipRow): {
     gameplayOutput: { y: number; h: number };
     thirdOutput: { enabled: boolean; x: number; y: number; w: number; h: number };
     twitchName: { enabled: boolean; x: number; y: number; text: string; scale: number };
+    overlay: { items: Array<{ id: string; mediaPath: string; mediaMime: string; startSec: number; endSec: number; x: number; y: number; w: number; h: number }> };
     split: { points: number[]; deletedSegments: number[]; zoomSegments: number[]; zoomLayouts: Record<string, { x: number; y: number; w: number; h: number }> };
 } {
     const clamp = (v: number) => Math.max(0, Math.min(1, v));
@@ -1763,6 +2114,25 @@ function getCropOrDefault(clip: DbClipRow): {
         text: twitchNameText,
         scale: twitchNameScale,
     };
+    const overlayItems = getOverlayItemsForClipRow(clip)
+        .filter(item => item.enabled)
+        .map((item) => {
+            const mediaPath = resolveOverlayPathFromRef(item.mediaRef);
+            if (!mediaPath || !fs.existsSync(mediaPath)) return null;
+            return {
+                id: item.id,
+                mediaPath,
+                mediaMime: item.mediaMime,
+                startSec: item.startSec,
+                endSec: item.endSec,
+                x: item.x,
+                y: item.y,
+                w: item.w,
+                h: item.h,
+            };
+        })
+        .filter((item): item is { id: string; mediaPath: string; mediaMime: string; startSec: number; endSec: number; x: number; y: number; w: number; h: number } => !!item);
+    const overlay = { items: overlayItems };
 
     const split = {
         points: normalizeSplitPoints(parseJsonNumberArray(clip.split_points_json), null),
@@ -1771,7 +2141,7 @@ function getCropOrDefault(clip: DbClipRow): {
         zoomLayouts: normalizeSplitZoomLayouts(parseJsonZoomLayoutMap(clip.split_zoom_layouts_json), null),
     };
 
-    return { cam, gameplay, third, camEnabled, camOutput, gameplayOutput, thirdOutput, twitchName, split };
+    return { cam, gameplay, third, camEnabled, camOutput, gameplayOutput, thirdOutput, twitchName, overlay, split };
 }
 
 function parseJsonNumberArray(raw: string | null | undefined): number[] {
@@ -1791,6 +2161,29 @@ function parseJsonIntArray(raw: string | null | undefined): number[] {
         const parsed = JSON.parse(raw);
         if (!Array.isArray(parsed)) return [];
         return parsed.map(v => Number(v)).filter(v => Number.isInteger(v));
+    } catch {
+        return [];
+    }
+}
+
+function normalizeClipTags(raw: unknown): string[] {
+    const source = Array.isArray(raw) ? raw : [];
+    const allowed = new Set(CLIP_TAG_OPTIONS);
+    const out: string[] = [];
+    for (const item of source) {
+        const tag = String(item || '').trim().toLowerCase();
+        if (!tag || !allowed.has(tag as (typeof CLIP_TAG_OPTIONS)[number])) continue;
+        if (out.includes(tag)) continue;
+        out.push(tag);
+    }
+    return out.slice(0, CLIP_TAG_OPTIONS.length);
+}
+
+function parseClipTagsJson(raw: string | null | undefined): string[] {
+    if (!raw) return [];
+    try {
+        const parsed = JSON.parse(raw);
+        return normalizeClipTags(parsed);
     } catch {
         return [];
     }
@@ -2591,8 +2984,14 @@ function runCommandCaptureOutput(command: string, args: string[]): Promise<{ std
     });
 }
 
-async function processClipToTikTokFormat(inputPath: string, outputPath: string, clip: DbClipRow, videoPreset = 'medium'): Promise<void> {
-    const { cam, gameplay, third, camEnabled, camOutput, gameplayOutput, thirdOutput, twitchName, split } = getCropOrDefault(clip);
+async function processClipToTikTokFormat(
+    inputPath: string,
+    outputPath: string,
+    clip: DbClipRow,
+    videoPreset = DEFAULT_UPLOAD_VIDEO_PRESET,
+    videoCrf = DEFAULT_UPLOAD_VIDEO_CRF
+): Promise<void> {
+    const { cam, gameplay, third, camEnabled, camOutput, gameplayOutput, thirdOutput, twitchName, overlay, split } = getCropOrDefault(clip);
     const n = (v: number) => v.toFixed(6);
     const ts = (v: number) => Math.max(0, v).toFixed(3);
     const outputW = 1080;
@@ -2607,6 +3006,24 @@ async function processClipToTikTokFormat(inputPath: string, outputPath: string, 
     const thirdOutputYPx = Math.max(0, Math.round(outputH * thirdOutput.y));
     const logoPath = twitchName.enabled ? resolveTwitchLogoPath() : null;
     const showNameBadge = twitchName.enabled;
+    const logoInputIndex = showNameBadge && logoPath ? 1 : -1;
+    const overlayItems = overlay.items
+        .map((item) => ({
+            ...item,
+            startSec: Math.max(0, item.startSec),
+            endSec: Math.max(item.startSec + 0.05, item.endSec),
+            boxW: Math.max(2, Math.round(outputW * item.w)),
+            boxH: Math.max(2, Math.round(outputH * item.h)),
+            boxX: Math.max(0, Math.round(outputW * item.x)),
+            boxY: Math.max(0, Math.round(outputH * item.y)),
+        }))
+        .filter(item => item.mediaPath && fs.existsSync(item.mediaPath));
+    const overlayEnabled = overlayItems.length > 0;
+    const overlayInputStartIndex = logoInputIndex >= 1 ? (logoInputIndex + 1) : 1;
+    const overlayItemsWithInput = overlayItems.map((item, idx) => ({
+        ...item,
+        inputIndex: overlayInputStartIndex + idx,
+    }));
     const drawtextSupported = await isDrawtextFilterSupported();
     const drawtextFontPath = resolveDrawtextFontPath();
     const drawtextFontOpt = drawtextFontPath ? `:fontfile='${toFfmpegFilterPath(drawtextFontPath)}'` : '';
@@ -2643,7 +3060,8 @@ async function processClipToTikTokFormat(inputPath: string, outputPath: string, 
     const roundedMask = (alpha: number) => `if(lte(abs(X-W/2),W/2-H/2),${alpha},if(lte((X-H/2)*(X-H/2)+(Y-H/2)*(Y-H/2),(H/2)*(H/2)),${alpha},if(lte((X-(W-H/2))*(X-(W-H/2))+(Y-H/2)*(Y-H/2),(H/2)*(H/2)),${alpha},0)))`;
     const badgeSourceDurationSec = 86400;
 
-    const splitPoints = normalizeSplitPoints(split.points, null);
+    const sourceDurationSec = await probeMediaDurationSeconds(inputPath);
+    const splitPoints = normalizeSplitPoints(split.points, sourceDurationSec);
     const splitSegmentCount = splitPoints.length + 1;
     const splitDeletedSegments = normalizeSplitDeletedSegments(split.deletedSegments, splitSegmentCount);
     const splitZoomSegments = normalizeSplitDeletedSegments(split.zoomSegments, splitSegmentCount);
@@ -2659,6 +3077,19 @@ async function processClipToTikTokFormat(inputPath: string, outputPath: string, 
         throw new Error('All split parts are deleted. Keep at least one segment before exporting.');
     }
     const splitEnabled = splitConfigured && splitRanges.length > 0;
+    const expectedOutputDurationSec = (() => {
+        if (!Number.isFinite(sourceDurationSec as number) || Number(sourceDurationSec) <= 0) return null;
+        const safeSourceDuration = Number(sourceDurationSec);
+        if (!splitEnabled) return safeSourceDuration;
+        let total = 0;
+        splitRanges.forEach((range) => {
+            const start = Math.max(0, Math.min(safeSourceDuration, Number(range.start) || 0));
+            const rawEnd = range.end === null ? safeSourceDuration : Number(range.end);
+            const end = Math.max(start, Math.min(safeSourceDuration, Number.isFinite(rawEnd) ? rawEnd : safeSourceDuration));
+            total += Math.max(0, end - start);
+        });
+        return total > 0 ? total : null;
+    })();
 
 
     const hasAudio = await hasAudioStream(inputPath);
@@ -2700,6 +3131,10 @@ async function processClipToTikTokFormat(inputPath: string, outputPath: string, 
         }
     }
 
+    // Cap working timeline FPS before expensive split/crop/overlay steps.
+    const sourceVideoFpsLabel = 'vsrc_fps';
+    filterSteps.push(`[${sourceVideoLabel}]fps=${FFMPEG_OUTPUT_FPS}[${sourceVideoFpsLabel}]`);
+
     const hasZoomEffect = zoomExpr.length > 0;
     const shouldRenderCamLayer = camEnabled || hasZoomEffect || thirdOutput.enabled;
     if (shouldRenderCamLayer) {
@@ -2711,18 +3146,18 @@ async function processClipToTikTokFormat(inputPath: string, outputPath: string, 
         const splitTargets = [`[${gameplaySourceLabel}]`, `[${camSourceLabel}]`];
         if (camThirdSourceLabel) splitTargets.push(`[${camThirdSourceLabel}]`);
         splitTargets.push(...camZoomSourceLabels.map(label => `[${label}]`));
-        filterSteps.push(`[${sourceVideoLabel}]split=${splitTargets.length}${splitTargets.join('')}`);
-        filterSteps.push(`[${gameplaySourceLabel}]crop=iw*${n(gameplay.w)}:ih*${n(gameplay.h)}:iw*${n(gameplay.x)}:ih*${n(gameplay.y)},scale=${outputW}:${gameplayOutputHeightPx}:flags=lanczos:force_original_aspect_ratio=disable,setsar=1[game]`);
+        filterSteps.push(`[${sourceVideoFpsLabel}]split=${splitTargets.length}${splitTargets.join('')}`);
+        filterSteps.push(`[${gameplaySourceLabel}]crop=iw*${n(gameplay.w)}:ih*${n(gameplay.h)}:iw*${n(gameplay.x)}:ih*${n(gameplay.y)},scale=${outputW}:${gameplayOutputHeightPx}:flags=bicubic:force_original_aspect_ratio=disable,setsar=1[game]`);
         filterSteps.push(`color=c=black:s=${outputW}x${outputH}:d=${badgeSourceDurationSec}[layout_base]`);
         filterSteps.push(`[layout_base][game]overlay=0:${gameplayOutputYPx}:format=auto:shortest=1[bg]`);
-        filterSteps.push(`[${camSourceLabel}]crop=iw*${n(cam.w)}:ih*${n(cam.h)}:iw*${n(cam.x)}:ih*${n(cam.y)},scale=${outputW}:${camOutputHeightPx}:flags=lanczos:force_original_aspect_ratio=disable,setsar=1[cam]`);
+        filterSteps.push(`[${camSourceLabel}]crop=iw*${n(cam.w)}:ih*${n(cam.h)}:iw*${n(cam.x)}:ih*${n(cam.y)},scale=${outputW}:${camOutputHeightPx}:flags=bicubic:force_original_aspect_ratio=disable,setsar=1[cam]`);
         const normalCamEnable = camEnabled ? notZoomExpr : '0';
         filterSteps.push(`[bg][cam]overlay=0:${camOutputYPx}:format=auto:enable='${normalCamEnable}'[base_norm]`);
         let normalBaseLabel = 'base_norm';
         if (thirdOutput.enabled && camThirdSourceLabel) {
             const thirdOverlayX = `${thirdOutputXPx}+(${thirdOutputWPx}-overlay_w)/2`;
             const thirdOverlayY = `${thirdOutputYPx}+(${thirdOutputHPx}-overlay_h)/2`;
-            filterSteps.push(`[${camThirdSourceLabel}]crop=iw*${n(third.w)}:ih*${n(third.h)}:iw*${n(third.x)}:ih*${n(third.y)},scale=${thirdOutputWPx}:${thirdOutputHPx}:flags=lanczos:force_original_aspect_ratio=decrease,setsar=1[cam_third]`);
+            filterSteps.push(`[${camThirdSourceLabel}]crop=iw*${n(third.w)}:ih*${n(third.h)}:iw*${n(third.x)}:ih*${n(third.y)},scale=${thirdOutputWPx}:${thirdOutputHPx}:flags=bicubic:force_original_aspect_ratio=decrease,setsar=1[cam_third]`);
             filterSteps.push(`[base_norm][cam_third]overlay=${thirdOverlayX}:${thirdOverlayY}:format=auto:enable='${notZoomExpr}'[base_norm_third]`);
             normalBaseLabel = 'base_norm_third';
         }
@@ -2743,7 +3178,7 @@ async function processClipToTikTokFormat(inputPath: string, outputPath: string, 
                 const zoomOverlayX = `${zoomX}+(${zoomW}-overlay_w)/2`;
                 const zoomOverlayY = `${zoomY}+(${zoomH}-overlay_h)/2`;
                 // Keep background gameplay visible around zoom camera; avoid black letterbox padding.
-                filterSteps.push(`[${camZoomSourceLabels[idx]}]crop=iw*${n(cam.w)}:ih*${n(cam.h)}:iw*${n(cam.x)}:ih*${n(cam.y)},scale=${zoomW}:${zoomH}:flags=lanczos:force_original_aspect_ratio=decrease,setsar=1[${camZoomLabel}]`);
+                filterSteps.push(`[${camZoomSourceLabels[idx]}]crop=iw*${n(cam.w)}:ih*${n(cam.h)}:iw*${n(cam.x)}:ih*${n(cam.y)},scale=${zoomW}:${zoomH}:flags=bicubic:force_original_aspect_ratio=decrease,setsar=1[${camZoomLabel}]`);
                 filterSteps.push(`[${zoomBaseLabel}][${camZoomLabel}]overlay=${zoomOverlayX}:${zoomOverlayY}:format=auto:enable='${zoomExprForGroup}',setsar=1[${nextBaseLabel}]`);
                 zoomBaseLabel = nextBaseLabel;
             });
@@ -2751,7 +3186,7 @@ async function processClipToTikTokFormat(inputPath: string, outputPath: string, 
             filterSteps.push(`[${normalBaseLabel}]setsar=1[base]`);
         }
     } else {
-        filterSteps.push(`[${sourceVideoLabel}]crop=iw*${n(gameplay.w)}:ih*${n(gameplay.h)}:iw*${n(gameplay.x)}:ih*${n(gameplay.y)},scale=${outputW}:${gameplayOutputHeightPx}:flags=lanczos:force_original_aspect_ratio=disable,setsar=1[game]`);
+        filterSteps.push(`[${sourceVideoFpsLabel}]crop=iw*${n(gameplay.w)}:ih*${n(gameplay.h)}:iw*${n(gameplay.x)}:ih*${n(gameplay.y)},scale=${outputW}:${gameplayOutputHeightPx}:flags=bicubic:force_original_aspect_ratio=disable,setsar=1[game]`);
         filterSteps.push(`color=c=black:s=${outputW}x${outputH}:d=${badgeSourceDurationSec}[layout_base]`);
         filterSteps.push(`[layout_base][game]overlay=0:${gameplayOutputYPx}:format=auto:shortest=1[base]`);
     }
@@ -2765,7 +3200,7 @@ async function processClipToTikTokFormat(inputPath: string, outputPath: string, 
         filterSteps.push(`[badge_outline][pill_fill]overlay=${nameBadgeX}:${nameBadgeY}:format=auto:shortest=1${badgeEnableOpt}[badge_bg]`);
         let badgeOutLabel = 'badge_bg';
         if (logoPath) {
-            filterSteps.push(`[1:v]scale=${nameIconWPx}:${nameIconHPx}:flags=lanczos:force_original_aspect_ratio=decrease[tw_logo]`);
+            filterSteps.push(`[${logoInputIndex}:v]scale=${nameIconWPx}:${nameIconHPx}:flags=bicubic:force_original_aspect_ratio=decrease[tw_logo]`);
             // Do not shorten output to a single logo frame; keep base video timeline authoritative.
             filterSteps.push(`[badge_bg][tw_logo]overlay=${logoX}:${logoY}:format=auto:eof_action=repeat${badgeEnableOpt}[badge_logo]`);
             badgeOutLabel = 'badge_logo';
@@ -2774,7 +3209,7 @@ async function processClipToTikTokFormat(inputPath: string, outputPath: string, 
         if (canDrawNameText) {
             const drawTextEnableOpt = hasZoomEffect ? `:enable='${notZoomExpr}'` : '';
             filterSteps.push(`[${badgeOutLabel}]drawtext=text='${safeTwitchName}':x=${textX}:y=${textY}:fontsize=${nameFontPx}${drawtextFontOpt}:fontcolor=white:borderw=1:bordercolor=black@0.55:shadowcolor=black@0.45:shadowx=1:shadowy=1${drawTextEnableOpt}[name_out]`);
-            filterSteps.push('[name_out]format=yuv420p[v]');
+            filterSteps.push('[name_out]format=yuv420p[v_base]');
         } else {
             const bitmapPx = Math.max(1, Math.round(nameFontPx / 8));
             const bitmapTextHeight = 7 * bitmapPx;
@@ -2793,13 +3228,31 @@ async function processClipToTikTokFormat(inputPath: string, outputPath: string, 
             );
             if (bitmapFallback.rendered) {
                 filterSteps.push(...bitmapFallback.filters);
-                filterSteps.push(`[${bitmapFallback.outLabel}]format=yuv420p[v]`);
+                filterSteps.push(`[${bitmapFallback.outLabel}]format=yuv420p[v_base]`);
             } else {
-                filterSteps.push(`[${badgeOutLabel}]format=yuv420p[v]`);
+                filterSteps.push(`[${badgeOutLabel}]format=yuv420p[v_base]`);
             }
         }
     } else {
-        filterSteps.push('[base]format=yuv420p[v]');
+        filterSteps.push('[base]format=yuv420p[v_base]');
+    }
+
+    if (overlayEnabled) {
+        let baseLabel = 'v_base';
+        overlayItemsWithInput.forEach((item, idx) => {
+            const overlayLabel = `clip_overlay_media_${idx}`;
+            const nextBase = `v_overlay_${idx}`;
+            const enableExpr = `between(t\\,${ts(item.startSec)}\\,${ts(item.endSec)})`;
+            const overlayXExpr = `${item.boxX}+(${item.boxW}-overlay_w)/2`;
+            const overlayYExpr = `${item.boxY}+(${item.boxH}-overlay_h)/2`;
+            const gifFpsStep = item.mediaMime === 'image/gif' ? `fps=${FFMPEG_GIF_FPS},` : '';
+            filterSteps.push(`[${item.inputIndex}:v]${gifFpsStep}scale=${item.boxW}:${item.boxH}:flags=bicubic:force_original_aspect_ratio=decrease,setsar=1,format=rgba[${overlayLabel}]`);
+            filterSteps.push(`[${baseLabel}][${overlayLabel}]overlay=${overlayXExpr}:${overlayYExpr}:format=auto:eof_action=repeat:enable='${enableExpr}'[${nextBase}]`);
+            baseLabel = nextBase;
+        });
+        filterSteps.push(`[${baseLabel}]format=yuv420p[v]`);
+    } else {
+        filterSteps.push('[v_base]format=yuv420p[v]');
     }
 
     const filter = filterSteps.join(';');
@@ -2808,6 +3261,14 @@ async function processClipToTikTokFormat(inputPath: string, outputPath: string, 
     if (showNameBadge && logoPath) {
         args.push('-i', logoPath);
     }
+    overlayItemsWithInput.forEach((item) => {
+        if (item.mediaMime === 'image/gif') {
+            // Respect GIF loop metadata for animation during active overlay time.
+            args.push('-ignore_loop', '0', '-i', item.mediaPath);
+            return;
+        }
+        args.push('-i', item.mediaPath);
+    });
     args.push(
         '-filter_complex', filter,
         '-map', '[v]',
@@ -2819,12 +3280,19 @@ async function processClipToTikTokFormat(inputPath: string, outputPath: string, 
         args.push('-map', '0:a?');
     }
 
+    if (expectedOutputDurationSec && Number.isFinite(expectedOutputDurationSec)) {
+        // Prevent long-running encodes when looping overlay sources (for example animated GIFs) are present.
+        args.push('-t', ts(expectedOutputDurationSec + 0.02));
+    }
+
     args.push(
         '-c:v', 'libx264',
         '-preset', videoPreset,
-        '-crf', '21',
+        '-crf', String(videoCrf),
         '-c:a', 'aac',
         '-b:a', '128k',
+        ...(FFMPEG_FILTER_THREAD_CAP > 0 ? ['-filter_threads', String(FFMPEG_FILTER_THREAD_CAP), '-filter_complex_threads', String(FFMPEG_FILTER_THREAD_CAP)] : []),
+        ...(FFMPEG_THREAD_CAP > 0 ? ['-threads', String(FFMPEG_THREAD_CAP)] : []),
         '-movflags', '+faststart',
         outputPath,
     );
@@ -3160,7 +3628,7 @@ async function buildProcessedClipForDownload(clip: DbClipRow): Promise<string> {
         }
 
         // Download path prioritizes faster turnaround over encode efficiency.
-        await processClipToTikTokFormat(inPath, outPath, clip, 'veryfast');
+        await processClipToTikTokFormat(inPath, outPath, clip, DEFAULT_DOWNLOAD_VIDEO_PRESET, DEFAULT_DOWNLOAD_VIDEO_CRF);
         return outPath;
     } finally {
         await fs.promises.rm(inPath, { force: true }).catch(() => {});
@@ -3248,6 +3716,18 @@ function parseTwitchNameScale(value: unknown): number | null {
     if (!Number.isFinite(n)) return null;
     if (n < 0.65 || n > 2.4) return null;
     return n;
+}
+
+function parseClipTagsPayload(value: unknown): string[] | null {
+    if (value === undefined || value === null) return [];
+    if (!Array.isArray(value)) return null;
+    return normalizeClipTags(value);
+}
+
+function parseOverlayItemsPayload(value: unknown): OverlayItemConfig[] | null {
+    if (value === undefined || value === null) return [];
+    if (!Array.isArray(value)) return null;
+    return normalizeOverlayItems(value);
 }
 
 function parseSplitPointsPayload(value: unknown): number[] | null {
@@ -3427,7 +3907,7 @@ async function fetchClipsForAllStreamers(accessToken: string, streamerIDs: strin
 
 // ── Express setup ──────────────────────────────────────────────────────────
 
-app.use(express.json());
+app.use(express.json({ limit: '40mb' }));
 app.use(express.urlencoded({ extended: true }));
 app.use(
     session({
@@ -4659,7 +5139,17 @@ app.get('/api/clips/:clipId/download-cropped', requireAuth, async (req: Request,
                 s.split_points_json,
                 s.split_deleted_segments_json,
                 s.split_zoom_segments_json,
-                s.split_zoom_layouts_json
+                s.split_zoom_layouts_json,
+                s.overlay_items_json,
+                s.overlay_enabled,
+                s.overlay_media_path,
+                s.overlay_media_mime,
+                s.overlay_start_sec,
+                s.overlay_end_sec,
+                s.overlay_x,
+                s.overlay_y,
+                s.overlay_w,
+                s.overlay_h
             FROM clips c
             JOIN user_clip_state s ON s.clip_id = c.id
             WHERE c.id = $id AND s.user_id = $user_id
@@ -4737,6 +5227,9 @@ app.post('/api/tiktok/upload-approved', requireAuth, async (req: Request, res: R
     for (const clip of approved) {
         const result = await uploadSingleClipToTikTok(userId, clip, uploadMode, dryRun);
         results.push(result);
+        if (!dryRun && result.status === 'uploaded') {
+            markClipUploadedForUser(userId, clip.id);
+        }
     }
 
     const uploaded = results.filter(r => r.status === 'uploaded').length;
@@ -4885,6 +5378,36 @@ app.get('/api/admin/db', requireAuth, (req: Request, res: Response) => {
     }
 });
 
+app.get('/api/analytics/tags', requireAuth, (req: Request, res: Response) => {
+    try {
+        const userId = getRequiredUserId(req);
+        const rows = db.prepare(`
+            SELECT clip_tags_json
+            FROM user_clip_state
+            WHERE user_id = $user_id AND uploaded_to_tiktok = 1
+        `).all({ $user_id: userId }) as Array<{ clip_tags_json: string | null }>;
+
+        const counts = new Map<string, number>();
+        for (const tag of CLIP_TAG_OPTIONS) counts.set(tag, 0);
+
+        for (const row of rows) {
+            const tags = parseClipTagsJson(row.clip_tags_json);
+            for (const tag of tags) {
+                counts.set(tag, (counts.get(tag) || 0) + 1);
+            }
+        }
+
+        res.json({
+            uploadedByTag: CLIP_TAG_OPTIONS.map((tag) => ({ tag, count: counts.get(tag) || 0 })),
+            totalUploadedClips: rows.length,
+            performanceByTag: CLIP_TAG_OPTIONS.map((tag) => ({ tag, value: null })),
+        });
+    } catch (err) {
+        console.error('Tag analytics endpoint error:', err);
+        res.status(500).json({ error: 'Failed to build tag analytics' });
+    }
+});
+
 // ── Crop editor endpoints ────────────────────────────────────────────────
 app.get('/api/crop/:clipId', requireAuth, (req: Request, res: Response) => {
     const userId = getRequiredUserId(req);
@@ -4894,6 +5417,9 @@ app.get('/api/crop/:clipId', requireAuth, (req: Request, res: Response) => {
         SELECT c.id, c.broadcaster_name, s.approved, s.cam_x, s.cam_y, s.cam_w, s.cam_h, s.cam_enabled, s.twitch_name_enabled, s.twitch_name_x, s.twitch_name_y, s.twitch_name_text, s.twitch_name_scale, s.gameplay_x, s.gameplay_y, s.gameplay_w, s.gameplay_h, s.third_x, s.third_y, s.third_w, s.third_h, s.cam_output_y, s.cam_output_h, s.gameplay_output_y, s.gameplay_output_h
              , s.third_area_enabled, s.third_output_x, s.third_output_y, s.third_output_w, s.third_output_h
              , s.split_points_json, s.split_deleted_segments_json, s.split_zoom_segments_json, s.split_zoom_layouts_json
+             , s.overlay_items_json
+             , s.overlay_enabled, s.overlay_media_path, s.overlay_media_mime, s.overlay_start_sec, s.overlay_end_sec, s.overlay_x, s.overlay_y, s.overlay_w, s.overlay_h
+             , s.clip_tags_json
         FROM clips c
         JOIN user_clip_state s ON s.clip_id = c.id
         WHERE c.id = $id AND s.user_id = $user_id
@@ -4904,6 +5430,26 @@ app.get('/api/crop/:clipId', requireAuth, (req: Request, res: Response) => {
         res.status(404).json({ error: 'Clip not found' });
         return;
     }
+    const overlayItems = getOverlayItemsForClipRow(row)
+        .filter((item) => {
+            const mediaPath = resolveOverlayPathFromRef(item.mediaRef);
+            return !!mediaPath && fs.existsSync(mediaPath);
+        })
+        .map((item) => ({
+            id: item.id,
+            enabled: item.enabled ? 1 : 0,
+            media_ref: item.mediaRef,
+            label: item.label,
+            media_mime: item.mediaMime,
+            media_url: buildOverlayMediaUrlByRef(row.id, item.mediaRef),
+            start_sec: item.startSec,
+            end_sec: item.endSec,
+            x: item.x,
+            y: item.y,
+            w: item.w,
+            h: item.h,
+        }));
+    const firstOverlay = overlayItems[0] || null;
 
     res.json({
         approved: row.approved === 1,
@@ -4939,7 +5485,122 @@ app.get('/api/crop/:clipId', requireAuth, (req: Request, res: Response) => {
             split_deleted_segments: parseJsonIntArray(row.split_deleted_segments_json),
             split_zoom_segments: parseJsonIntArray(row.split_zoom_segments_json),
             split_zoom_layouts: parseJsonZoomLayoutMap(row.split_zoom_layouts_json),
+            overlay_items: overlayItems,
+            // Keep legacy single-overlay fields for backwards compatibility with older clients.
+            overlay_enabled: firstOverlay ? 1 : 0,
+            overlay_media_mime: firstOverlay?.media_mime || null,
+            overlay_media_url: firstOverlay?.media_url || null,
+            overlay_start_sec: firstOverlay ? Number(firstOverlay.start_sec) : 0,
+            overlay_end_sec: firstOverlay ? Number(firstOverlay.end_sec) : 4,
+            overlay_x: firstOverlay ? Number(firstOverlay.x) : 0.06,
+            overlay_y: firstOverlay ? Number(firstOverlay.y) : 0.06,
+            overlay_w: firstOverlay ? Number(firstOverlay.w) : 0.34,
+            overlay_h: firstOverlay ? Number(firstOverlay.h) : 0.24,
+            clip_tags: parseClipTagsJson(row.clip_tags_json),
         }
+    });
+});
+
+app.get('/api/crop/:clipId/overlay-media/:mediaRef', requireAuth, async (req: Request, res: Response) => {
+    try {
+        const userId = getRequiredUserId(req);
+        const { clipId, mediaRef } = req.params;
+        const safeMediaRef = sanitizeOverlayMediaRef(mediaRef);
+        if (!safeMediaRef) {
+            res.status(404).json({ error: 'Overlay media not found' });
+            return;
+        }
+
+        const row = db.prepare(`
+            SELECT overlay_items_json, overlay_enabled, overlay_media_path, overlay_media_mime
+            FROM user_clip_state
+            WHERE clip_id = $id AND user_id = $user_id
+            LIMIT 1
+        `).get({ $id: clipId, $user_id: userId }) as { overlay_items_json?: string | null; overlay_enabled?: number | null; overlay_media_path?: string | null; overlay_media_mime?: string | null } | undefined;
+
+        if (!row) {
+            res.status(404).json({ error: 'Overlay media not found' });
+            return;
+        }
+
+        const allowedRefs = new Set<string>();
+        getOverlayItemsForClipRow(row as DbClipRow).forEach((item) => {
+            allowedRefs.add(item.mediaRef);
+        });
+        if (Number(row.overlay_enabled || 0) === 1) {
+            const legacyPath = resolveSafeOverlayMediaPath(row.overlay_media_path);
+            if (legacyPath) {
+                const legacyRef = sanitizeOverlayMediaRef(path.basename(legacyPath));
+                if (legacyRef) allowedRefs.add(legacyRef);
+            }
+        }
+
+        const uploadPrefix = `${userId}_${clipId}_`;
+        const canReadByOwnershipPrefix = safeMediaRef.startsWith(uploadPrefix);
+        if (!allowedRefs.has(safeMediaRef) && !canReadByOwnershipPrefix) {
+            res.status(404).json({ error: 'Overlay media not found' });
+            return;
+        }
+
+        const overlayPath = resolveOverlayPathFromRef(safeMediaRef);
+        if (!overlayPath || !fs.existsSync(overlayPath)) {
+            res.status(404).json({ error: 'Overlay media not found' });
+            return;
+        }
+
+        const mime = inferOverlayMimeFromRef(safeMediaRef) || normalizeOverlayMime(row.overlay_media_mime) || 'application/octet-stream';
+        res.setHeader('Cache-Control', 'private, max-age=300');
+        res.setHeader('Content-Type', mime);
+        res.sendFile(overlayPath);
+    } catch {
+        res.status(500).json({ error: 'Could not load overlay media' });
+    }
+});
+
+app.post('/api/crop/:clipId/overlay-media', requireAuth, async (req: Request, res: Response) => {
+    const userId = getRequiredUserId(req);
+    const { clipId } = req.params;
+    const { data_url, mime_type } = req.body as Record<string, unknown>;
+
+    const parsed = parseOverlayDataUrl(data_url);
+    if (!parsed) {
+        res.status(400).json({ error: 'Invalid image/gif payload. Use a base64 data URL up to 24MB.' });
+        return;
+    }
+
+    const mime = normalizeOverlayMime(mime_type) || parsed.mime;
+    const ext = extensionForOverlayMime(mime);
+    if (!ext) {
+        res.status(400).json({ error: 'Unsupported image/gif type. Use png, jpg, webp, or gif.' });
+        return;
+    }
+
+    const currentRow = db.prepare(`
+        SELECT approved
+        FROM user_clip_state
+        WHERE clip_id = $id AND user_id = $user_id
+        LIMIT 1
+    `).get({ $id: clipId, $user_id: userId }) as { approved?: number | null } | undefined;
+    if (!currentRow || Number(currentRow.approved || 0) !== 1) {
+        res.status(400).json({ error: 'Overlay can only be added to approved clips.' });
+        return;
+    }
+
+    await fs.promises.mkdir(OVERLAY_MEDIA_DIR, { recursive: true });
+    const fileToken = `${userId}_${clipId}_${Date.now()}_${randomUUID().slice(0, 8)}`;
+    const outputPath = path.join(OVERLAY_MEDIA_DIR, `${fileToken}.${ext}`);
+    await fs.promises.writeFile(outputPath, parsed.buffer);
+    const mediaRef = path.basename(outputPath);
+
+    res.json({
+        success: true,
+        overlay: {
+            media_ref: mediaRef,
+            media_mime: mime,
+            media_url: buildOverlayMediaUrlByRef(clipId, mediaRef),
+            overlay_media_mime: mime,
+            overlay_media_url: buildOverlayMediaUrlByRef(clipId, mediaRef),
+        },
     });
 });
 
@@ -4969,6 +5630,15 @@ app.post('/api/crop/:clipId', requireAuth, (req: Request, res: Response) => {
         split_deleted_segments,
         split_zoom_segments,
         split_zoom_layouts,
+        overlay_items,
+        overlay_enabled,
+        overlay_start_sec,
+        overlay_end_sec,
+        overlay_x,
+        overlay_y,
+        overlay_w,
+        overlay_h,
+        clip_tags,
     } = req.body as Record<string, unknown>;
 
     const parsedCamEnabled = parseCamEnabled(cam_enabled);
@@ -5060,6 +5730,101 @@ app.post('/api/crop/:clipId', requireAuth, (req: Request, res: Response) => {
         return;
     }
 
+    const parsedClipTags = parseClipTagsPayload(clip_tags);
+    if (parsedClipTags === null) {
+        res.status(400).json({ error: `Invalid clip_tags. Use an array of: ${CLIP_TAG_OPTIONS.join(', ')}.` });
+        return;
+    }
+
+    const existingRow = db.prepare(`
+        SELECT overlay_items_json, overlay_media_path, overlay_media_mime, overlay_enabled, approved
+        FROM user_clip_state
+        WHERE clip_id = $id AND user_id = $user_id
+        LIMIT 1
+    `).get({ $id: clipId, $user_id: userId }) as {
+        overlay_items_json?: string | null;
+        overlay_media_path?: string | null;
+        overlay_media_mime?: string | null;
+        overlay_enabled?: number | null;
+        approved?: number | null;
+    } | undefined;
+
+    if (!existingRow || Number(existingRow.approved || 0) !== 1) {
+        res.status(400).json({ error: 'Crop can only be saved for approved clips.' });
+        return;
+    }
+
+    let nextOverlayItems: OverlayItemConfig[] = [];
+    if (overlay_items !== undefined) {
+        const parsedOverlayItems = parseOverlayItemsPayload(overlay_items);
+        if (parsedOverlayItems === null) {
+            res.status(400).json({ error: 'Invalid overlay_items. Provide an array of overlay entries.' });
+            return;
+        }
+        nextOverlayItems = parsedOverlayItems;
+    } else {
+        // Backward compatibility for legacy clients still posting single-overlay fields.
+        const parsedOverlayEnabled = parseCamEnabled(overlay_enabled);
+        if (parsedOverlayEnabled === null) {
+            res.status(400).json({ error: 'Invalid overlay_enabled value. Use 0 or 1.' });
+            return;
+        }
+        if (parsedOverlayEnabled === 0) {
+            nextOverlayItems = [];
+        } else {
+            const overlayStartSec = Number.isFinite(Number(overlay_start_sec)) ? Number(overlay_start_sec) : 0;
+            const overlayEndSec = Number.isFinite(Number(overlay_end_sec)) ? Number(overlay_end_sec) : Math.max(0.8, overlayStartSec + 4);
+            const overlayTimingValues = [overlayStartSec, overlayEndSec];
+            if (overlayTimingValues.some((value) => !Number.isFinite(value) || value < 0 || value > 600) || overlayTimingValues[1] <= (overlayTimingValues[0] + 0.05)) {
+                res.status(400).json({ error: 'Invalid overlay timing. Use start/end seconds where end is at least 0.05s after start.' });
+                return;
+            }
+            const overlayX = Number.isFinite(Number(overlay_x)) ? Number(overlay_x) : 0.06;
+            const overlayY = Number.isFinite(Number(overlay_y)) ? Number(overlay_y) : 0.06;
+            const overlayW = Number.isFinite(Number(overlay_w)) ? Number(overlay_w) : 0.34;
+            const overlayH = Number.isFinite(Number(overlay_h)) ? Number(overlay_h) : 0.24;
+            const overlayLayoutValues = [overlayX, overlayY, overlayW, overlayH];
+            if (!overlayLayoutValues.every(isValidCropNumber) || overlayW < 0.05 || overlayH < 0.05 || (overlayX + overlayW) > 1 || (overlayY + overlayH) > 1) {
+                res.status(400).json({ error: 'Invalid overlay layout. Keep width/height >= 0.05 and inside the 9:16 frame.' });
+                return;
+            }
+
+            const existingOverlayPath = resolveSafeOverlayMediaPath(existingRow.overlay_media_path);
+            const existingOverlayRef = existingOverlayPath ? sanitizeOverlayMediaRef(path.basename(existingOverlayPath)) : null;
+            const existingOverlayMime = normalizeOverlayMime(existingRow.overlay_media_mime) || (existingOverlayRef ? inferOverlayMimeFromRef(existingOverlayRef) : null);
+            if (!existingOverlayRef || !existingOverlayMime || !existingOverlayPath || !fs.existsSync(existingOverlayPath)) {
+                res.status(400).json({ error: 'Upload an image/gif first before enabling overlay.' });
+                return;
+            }
+
+            nextOverlayItems = normalizeOverlayItems([{
+                id: 'ov_legacy_1',
+                enabled: 1,
+                media_ref: existingOverlayRef,
+                label: sanitizeOverlayLabel(existingOverlayRef),
+                media_mime: existingOverlayMime,
+                start_sec: overlayStartSec,
+                end_sec: overlayEndSec,
+                x: overlayX,
+                y: overlayY,
+                w: overlayW,
+                h: overlayH,
+            }], 1);
+        }
+    }
+
+    for (const item of nextOverlayItems) {
+        const mediaPath = resolveOverlayPathFromRef(item.mediaRef);
+        if (!mediaPath || !fs.existsSync(mediaPath)) {
+            res.status(400).json({ error: `Overlay media missing for item ${item.id}. Please re-upload image/gif.` });
+            return;
+        }
+    }
+
+    const firstOverlay = nextOverlayItems[0] || null;
+    const firstOverlayPath = firstOverlay ? resolveOverlayPathFromRef(firstOverlay.mediaRef) : null;
+    const firstOverlayMime = firstOverlay ? normalizeOverlayMime(firstOverlay.mediaMime) : null;
+
     const updated = db.prepare(`
         UPDATE user_clip_state
         SET cam_x = $cam_x,
@@ -5092,7 +5857,18 @@ app.post('/api/crop/:clipId', requireAuth, (req: Request, res: Response) => {
             split_points_json = $split_points_json,
             split_deleted_segments_json = $split_deleted_segments_json,
             split_zoom_segments_json = $split_zoom_segments_json,
-            split_zoom_layouts_json = $split_zoom_layouts_json
+            split_zoom_layouts_json = $split_zoom_layouts_json,
+            overlay_items_json = $overlay_items_json,
+            overlay_enabled = $overlay_enabled,
+            overlay_media_path = $overlay_media_path,
+            overlay_media_mime = $overlay_media_mime,
+            overlay_start_sec = $overlay_start_sec,
+            overlay_end_sec = $overlay_end_sec,
+            overlay_x = $overlay_x,
+            overlay_y = $overlay_y,
+            overlay_w = $overlay_w,
+            overlay_h = $overlay_h,
+            clip_tags_json = $clip_tags_json
         WHERE clip_id = $id AND user_id = $user_id AND approved = 1
     `).run({
         $id: clipId,
@@ -5128,6 +5904,29 @@ app.post('/api/crop/:clipId', requireAuth, (req: Request, res: Response) => {
         $split_deleted_segments_json: JSON.stringify(parsedSplitDeletedSegments),
         $split_zoom_segments_json: JSON.stringify(parsedSplitZoomSegments),
         $split_zoom_layouts_json: JSON.stringify(parsedSplitZoomLayouts),
+        $overlay_items_json: JSON.stringify(nextOverlayItems.map((item) => ({
+            id: item.id,
+            enabled: item.enabled ? 1 : 0,
+            media_ref: item.mediaRef,
+            label: item.label,
+            media_mime: item.mediaMime,
+            start_sec: item.startSec,
+            end_sec: item.endSec,
+            x: item.x,
+            y: item.y,
+            w: item.w,
+            h: item.h,
+        }))),
+        $overlay_enabled: firstOverlay ? 1 : 0,
+        $overlay_media_path: firstOverlayPath || null,
+        $overlay_media_mime: firstOverlayMime || null,
+        $overlay_start_sec: firstOverlay ? firstOverlay.startSec : null,
+        $overlay_end_sec: firstOverlay ? firstOverlay.endSec : null,
+        $overlay_x: firstOverlay ? firstOverlay.x : null,
+        $overlay_y: firstOverlay ? firstOverlay.y : null,
+        $overlay_w: firstOverlay ? firstOverlay.w : null,
+        $overlay_h: firstOverlay ? firstOverlay.h : null,
+        $clip_tags_json: JSON.stringify(parsedClipTags),
     });
 
     if (!updated.changes) {
@@ -5148,5 +5947,6 @@ app.listen(PORT, () => {
     console.log('👥  Multi-user mode enabled: each account manages its own streamer list.');
     console.log(`🧰  Twitch fetch config: lookback=${TWITCH_CLIPS_LOOKBACK_DAYS} days, max_pages=${TWITCH_CLIPS_MAX_PAGES}, page_size=${TWITCH_CLIPS_PAGE_SIZE}`);
     console.log(`🔎  Clip visibility filter: min_views=${MIN_CLIP_VIEWS}`);
+    console.log(`[ffmpeg] render tuning: fps=${FFMPEG_OUTPUT_FPS}, gif_fps=${FFMPEG_GIF_FPS}, threads=${FFMPEG_THREAD_CAP || 'auto'}, filter_threads=${FFMPEG_FILTER_THREAD_CAP || 'auto'}, upload_preset=${DEFAULT_UPLOAD_VIDEO_PRESET}, download_preset=${DEFAULT_DOWNLOAD_VIDEO_PRESET}, upload_crf=${DEFAULT_UPLOAD_VIDEO_CRF}, download_crf=${DEFAULT_DOWNLOAD_VIDEO_CRF}`);
     console.log(`🔐  Session mode: ${IS_PRODUCTION ? 'production secure cookies enabled' : 'development cookies (non-secure)'}`);
 });
