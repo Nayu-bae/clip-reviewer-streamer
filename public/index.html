@@ -3379,17 +3379,19 @@
       pointer-events: auto;
       user-select: none;
       cursor: grab;
-      background: linear-gradient(135deg, rgba(14, 14, 18, 0.78), rgba(23, 23, 31, 0.74));
-      border: 1px solid rgba(77, 91, 255, 0.62);
-      color: #fff;
-      font-weight: 700;
-      border-radius: 999px;
-      box-shadow:
-        0 6px 18px rgba(0, 0, 0, 0.38),
-        0 0 12px rgba(77, 91, 255, 0.24);
-      text-shadow: 0 1px 2px rgba(0, 0, 0, 0.45);
+      background: transparent;
+      border: none;
+      color: #bcc4d3;
+      font-family: "Segoe UI", Arial, sans-serif;
+      font-weight: 800;
+      font-style: italic;
+      letter-spacing: 0.015em;
+      border-radius: 0;
+      box-shadow: none;
+      text-shadow: 0 2px 2px rgba(0, 0, 0, 0.58);
       white-space: nowrap;
       box-sizing: border-box;
+      overflow: visible;
     }
 
     .output-name-badge.dragging {
@@ -3398,31 +3400,29 @@
 
     .output-name-badge.editing {
       cursor: text;
-      border-color: rgba(166, 184, 255, 0.9);
-      box-shadow:
-        0 6px 18px rgba(0, 0, 0, 0.42),
-        0 0 0 2px rgba(136, 156, 255, 0.28),
-        0 0 14px rgba(105, 125, 255, 0.3);
+      box-shadow: none;
     }
 
     .output-name-badge img {
       display: block;
       object-fit: contain;
       flex: 0 0 auto;
+      filter: none;
+      opacity: 1;
     }
 
     .output-name-badge #output-name-badge-text {
       display: block;
-      line-height: 1.04;
+      line-height: 1.02;
       pointer-events: auto;
       cursor: grab;
       user-select: none;
       -webkit-user-select: none;
       min-width: 0;
       white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      transform: translateY(0.04em);
+      overflow: visible;
+      text-overflow: clip;
+      transform: translateY(0.02em);
     }
 
     .output-name-badge.dragging #output-name-badge-text {
@@ -3435,9 +3435,9 @@
       bottom: -7px;
       width: 14px;
       height: 14px;
-      border-radius: 4px;
-      border: 1px solid rgba(167, 139, 250, 0.95);
-      background: linear-gradient(135deg, rgba(167, 139, 250, 0.96), rgba(77, 91, 255, 0.95));
+      border-radius: 3px;
+      border: 1px solid rgba(193, 201, 214, 0.95);
+      background: linear-gradient(135deg, rgba(190, 198, 211, 0.96), rgba(118, 131, 153, 0.94));
       box-shadow: 0 1px 6px rgba(0, 0, 0, 0.45);
       cursor: nwse-resize;
       z-index: 2;
@@ -3576,7 +3576,7 @@
     }
 
     .crop-inline-input-row.show {
-      max-height: 96px;
+      max-height: 176px;
       opacity: 1;
       transform: translateY(0);
       pointer-events: auto;
@@ -3609,6 +3609,60 @@
       border-color: rgba(162, 179, 255, 0.88);
       box-shadow: 0 0 0 2px rgba(120, 140, 255, 0.22), 0 0 12px rgba(77, 91, 255, 0.2);
       background: rgba(10, 14, 24, 0.96);
+    }
+
+    .crop-inline-input-row .twitch-name-opacity-wrap {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 8px;
+      align-items: center;
+      margin-top: 2px;
+    }
+
+    .crop-inline-input-row input[type="range"] {
+      appearance: none;
+      width: 100%;
+      height: 6px;
+      border: 0;
+      padding: 0;
+      border-radius: 999px;
+      background: linear-gradient(90deg, rgba(102, 120, 178, 0.48), rgba(157, 174, 231, 0.86));
+      box-shadow: inset 0 0 0 1px rgba(122, 141, 197, 0.35);
+      cursor: pointer;
+    }
+
+    .crop-inline-input-row input[type="range"]::-webkit-slider-thumb {
+      appearance: none;
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      border: 1px solid rgba(205, 216, 255, 0.95);
+      background: #f2f5ff;
+      box-shadow: 0 1px 6px rgba(0, 0, 0, 0.42);
+    }
+
+    .crop-inline-input-row input[type="range"]::-moz-range-track {
+      height: 6px;
+      border-radius: 999px;
+      background: linear-gradient(90deg, rgba(102, 120, 178, 0.48), rgba(157, 174, 231, 0.86));
+      border: 0;
+    }
+
+    .crop-inline-input-row input[type="range"]::-moz-range-thumb {
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      border: 1px solid rgba(205, 216, 255, 0.95);
+      background: #f2f5ff;
+      box-shadow: 0 1px 6px rgba(0, 0, 0, 0.42);
+    }
+
+    .twitch-name-opacity-value {
+      color: #dbe6ff;
+      font-size: 0.78rem;
+      font-weight: 700;
+      min-width: 42px;
+      text-align: right;
     }
 
     .crop-tags-wrap {
@@ -4940,6 +4994,11 @@
           <div id="twitch-name-input-row" class="crop-inline-input-row">
             <label for="twitch-name-input">Display Name</label>
             <input id="twitch-name-input" type="text" maxlength="64" autocomplete="off" spellcheck="false" />
+            <label for="twitch-name-opacity-slider">Transparency</label>
+            <div class="twitch-name-opacity-wrap">
+              <input id="twitch-name-opacity-slider" type="range" min="0" max="100" step="1" value="100" />
+              <span id="twitch-name-opacity-value" class="twitch-name-opacity-value">100%</span>
+            </div>
           </div>
           <div class="crop-toggle-row" id="preview-borders-toggle-row">
             <span>Preview borders</span>
@@ -5164,7 +5223,7 @@
   const SIDEBAR_COLLAPSE_KEY = 'clipReviewer.sidebarCollapsed.v1';
   const SESSION_PROGRESS_KEY_PREFIX = 'clipReviewer.sessionProgress.v1.user.';
   const BADGE_CENTER_SNAP_THRESHOLD = 0.015;
-  const OUTPUT_BADGE_MAX_WIDTH_RATIO = 0.82;
+  const OUTPUT_BADGE_MAX_WIDTH_RATIO = 0.98;
   const OUTPUT_BADGE_MAX_HEIGHT_RATIO = 0.18;
   const ONBOARDING_PROGRESS_KEY_PREFIX = 'clipReviewer.onboardingProgress.v2.user.';
   const ONBOARDING_PROGRESS_KEY_LEGACY = 'clipReviewer.onboardingProgress.v1';
@@ -5214,6 +5273,7 @@
     twitchNameEnabled: false,
     twitchNameText: '',
     twitchNameScale: 1,
+    twitchNameOpacity: 1,
     previewBordersEnabled: true,
     thirdAreaEnabled: false,
     twitchNamePos: { x: 0.04, y: 0.04 },
@@ -5235,6 +5295,8 @@
   // ── Helpers ─────────────────────────────────────────────────────────────
   const TWITCH_NAME_SCALE_MIN = 0.65;
   const TWITCH_NAME_SCALE_MAX = 2.4;
+  const TWITCH_NAME_OPACITY_MIN = 0;
+  const TWITCH_NAME_OPACITY_MAX = 1;
   const TWITCH_NAME_BLOCKED_WORDS = Object.freeze([
     'fuck',
     'shit',
@@ -5259,6 +5321,15 @@
       return Math.max(TWITCH_NAME_SCALE_MIN, Math.min(TWITCH_NAME_SCALE_MAX, safeFallback));
     }
     return Math.max(TWITCH_NAME_SCALE_MIN, Math.min(TWITCH_NAME_SCALE_MAX, n));
+  }
+
+  function clampTwitchNameOpacity(value, fallback = 1) {
+    const n = Number(value);
+    if (!Number.isFinite(n)) {
+      const safeFallback = Number.isFinite(Number(fallback)) ? Number(fallback) : DEFAULT_CROP.twitchNameOpacity;
+      return Math.max(TWITCH_NAME_OPACITY_MIN, Math.min(TWITCH_NAME_OPACITY_MAX, safeFallback));
+    }
+    return Math.max(TWITCH_NAME_OPACITY_MIN, Math.min(TWITCH_NAME_OPACITY_MAX, n));
   }
 
   function normalizeTwitchNameForModeration(value) {
@@ -8357,6 +8428,8 @@
   const twitchNameEnabledSlider = document.getElementById('twitch-name-enabled-slider');
   const twitchNameInputRow = document.getElementById('twitch-name-input-row');
   const twitchNameInput = document.getElementById('twitch-name-input');
+  const twitchNameOpacitySlider = document.getElementById('twitch-name-opacity-slider');
+  const twitchNameOpacityValue = document.getElementById('twitch-name-opacity-value');
   const previewBordersToggleRow = document.getElementById('preview-borders-toggle-row');
   const previewBordersEnabledSlider = document.getElementById('preview-borders-enabled-slider');
   const thirdAreaToggleRow = document.getElementById('third-area-toggle-row');
@@ -8394,6 +8467,7 @@
     if (cropState.twitchNameEnabled) {
       cropState.twitchNameText = getActiveTwitchNameText();
       cropState.twitchNameScale = clampTwitchNameScale(cropState.twitchNameScale, DEFAULT_CROP.twitchNameScale);
+      cropState.twitchNameOpacity = clampTwitchNameOpacity(cropState.twitchNameOpacity, DEFAULT_CROP.twitchNameOpacity);
     }
     updateCropBoxes();
     if (!wasEnabled && cropState.twitchNameEnabled && twitchNameInput) {
@@ -8521,6 +8595,26 @@
     e.preventDefault();
     commitTwitchNameInput();
     twitchNameInput.blur();
+  });
+  const commitTwitchNameOpacityFromSlider = () => {
+    if (!cropState || !twitchNameOpacitySlider) return;
+    const rawPercent = Number(twitchNameOpacitySlider.value);
+    const nextOpacity = clampTwitchNameOpacity(rawPercent / 100, cropState.twitchNameOpacity ?? DEFAULT_CROP.twitchNameOpacity);
+    cropState.twitchNameOpacity = nextOpacity;
+    const percentLabel = `${Math.round(nextOpacity * 100)}%`;
+    if (twitchNameOpacityValue) twitchNameOpacityValue.textContent = percentLabel;
+    if (twitchNameOpacitySlider.value !== String(Math.round(nextOpacity * 100))) {
+      twitchNameOpacitySlider.value = String(Math.round(nextOpacity * 100));
+    }
+    renderOutputPreview();
+  };
+  twitchNameOpacitySlider?.addEventListener('input', () => {
+    if (!cropState) return;
+    commitTwitchNameOpacityFromSlider();
+  });
+  twitchNameOpacitySlider?.addEventListener('change', () => {
+    if (!cropState) return;
+    commitTwitchNameOpacityFromSlider();
   });
   previewBordersToggleRow.addEventListener('pointerdown', (e) => {
     if (!cropState) return;
@@ -10106,11 +10200,19 @@
     twitchNameInputRow.classList.toggle('show', enabled);
     twitchNameInputRow.setAttribute('aria-hidden', enabled ? 'false' : 'true');
     twitchNameInput.disabled = !enabled;
+    if (twitchNameOpacitySlider) twitchNameOpacitySlider.disabled = !enabled;
     twitchNameInput.placeholder = String(activeCropClip?.broadcaster_name || '').trim();
     const nextValue = enabled ? getActiveTwitchNameText() : '';
     if (document.activeElement !== twitchNameInput && twitchNameInput.value !== nextValue) {
       twitchNameInput.value = nextValue;
     }
+    const nextOpacity = clampTwitchNameOpacity(cropState?.twitchNameOpacity, DEFAULT_CROP.twitchNameOpacity);
+    if (cropState) cropState.twitchNameOpacity = nextOpacity;
+    const nextPercent = String(Math.round(nextOpacity * 100));
+    if (twitchNameOpacitySlider && twitchNameOpacitySlider.value !== nextPercent) {
+      twitchNameOpacitySlider.value = nextPercent;
+    }
+    if (twitchNameOpacityValue) twitchNameOpacityValue.textContent = `${nextPercent}%`;
   }
 
   function syncPreviewBordersToggleUI() {
@@ -10300,6 +10402,7 @@
       twitch_name_y: cropState.twitchNamePos?.y ?? DEFAULT_CROP.twitchNamePos.y,
       twitch_name_text: getActiveTwitchNameText(),
       twitch_name_scale: clampTwitchNameScale(cropState.twitchNameScale, DEFAULT_CROP.twitchNameScale),
+      twitch_name_opacity: clampTwitchNameOpacity(cropState.twitchNameOpacity, DEFAULT_CROP.twitchNameOpacity),
       gameplay_x: cropState.gameplay.x,
       gameplay_y: cropState.gameplay.y,
       gameplay_w: cropState.gameplay.w,
@@ -10371,6 +10474,10 @@
     cropState.twitchNameScale = clampTwitchNameScale(
       payload.twitch_name_scale,
       cropState.twitchNameScale ?? DEFAULT_CROP.twitchNameScale
+    );
+    cropState.twitchNameOpacity = clampTwitchNameOpacity(
+      payload.twitch_name_opacity,
+      cropState.twitchNameOpacity ?? DEFAULT_CROP.twitchNameOpacity
     );
     cropState.cam = normalizeCrop(
       { x: payload.cam_x, y: payload.cam_y, w: payload.cam_w, h: payload.cam_h },
@@ -10561,6 +10668,7 @@
       twitchNameEnabled: clip.twitch_name_enabled === 1,
       twitchNameText: sanitizeTwitchNameText(clip.twitch_name_text, clip.broadcaster_name || ''),
       twitchNameScale: clampTwitchNameScale(clip.twitch_name_scale, DEFAULT_CROP.twitchNameScale),
+      twitchNameOpacity: clampTwitchNameOpacity(clip.twitch_name_opacity, DEFAULT_CROP.twitchNameOpacity),
       previewBordersEnabled: true,
       thirdAreaEnabled: clip.third_area_enabled === 1,
       twitchNamePos: normalizeNamePos({ x: clip.twitch_name_x, y: clip.twitch_name_y }, DEFAULT_CROP.twitchNamePos),
@@ -10605,6 +10713,7 @@
           twitchNameEnabled: data.crop.twitch_name_enabled === 1,
           twitchNameText: sanitizeTwitchNameText(data.crop.twitch_name_text, cropState.twitchNameText || clip.broadcaster_name || ''),
           twitchNameScale: clampTwitchNameScale(data.crop.twitch_name_scale, cropState.twitchNameScale ?? DEFAULT_CROP.twitchNameScale),
+          twitchNameOpacity: clampTwitchNameOpacity(data.crop.twitch_name_opacity, cropState.twitchNameOpacity ?? DEFAULT_CROP.twitchNameOpacity),
           previewBordersEnabled: cropState.previewBordersEnabled !== false,
           thirdAreaEnabled: data.crop.third_area_enabled === 1,
           twitchNamePos: normalizeNamePos({ x: data.crop.twitch_name_x, y: data.crop.twitch_name_y }, cropState.twitchNamePos),
@@ -10844,13 +10953,13 @@
 
     const computeBadgeMetrics = (fontSize) => {
       const safeFontPx = Math.max(12, Math.round(fontSize));
-      ctx.font = `700 ${safeFontPx}px Segoe UI, Arial, sans-serif`;
-      const padX = Math.round(safeFontPx * 0.60);
-      const iconHeight = Math.max(2, Math.round(safeFontPx * 1.26));
+      ctx.font = `italic 800 ${safeFontPx}px Segoe UI, Arial, sans-serif`;
+      const padX = Math.max(2, Math.round(safeFontPx * 0.12));
+      const iconHeight = Math.max(2, Math.round(safeFontPx * 1.30));
       const iconWidth = Math.max(2, Math.round(iconHeight * Math.max(0.4, Math.min(3, logoAspect))));
-      const gap = Math.round(safeFontPx * 0.24);
-      const badgeHeight = Math.round(safeFontPx * 1.78);
-      const textWidth = Math.ceil(ctx.measureText(text).width + Math.max(8, safeFontPx * 0.18));
+      const gap = Math.max(1, Math.round(safeFontPx * 0.10));
+      const badgeHeight = Math.max(iconHeight, Math.round(safeFontPx * 1.22)) + Math.max(2, Math.round(safeFontPx * 0.10));
+      const textWidth = Math.ceil(ctx.measureText(text).width + Math.max(8, safeFontPx * 0.22));
       const badgeWidth = padX + (hasLogo ? (iconWidth + gap) : 0) + textWidth + padX;
       return { fontPx: safeFontPx, padX, iconWidth, iconHeight, gap, badgeWidth, badgeHeight };
     };
@@ -11007,6 +11116,9 @@
     badgeLogoEl.style.width = `${badge.iconWidth * scale}px`;
     badgeLogoEl.style.height = `${badge.iconHeight * scale}px`;
     badgeLogoEl.style.display = badge.hasLogo ? 'block' : 'none';
+    const badgeOpacity = clampTwitchNameOpacity(cropState?.twitchNameOpacity, DEFAULT_CROP.twitchNameOpacity);
+    badgeLogoEl.style.opacity = `${badgeOpacity}`;
+    badgeTextEl.style.opacity = `${badgeOpacity}`;
     const resizePx = Math.max(10, 14 * scale);
     badgeResizeEl.style.width = `${resizePx}px`;
     badgeResizeEl.style.height = `${resizePx}px`;

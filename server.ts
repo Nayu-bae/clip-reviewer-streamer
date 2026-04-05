@@ -171,6 +171,7 @@ interface DbClipRow {
     twitch_name_y: number | null;
     twitch_name_text: string | null;
     twitch_name_scale: number | null;
+    twitch_name_opacity: number | null;
     gameplay_x: number | null;
     gameplay_y: number | null;
     gameplay_w: number | null;
@@ -440,6 +441,7 @@ db.exec(`
         twitch_name_y REAL,
         twitch_name_text TEXT,
         twitch_name_scale REAL,
+        twitch_name_opacity REAL,
         gameplay_x    REAL,
         gameplay_y    REAL,
         gameplay_w    REAL,
@@ -503,6 +505,7 @@ addColumnIfMissing('ALTER TABLE clips ADD COLUMN cam_output_y REAL');
 addColumnIfMissing('ALTER TABLE clips ADD COLUMN cam_output_h REAL');
 addColumnIfMissing('ALTER TABLE clips ADD COLUMN gameplay_output_y REAL');
 addColumnIfMissing('ALTER TABLE clips ADD COLUMN gameplay_output_h REAL');
+addColumnIfMissing('ALTER TABLE clips ADD COLUMN twitch_name_opacity REAL');
 addColumnIfMissing('ALTER TABLE user_clip_state ADD COLUMN cam_output_y REAL');
 addColumnIfMissing('ALTER TABLE user_clip_state ADD COLUMN cam_output_h REAL');
 addColumnIfMissing('ALTER TABLE user_clip_state ADD COLUMN gameplay_output_y REAL');
@@ -521,6 +524,7 @@ addColumnIfMissing('ALTER TABLE user_clip_state ADD COLUMN twitch_name_x REAL');
 addColumnIfMissing('ALTER TABLE user_clip_state ADD COLUMN twitch_name_y REAL');
 addColumnIfMissing('ALTER TABLE user_clip_state ADD COLUMN twitch_name_text TEXT');
 addColumnIfMissing('ALTER TABLE user_clip_state ADD COLUMN twitch_name_scale REAL');
+addColumnIfMissing('ALTER TABLE user_clip_state ADD COLUMN twitch_name_opacity REAL');
 addColumnIfMissing('ALTER TABLE user_clip_state ADD COLUMN split_points_json TEXT');
 addColumnIfMissing('ALTER TABLE user_clip_state ADD COLUMN split_deleted_segments_json TEXT');
 addColumnIfMissing('ALTER TABLE user_clip_state ADD COLUMN split_zoom_segments_json TEXT');
@@ -1351,7 +1355,7 @@ function ensureLegacySeedUser(): void {
             INSERT INTO user_clip_state (
                 user_id, clip_id, approved, sorted_out,
                 cam_x, cam_y, cam_w, cam_h, cam_enabled, twitch_name_enabled,
-                twitch_name_x, twitch_name_y, twitch_name_text, twitch_name_scale,
+                twitch_name_x, twitch_name_y, twitch_name_text, twitch_name_scale, twitch_name_opacity,
                 gameplay_x, gameplay_y, gameplay_w, gameplay_h,
                 third_x, third_y, third_w, third_h,
                 cam_output_y, cam_output_h,
@@ -1362,7 +1366,7 @@ function ensureLegacySeedUser(): void {
             ) VALUES (
                 $user_id, $clip_id, $approved, $sorted_out,
                 $cam_x, $cam_y, $cam_w, $cam_h, $cam_enabled, $twitch_name_enabled,
-                $twitch_name_x, $twitch_name_y, $twitch_name_text, $twitch_name_scale,
+                $twitch_name_x, $twitch_name_y, $twitch_name_text, $twitch_name_scale, $twitch_name_opacity,
                 $gameplay_x, $gameplay_y, $gameplay_w, $gameplay_h,
                 $third_x, $third_y, $third_w, $third_h,
                 $cam_output_y, $cam_output_h,
@@ -1389,6 +1393,7 @@ function ensureLegacySeedUser(): void {
                 $twitch_name_y: row.twitch_name_y,
                 $twitch_name_text: String(row.broadcaster_name || '').trim().slice(0, 64),
                 $twitch_name_scale: 1,
+                $twitch_name_opacity: 1,
                 $gameplay_x: row.gameplay_x,
                 $gameplay_y: row.gameplay_y,
                 $gameplay_w: row.gameplay_w,
@@ -1523,6 +1528,7 @@ function getAllClips(userId: number): (Clip & {
             s.twitch_name_y,
             s.twitch_name_text,
             s.twitch_name_scale,
+            s.twitch_name_opacity,
             s.gameplay_x,
             s.gameplay_y,
             s.gameplay_w,
@@ -1680,6 +1686,7 @@ function getApprovedClips(userId: number, limit: number): DbClipRow[] {
             s.twitch_name_y,
             s.twitch_name_text,
             s.twitch_name_scale,
+            s.twitch_name_opacity,
             s.gameplay_x,
             s.gameplay_y,
             s.gameplay_w,
@@ -2142,7 +2149,7 @@ function getCropOrDefault(clip: DbClipRow): {
     camOutput: { y: number; h: number };
     gameplayOutput: { y: number; h: number };
     thirdOutput: { enabled: boolean; x: number; y: number; w: number; h: number };
-    twitchName: { enabled: boolean; x: number; y: number; text: string; scale: number };
+    twitchName: { enabled: boolean; x: number; y: number; text: string; scale: number; opacity: number };
     overlay: { items: Array<{ id: string; mediaPath: string; mediaMime: string; startSec: number; endSec: number; x: number; y: number; w: number; h: number }> };
     split: { points: number[]; deletedSegments: number[]; zoomSegments: number[]; zoomLayouts: Record<string, { x: number; y: number; w: number; h: number }> };
 } {
@@ -2198,12 +2205,14 @@ function getCropOrDefault(clip: DbClipRow): {
     };
     const twitchNameText = String(clip.twitch_name_text || clip.broadcaster_name || '').trim().slice(0, 64);
     const twitchNameScale = Math.max(0.65, Math.min(2.4, asNum(clip.twitch_name_scale, 1)));
+    const twitchNameOpacity = Math.max(0, Math.min(1, asNum(clip.twitch_name_opacity, 1)));
     const twitchName = {
         enabled: clip.twitch_name_enabled === 1 && twitchNameText.length > 0,
         x: clamp(asNum(clip.twitch_name_x, 0.04)),
         y: clamp(asNum(clip.twitch_name_y, 0.04)),
         text: twitchNameText,
         scale: twitchNameScale,
+        opacity: twitchNameOpacity,
     };
     const overlayItems = getOverlayItemsForClipRow(clip)
         .filter(item => item.enabled)
@@ -2562,6 +2571,16 @@ function resolveDrawtextFontPath(): string | null {
     }
 
     const candidates = [
+        // Bold/italic variants first so render typography matches preview styling.
+        // Windows
+        'C:\\Windows\\Fonts\\segoeuiz.ttf',
+        'C:\\Windows\\Fonts\\arialbi.ttf',
+        // Linux
+        '/usr/share/fonts/truetype/dejavu/DejaVuSans-BoldOblique.ttf',
+        '/usr/share/fonts/truetype/liberation/LiberationSans-BoldItalic.ttf',
+        '/usr/share/fonts/truetype/noto/NotoSans-BoldItalic.ttf',
+        // macOS
+        '/System/Library/Fonts/Supplemental/Arial Bold Italic.ttf',
         // Windows defaults
         'C:\\Windows\\Fonts\\segoeui.ttf',
         'C:\\Windows\\Fonts\\arial.ttf',
@@ -2655,7 +2674,8 @@ function buildBitmapNameFallbackFilters(
     y: number,
     pixelSize: number,
     maxWidthPx: number,
-    enableExpr: string | null
+    enableExpr: string | null,
+    opacity = 1
 ): { filters: string[]; outLabel: string; rendered: boolean } {
     const raw = String(text || '').toUpperCase();
     if (!raw) return { filters: [], outLabel: inputLabel, rendered: false };
@@ -2674,6 +2694,8 @@ function buildBitmapNameFallbackFilters(
 
     const filters: string[] = [];
     const enableOpt = enableExpr ? `:enable='${enableExpr}'` : '';
+    const safeOpacity = Math.max(0, Math.min(1, Number(opacity) || 0));
+    const color = `0xBCC4D3@${safeOpacity.toFixed(3)}`;
     let currentLabel = inputLabel;
     let labelCounter = 0;
     let cursorX = x;
@@ -2704,7 +2726,7 @@ function buildBitmapNameFallbackFilters(
                 const boxW = segLen * px;
                 const nextLabel = `name_bitmap_${labelCounter}`;
                 labelCounter += 1;
-                filters.push(`[${currentLabel}]drawbox=x=${boxX}:y=${boxY}:w=${boxW}:h=${px}:color=white@0.96:t=fill${enableOpt}[${nextLabel}]`);
+                filters.push(`[${currentLabel}]drawbox=x=${boxX}:y=${boxY}:w=${boxW}:h=${px}:color=${color}:t=fill${enableOpt}[${nextLabel}]`);
                 currentLabel = nextLabel;
                 rendered = true;
             }
@@ -3139,35 +3161,55 @@ async function processClipToTikTokFormat(
     const drawtextFontOpt = drawtextFontPath ? `:fontfile='${toFfmpegFilterPath(drawtextFontPath)}'` : '';
 
     const badgeScale = Math.max(0.65, Math.min(2.4, twitchName.scale));
-    const nameFontPx = Math.max(14, Math.round(outputH * 0.039 * badgeScale));
-    const namePadX = Math.round(nameFontPx * 0.60);
-    const nameIconHPx = Math.max(2, Math.round(nameFontPx * 1.26));
+    const twitchNameOpacity = Math.max(0, Math.min(1, Number(twitchName.opacity) || 0));
     const logoAspect = logoPath ? getLogoAspectRatio(logoPath) : 1;
     const clampedLogoAspect = Math.max(0.4, Math.min(3, logoAspect));
-    const iconWRaw = Math.max(2, Math.round(nameIconHPx * clampedLogoAspect));
-    const nameIconWPx = iconWRaw % 2 === 0 ? iconWRaw : iconWRaw + 1;
-    const nameGapPx = Math.round(nameFontPx * 0.24);
-    const nameBadgeH = Math.round(nameFontPx * 1.78);
-    const estimatedTextW = Math.max(nameFontPx, Math.round(nameFontPx * 0.62 * twitchName.text.length));
-    const badgeContentW = (logoPath ? (nameIconWPx + nameGapPx) : 0) + estimatedTextW;
-    const nameBadgeW = Math.min(outputW - 24, namePadX + badgeContentW + namePadX);
+    const initialNameFontPx = Math.max(14, Math.round(outputH * 0.039 * badgeScale));
+    const maxNameBadgeW = Math.max(120, Math.round(outputW * 0.98));
+    const maxNameBadgeH = Math.max(36, Math.round(outputH * 0.18));
+    const estimateTextWidth = (fontPx: number): number => {
+        const safeFont = Math.max(12, Math.round(fontPx));
+        return Math.max(safeFont, Math.round((safeFont * 0.62 * twitchName.text.length) + Math.max(8, safeFont * 0.22)));
+    };
+    const computeNameMetrics = (fontPx: number) => {
+        const safeFontPx = Math.max(12, Math.round(fontPx));
+        const namePadX = Math.max(2, Math.round(safeFontPx * 0.12));
+        const nameIconHPx = Math.max(2, Math.round(safeFontPx * 1.30));
+        const iconWRaw = Math.max(2, Math.round(nameIconHPx * clampedLogoAspect));
+        const nameIconWPx = iconWRaw % 2 === 0 ? iconWRaw : iconWRaw + 1;
+        const nameGapPx = Math.max(1, Math.round(safeFontPx * 0.10));
+        const nameBadgeH = Math.max(nameIconHPx, Math.round(safeFontPx * 1.22)) + Math.max(2, Math.round(safeFontPx * 0.10));
+        const estimatedTextW = estimateTextWidth(safeFontPx);
+        const badgeContentW = (logoPath ? (nameIconWPx + nameGapPx) : 0) + estimatedTextW;
+        const nameBadgeW = namePadX + badgeContentW + namePadX;
+        return { fontPx: safeFontPx, namePadX, nameIconHPx, nameIconWPx, nameGapPx, nameBadgeH, nameBadgeW };
+    };
+    let nameMetrics = computeNameMetrics(initialNameFontPx);
+    const widthFit = maxNameBadgeW / Math.max(1, nameMetrics.nameBadgeW);
+    const heightFit = maxNameBadgeH / Math.max(1, nameMetrics.nameBadgeH);
+    const fitRatio = Math.max(0.2, Math.min(1, widthFit, heightFit));
+    if (fitRatio < 0.999) {
+        nameMetrics = computeNameMetrics(nameMetrics.fontPx * fitRatio);
+    }
+    const nameFontPx = nameMetrics.fontPx;
+    const namePadX = nameMetrics.namePadX;
+    const nameIconHPx = nameMetrics.nameIconHPx;
+    const nameIconWPx = nameMetrics.nameIconWPx;
+    const nameGapPx = nameMetrics.nameGapPx;
+    const nameBadgeH = Math.min(nameMetrics.nameBadgeH, maxNameBadgeH);
+    const nameBadgeW = Math.min(nameMetrics.nameBadgeW, maxNameBadgeW);
     const nameBadgeX = Math.max(0, Math.min(outputW - nameBadgeW, Math.round(outputW * twitchName.x)));
     const nameBadgeY = Math.max(0, Math.min(outputH - nameBadgeH, Math.round(outputH * twitchName.y)));
-    const nameOutlineW = nameBadgeW + 2;
-    const nameOutlineH = nameBadgeH + 2;
-    const nameOutlineX = Math.max(0, nameBadgeX - 1);
-    const nameOutlineY = Math.max(0, nameBadgeY - 1);
     const logoX = nameBadgeX + namePadX;
     const logoY = nameBadgeY + Math.round((nameBadgeH - nameIconHPx) / 2);
     const textX = nameBadgeX + namePadX + (logoPath ? (nameIconWPx + nameGapPx) : 0);
-    const textY = nameBadgeY + Math.round((nameBadgeH - nameFontPx) / 2 + (nameFontPx * 0.08));
+    const textY = nameBadgeY + Math.round((nameBadgeH - nameFontPx) / 2 + (nameFontPx * 0.04));
     const safeTwitchName = escapeFfmpegDrawtext(twitchName.text);
     const canDrawNameText = Boolean(drawtextSupported && safeTwitchName);
     if (!drawtextSupported && safeTwitchName && !warnedDrawtextUnavailable) {
         warnedDrawtextUnavailable = true;
         console.warn('[drawtext] ffmpeg drawtext filter is not available in this build. Using bitmap-text fallback for Twitch name overlay.');
     }
-    const roundedMask = (alpha: number) => `if(lte(abs(X-W/2),W/2-H/2),${alpha},if(lte((X-H/2)*(X-H/2)+(Y-H/2)*(Y-H/2),(H/2)*(H/2)),${alpha},if(lte((X-(W-H/2))*(X-(W-H/2))+(Y-H/2)*(Y-H/2),(H/2)*(H/2)),${alpha},0)))`;
     const badgeSourceDurationSec = 86400;
 
     const sourceDurationSec = await probeMediaDurationSeconds(inputPath);
@@ -3303,22 +3345,18 @@ async function processClipToTikTokFormat(
 
     if (showNameBadge) {
         const badgeEnableOpt = hasZoomEffect ? `:enable='${notZoomExpr}'` : '';
-        filterSteps.push(`color=c=0x9147ff:s=${nameOutlineW}x${nameOutlineH}:d=${badgeSourceDurationSec},format=rgba,geq=r='r(X,Y)':g='g(X,Y)':b='b(X,Y)':a='${roundedMask(122)}'[pill_outline]`);
-        filterSteps.push(`color=c=0x0f1014:s=${nameBadgeW}x${nameBadgeH}:d=${badgeSourceDurationSec},format=rgba,geq=r='r(X,Y)':g='g(X,Y)':b='b(X,Y)':a='${roundedMask(186)}'[pill_fill]`);
-        // Keep synthetic badge sources from extending output duration.
-        filterSteps.push(`[base][pill_outline]overlay=${nameOutlineX}:${nameOutlineY}:format=auto:shortest=1${badgeEnableOpt}[badge_outline]`);
-        filterSteps.push(`[badge_outline][pill_fill]overlay=${nameBadgeX}:${nameBadgeY}:format=auto:shortest=1${badgeEnableOpt}[badge_bg]`);
-        let badgeOutLabel = 'badge_bg';
+        let badgeOutLabel = 'base';
         if (logoPath) {
-            filterSteps.push(`[${logoInputIndex}:v]scale=${nameIconWPx}:${nameIconHPx}:flags=bicubic:force_original_aspect_ratio=decrease[tw_logo]`);
+            filterSteps.push(`[${logoInputIndex}:v]scale=${nameIconWPx}:${nameIconHPx}:flags=bicubic:force_original_aspect_ratio=decrease,format=rgba,colorchannelmixer=aa=${n(twitchNameOpacity)}[tw_logo]`);
             // Do not shorten output to a single logo frame; keep base video timeline authoritative.
-            filterSteps.push(`[badge_bg][tw_logo]overlay=${logoX}:${logoY}:format=auto:eof_action=repeat${badgeEnableOpt}[badge_logo]`);
+            filterSteps.push(`[base][tw_logo]overlay=${logoX}:${logoY}:format=auto:eof_action=repeat${badgeEnableOpt}[badge_logo]`);
             badgeOutLabel = 'badge_logo';
         }
 
         if (canDrawNameText) {
             const drawTextEnableOpt = hasZoomEffect ? `:enable='${notZoomExpr}'` : '';
-            filterSteps.push(`[${badgeOutLabel}]drawtext=text='${safeTwitchName}':x=${textX}:y=${textY}:fontsize=${nameFontPx}${drawtextFontOpt}:fontcolor=white:borderw=1:bordercolor=black@0.55:shadowcolor=black@0.45:shadowx=1:shadowy=1${drawTextEnableOpt}[name_out]`);
+            const shadowOpacity = Math.max(0, Math.min(1, twitchNameOpacity * 0.38));
+            filterSteps.push(`[${badgeOutLabel}]drawtext=text='${safeTwitchName}':x=${textX}:y=${textY}:fontsize=${nameFontPx}${drawtextFontOpt}:fontcolor=0xBCC4D3@${n(twitchNameOpacity)}:shadowcolor=black@${n(shadowOpacity)}:shadowx=1:shadowy=1${drawTextEnableOpt}[name_out]`);
             filterSteps.push('[name_out]format=yuv420p[v_base]');
         } else {
             const bitmapPx = Math.max(1, Math.round(nameFontPx / 8));
@@ -3334,7 +3372,8 @@ async function processClipToTikTokFormat(
                 bitmapTextY,
                 bitmapPx,
                 bitmapMaxWidth,
-                bitmapEnableExpr
+                bitmapEnableExpr,
+                twitchNameOpacity
             );
             if (bitmapFallback.rendered) {
                 filterSteps.push(...bitmapFallback.filters);
@@ -3825,6 +3864,14 @@ function parseTwitchNameScale(value: unknown): number | null {
     const n = Number(value);
     if (!Number.isFinite(n)) return null;
     if (n < 0.65 || n > 2.4) return null;
+    return n;
+}
+
+function parseTwitchNameOpacity(value: unknown): number | null {
+    if (value === undefined || value === null || value === '') return 1;
+    const n = Number(value);
+    if (!Number.isFinite(n)) return null;
+    if (n < 0 || n > 1) return null;
     return n;
 }
 
@@ -5229,6 +5276,7 @@ app.get('/api/clips/:clipId/download-cropped', requireAuth, async (req: Request,
                 s.twitch_name_y,
                 s.twitch_name_text,
                 s.twitch_name_scale,
+                s.twitch_name_opacity,
                 s.gameplay_x,
                 s.gameplay_y,
                 s.gameplay_w,
@@ -5524,7 +5572,7 @@ app.get('/api/crop/:clipId', requireAuth, (req: Request, res: Response) => {
     const { clipId } = req.params;
 
     const row = db.prepare(`
-        SELECT c.id, c.broadcaster_name, s.approved, s.cam_x, s.cam_y, s.cam_w, s.cam_h, s.cam_enabled, s.twitch_name_enabled, s.twitch_name_x, s.twitch_name_y, s.twitch_name_text, s.twitch_name_scale, s.gameplay_x, s.gameplay_y, s.gameplay_w, s.gameplay_h, s.third_x, s.third_y, s.third_w, s.third_h, s.cam_output_y, s.cam_output_h, s.gameplay_output_y, s.gameplay_output_h
+        SELECT c.id, c.broadcaster_name, s.approved, s.cam_x, s.cam_y, s.cam_w, s.cam_h, s.cam_enabled, s.twitch_name_enabled, s.twitch_name_x, s.twitch_name_y, s.twitch_name_text, s.twitch_name_scale, s.twitch_name_opacity, s.gameplay_x, s.gameplay_y, s.gameplay_w, s.gameplay_h, s.third_x, s.third_y, s.third_w, s.third_h, s.cam_output_y, s.cam_output_h, s.gameplay_output_y, s.gameplay_output_h
              , s.third_area_enabled, s.third_output_x, s.third_output_y, s.third_output_w, s.third_output_h
              , s.split_points_json, s.split_deleted_segments_json, s.split_zoom_segments_json, s.split_zoom_layouts_json
              , s.overlay_items_json
@@ -5574,6 +5622,7 @@ app.get('/api/crop/:clipId', requireAuth, (req: Request, res: Response) => {
             twitch_name_y: row.twitch_name_y,
             twitch_name_text: row.twitch_name_text || row.broadcaster_name || '',
             twitch_name_scale: Number.isFinite(row.twitch_name_scale as number) ? Number(row.twitch_name_scale) : 1,
+            twitch_name_opacity: Number.isFinite(row.twitch_name_opacity as number) ? Number(row.twitch_name_opacity) : 1,
             gameplay_x: row.gameplay_x,
             gameplay_y: row.gameplay_y,
             gameplay_w: row.gameplay_w,
@@ -5725,6 +5774,7 @@ app.post('/api/crop/:clipId', requireAuth, (req: Request, res: Response) => {
         twitch_name_y,
         twitch_name_text,
         twitch_name_scale,
+        twitch_name_opacity,
         gameplay_x, gameplay_y, gameplay_w, gameplay_h,
         third_x, third_y, third_w, third_h,
         cam_output_y,
@@ -5772,6 +5822,11 @@ app.post('/api/crop/:clipId', requireAuth, (req: Request, res: Response) => {
     const parsedTwitchNameScale = parseTwitchNameScale(twitch_name_scale);
     if (parsedTwitchNameScale === null) {
         res.status(400).json({ error: 'Invalid twitch_name_scale value. Use a number between 0.65 and 2.4.' });
+        return;
+    }
+    const parsedTwitchNameOpacity = parseTwitchNameOpacity(twitch_name_opacity);
+    if (parsedTwitchNameOpacity === null) {
+        res.status(400).json({ error: 'Invalid twitch_name_opacity value. Use a number between 0 and 1.' });
         return;
     }
 
@@ -5948,6 +6003,7 @@ app.post('/api/crop/:clipId', requireAuth, (req: Request, res: Response) => {
             twitch_name_y = $twitch_name_y,
             twitch_name_text = $twitch_name_text,
             twitch_name_scale = $twitch_name_scale,
+            twitch_name_opacity = $twitch_name_opacity,
             gameplay_x = $gameplay_x,
             gameplay_y = $gameplay_y,
             gameplay_w = $gameplay_w,
@@ -5994,6 +6050,7 @@ app.post('/api/crop/:clipId', requireAuth, (req: Request, res: Response) => {
         $twitch_name_y: twitch_name_y,
         $twitch_name_text: parsedTwitchNameText,
         $twitch_name_scale: parsedTwitchNameScale,
+        $twitch_name_opacity: parsedTwitchNameOpacity,
         $gameplay_x: gameplay_x,
         $gameplay_y: gameplay_y,
         $gameplay_w: gameplay_w,
