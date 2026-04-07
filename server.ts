@@ -2663,9 +2663,16 @@ function escapeFfmpegDrawtext(value: string): string {
 
 let cachedDrawtextFontPath: string | null | undefined;
 let warnedInvalidDrawtextOverride = false;
+let warnedDrawtextFontStyleFallback = false;
 let cachedDrawtextFilterSupported: boolean | undefined;
 let drawtextFilterProbePromise: Promise<boolean> | null = null;
 let warnedDrawtextUnavailable = false;
+const DRAWTEXT_FONTCONFIG_PATTERNS = [
+    'DejaVu Sans:style=Bold Oblique',
+    'Liberation Sans:style=Bold Italic',
+    'Noto Sans:style=Bold Italic',
+    'Arial:style=Bold Italic',
+] as const;
 
 function resolveDrawtextFontPath(): string | null {
     if (cachedDrawtextFontPath !== undefined) return cachedDrawtextFontPath;
@@ -2689,21 +2696,12 @@ function resolveDrawtextFontPath(): string | null {
         'C:\\Windows\\Fonts\\arialbi.ttf',
         // Linux
         '/usr/share/fonts/truetype/dejavu/DejaVuSans-BoldOblique.ttf',
+        '/usr/share/fonts/truetype/dejavu/DejaVuSansCondensed-BoldOblique.ttf',
         '/usr/share/fonts/truetype/liberation/LiberationSans-BoldItalic.ttf',
+        '/usr/share/fonts/truetype/liberation2/LiberationSans-BoldItalic.ttf',
         '/usr/share/fonts/truetype/noto/NotoSans-BoldItalic.ttf',
         // macOS
         '/System/Library/Fonts/Supplemental/Arial Bold Italic.ttf',
-        // Windows defaults
-        'C:\\Windows\\Fonts\\segoeui.ttf',
-        'C:\\Windows\\Fonts\\arial.ttf',
-        // Common Linux fallbacks
-        '/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf',
-        '/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf',
-        '/usr/share/fonts/truetype/noto/NotoSans-Regular.ttf',
-        // macOS fallbacks
-        '/System/Library/Fonts/Supplemental/Arial.ttf',
-        '/System/Library/Fonts/Supplemental/Arial Unicode.ttf',
-        '/System/Library/Fonts/SFNS.ttf',
     ];
     for (const candidate of candidates) {
         if (fs.existsSync(candidate)) {
@@ -2713,6 +2711,16 @@ function resolveDrawtextFontPath(): string | null {
     }
     cachedDrawtextFontPath = null;
     return cachedDrawtextFontPath;
+}
+
+function resolveDrawtextFontOption(): string {
+    const fontPath = resolveDrawtextFontPath();
+    if (fontPath) return `:fontfile='${toFfmpegFilterPath(fontPath)}'`;
+    if (!warnedDrawtextFontStyleFallback) {
+        warnedDrawtextFontStyleFallback = true;
+        console.warn('[drawtext] No bold-italic font file found. Falling back to hardcoded Bold Italic fontconfig pattern.');
+    }
+    return `:font='${escapeFfmpegDrawtext(DRAWTEXT_FONTCONFIG_PATTERNS[0])}'`;
 }
 
 async function isDrawtextFilterSupported(): Promise<boolean> {
@@ -3357,8 +3365,7 @@ async function processClipToTikTokFormat(
         inputIndex: overlayInputStartIndex + idx,
     }));
     const drawtextSupported = await isDrawtextFilterSupported();
-    const drawtextFontPath = resolveDrawtextFontPath();
-    const drawtextFontOpt = drawtextFontPath ? `:fontfile='${toFfmpegFilterPath(drawtextFontPath)}'` : '';
+    const drawtextFontOpt = resolveDrawtextFontOption();
 
     const badgeScale = Math.max(0.65, Math.min(2.4, twitchName.scale));
     const twitchNameOpacity = Math.max(0, Math.min(1, Number(twitchName.opacity) || 0));
