@@ -2543,6 +2543,72 @@ function buildFfmpegEnableExprFromRanges(ranges: Array<{ start: number; end: num
     return parts.join('+');
 }
 
+function mergeTimelineRanges(ranges: Array<{ start: number; end: number | null }>): Array<{ start: number; end: number | null }> {
+    const normalized = ranges
+        .map((range) => ({
+            start: Math.max(0, Number(range.start) || 0),
+            end: range.end === null ? null : Math.max(0, Number(range.end) || 0),
+        }))
+        .filter((range) => range.end === null || range.end > (range.start + 0.0001))
+        .sort((a, b) => a.start - b.start);
+
+    const merged: Array<{ start: number; end: number | null }> = [];
+    for (const range of normalized) {
+        const last = merged[merged.length - 1];
+        if (!last) {
+            merged.push(range);
+            continue;
+        }
+        const lastEnd = last.end === null ? Number.POSITIVE_INFINITY : last.end;
+        const rangeEnd = range.end === null ? Number.POSITIVE_INFINITY : range.end;
+        if (range.start <= (lastEnd + 0.0001)) {
+            if (last.end === null || range.end === null) {
+                last.end = null;
+            } else {
+                last.end = Math.max(last.end, range.end);
+            }
+            continue;
+        }
+        merged.push(range);
+    }
+    return merged;
+}
+
+function buildTimelineComplementRanges(
+    excludedRanges: Array<{ start: number; end: number | null }>,
+    totalDurationSec: number | null
+): Array<{ start: number; end: number | null }> {
+    const mergedExcluded = mergeTimelineRanges(excludedRanges);
+    const out: Array<{ start: number; end: number | null }> = [];
+    let cursor = 0;
+
+    for (const range of mergedExcluded) {
+        if (range.start > (cursor + 0.0001)) {
+            out.push({ start: cursor, end: range.start });
+        }
+        if (range.end === null) {
+            cursor = Number.POSITIVE_INFINITY;
+            break;
+        }
+        cursor = Math.max(cursor, range.end);
+    }
+
+    if (Number.isFinite(cursor)) {
+        if (totalDurationSec === null) {
+            out.push({ start: cursor, end: null });
+        } else if (totalDurationSec > (cursor + 0.0001)) {
+            out.push({ start: cursor, end: totalDurationSec });
+        }
+    }
+
+    return out
+        .map((range) => ({
+            start: Math.max(0, range.start),
+            end: range.end === null ? null : Math.max(range.start, range.end),
+        }))
+        .filter((range) => range.end === null || (range.end - range.start) >= 0.03);
+}
+
 function resolveTwitchLogoPath(): string | null {
     const candidates = [
         path.join(__dirname, 'public', TWITCH_LOGO_RELATIVE_PATH),
@@ -3367,7 +3433,7 @@ async function processClipToTikTokFormat(
         })))
         .filter((segment) => segment.end === null || (segment.end - segment.start) >= 0.03)
         .sort((a, b) => a.start - b.start);
-    const zoomRanges = zoomSegments.map((segment) => ({ start: segment.start, end: segment.end }));
+    const zoomRanges = mergeTimelineRanges(zoomSegments.map((segment) => ({ start: segment.start, end: segment.end })));
     const zoomExpr = buildFfmpegEnableExprFromRanges(zoomRanges);
     const notZoomExpr = zoomExpr ? `not(${zoomExpr})` : '1';
 
@@ -3388,6 +3454,7 @@ async function processClipToTikTokFormat(
         });
         return total > 0 ? total : null;
     })();
+    const nonZoomRanges = buildTimelineComplementRanges(zoomRanges, expectedOutputDurationSec);
     const hasAudio = sourceMetadata.hasAudio;
     const filterSteps: string[] = [];
     const sourceVideoLabel = splitEnabled ? 'vsrc' : '0:v';
@@ -3439,23 +3506,50 @@ async function processClipToTikTokFormat(
         const camSourceLabel = 'src_cam';
         const camThirdSourceLabel = thirdOutput.enabled ? 'src_cam_third' : null;
         const camZoomSourceLabels = zoomSegments.map((_, idx) => `src_cam_zoom_${idx}`);
-        const splitTargets = [`[${gameplaySourceLabel}]`, `[${camSourceLabel}]`];
+        const splitTargets = [`[${gameplaySourceLabel}]`];
+        if (camEnabled) splitTargets.push(`[${camSourceLabel}]`);
         if (camThirdSourceLabel) splitTargets.push(`[${camThirdSourceLabel}]`);
         splitTargets.push(...camZoomSourceLabels.map(label => `[${label}]`));
         filterSteps.push(`[${sourceVideoFpsLabel}]split=${splitTargets.length}${splitTargets.join('')}`);
         filterSteps.push(`[${gameplaySourceLabel}]crop=iw*${n(gameplay.w)}:ih*${n(gameplay.h)}:iw*${n(gameplay.x)}:ih*${n(gameplay.y)},scale=${outputW}:${gameplayOutputHeightPx}:flags=${scaleFlags}:force_original_aspect_ratio=disable,setsar=1[game]`);
         filterSteps.push(`color=c=black:s=${outputW}x${outputH}:d=${badgeSourceDurationSec}[layout_base]`);
         filterSteps.push(`[layout_base][game]overlay=0:${gameplayOutputYPx}:format=auto:shortest=1[bg]`);
-        filterSteps.push(`[${camSourceLabel}]crop=iw*${n(cam.w)}:ih*${n(cam.h)}:iw*${n(cam.x)}:ih*${n(cam.y)},scale=${outputW}:${camOutputHeightPx}:flags=${scaleFlags}:force_original_aspect_ratio=disable,setsar=1[cam]`);
-        const normalCamEnable = camEnabled ? notZoomExpr : '0';
-        filterSteps.push(`[bg][cam]overlay=0:${camOutputYPx}:format=auto:enable='${normalCamEnable}'[base_norm]`);
-        let normalBaseLabel = 'base_norm';
+        let normalBaseLabel = 'bg';
+        if (camEnabled) {
+            if (hasZoomEffect) {
+                nonZoomRanges.forEach((range, idx) => {
+                    const trimEndOpt = range.end === null ? '' : `:end=${ts(range.end)}`;
+                    const startTs = ts(range.start);
+                    const camRangeLabel = `cam_non_zoom_${idx}`;
+                    const nextBase = `base_norm_${idx}`;
+                    filterSteps.push(`[${camSourceLabel}]trim=start=${startTs}${trimEndOpt},setpts=PTS-STARTPTS+${startTs}/TB,crop=iw*${n(cam.w)}:ih*${n(cam.h)}:iw*${n(cam.x)}:ih*${n(cam.y)},scale=${outputW}:${camOutputHeightPx}:flags=${scaleFlags}:force_original_aspect_ratio=disable,setsar=1[${camRangeLabel}]`);
+                    filterSteps.push(`[${normalBaseLabel}][${camRangeLabel}]overlay=0:${camOutputYPx}:format=auto:eof_action=pass[${nextBase}]`);
+                    normalBaseLabel = nextBase;
+                });
+            } else {
+                filterSteps.push(`[${camSourceLabel}]crop=iw*${n(cam.w)}:ih*${n(cam.h)}:iw*${n(cam.x)}:ih*${n(cam.y)},scale=${outputW}:${camOutputHeightPx}:flags=${scaleFlags}:force_original_aspect_ratio=disable,setsar=1[cam]`);
+                filterSteps.push(`[${normalBaseLabel}][cam]overlay=0:${camOutputYPx}:format=auto[base_norm]`);
+                normalBaseLabel = 'base_norm';
+            }
+        }
         if (thirdOutput.enabled && camThirdSourceLabel) {
             const thirdOverlayX = `${thirdOutputXPx}+(${thirdOutputWPx}-overlay_w)/2`;
             const thirdOverlayY = `${thirdOutputYPx}+(${thirdOutputHPx}-overlay_h)/2`;
-            filterSteps.push(`[${camThirdSourceLabel}]crop=iw*${n(third.w)}:ih*${n(third.h)}:iw*${n(third.x)}:ih*${n(third.y)},scale=${thirdOutputWPx}:${thirdOutputHPx}:flags=${scaleFlags}:force_original_aspect_ratio=decrease,setsar=1[cam_third]`);
-            filterSteps.push(`[base_norm][cam_third]overlay=${thirdOverlayX}:${thirdOverlayY}:format=auto:enable='${notZoomExpr}'[base_norm_third]`);
-            normalBaseLabel = 'base_norm_third';
+            if (hasZoomEffect) {
+                nonZoomRanges.forEach((range, idx) => {
+                    const trimEndOpt = range.end === null ? '' : `:end=${ts(range.end)}`;
+                    const startTs = ts(range.start);
+                    const thirdRangeLabel = `cam_third_non_zoom_${idx}`;
+                    const nextBase = `base_norm_third_${idx}`;
+                    filterSteps.push(`[${camThirdSourceLabel}]trim=start=${startTs}${trimEndOpt},setpts=PTS-STARTPTS+${startTs}/TB,crop=iw*${n(third.w)}:ih*${n(third.h)}:iw*${n(third.x)}:ih*${n(third.y)},scale=${thirdOutputWPx}:${thirdOutputHPx}:flags=${scaleFlags}:force_original_aspect_ratio=decrease,setsar=1[${thirdRangeLabel}]`);
+                    filterSteps.push(`[${normalBaseLabel}][${thirdRangeLabel}]overlay=${thirdOverlayX}:${thirdOverlayY}:format=auto:eof_action=pass[${nextBase}]`);
+                    normalBaseLabel = nextBase;
+                });
+            } else {
+                filterSteps.push(`[${camThirdSourceLabel}]crop=iw*${n(third.w)}:ih*${n(third.h)}:iw*${n(third.x)}:ih*${n(third.y)},scale=${thirdOutputWPx}:${thirdOutputHPx}:flags=${scaleFlags}:force_original_aspect_ratio=decrease,setsar=1[cam_third]`);
+                filterSteps.push(`[${normalBaseLabel}][cam_third]overlay=${thirdOverlayX}:${thirdOverlayY}:format=auto[base_norm_third]`);
+                normalBaseLabel = 'base_norm_third';
+            }
         }
         if (hasZoomEffect) {
             let zoomBaseLabel = normalBaseLabel;
