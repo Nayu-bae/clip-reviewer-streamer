@@ -66,32 +66,47 @@ const VIDEO_WORK_DIR = path.join(__dirname, 'tmp', 'videos');
 const OVERLAY_MEDIA_DIR = path.join(__dirname, 'tmp', 'overlay-media');
 const OVERLAY_MEDIA_MAX_BYTES = 24 * 1024 * 1024;
 const TWITCH_LOGO_RELATIVE_PATH = path.join('pictures', 'twitchLogo.png');
+const TWITCH_VIDEO_USER_AGENT = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36';
+const TWITCH_VIDEO_REFERER = 'https://clips.twitch.tv/';
 const YTDLP_BIN = process.env.YTDLP_BIN || 'yt-dlp';
 const FFMPEG_BIN = process.env.FFMPEG_BIN || 'ffmpeg';
 const FFPROBE_BIN = process.env.FFPROBE_BIN || 'ffprobe';
+const FFMPEG_DIRECT_SOURCE_INPUT = ['1', 'true', 'yes', 'on'].includes(String(process.env.FFMPEG_DIRECT_SOURCE_INPUT || '1').trim().toLowerCase());
 const LOGICAL_CPU_COUNT = Math.max(1, (os.cpus()?.length || 8));
-const DEFAULT_FFMPEG_THREAD_CAP = Math.max(2, Math.min(LOGICAL_CPU_COUNT, Math.max(6, Math.round(LOGICAL_CPU_COUNT * 0.6))));
+const DEFAULT_FFMPEG_THREAD_CAP = Math.max(1, Math.min(LOGICAL_CPU_COUNT, Math.ceil(LOGICAL_CPU_COUNT * 0.5)));
 const FFMPEG_THREAD_CAP = Math.max(0, Math.min(LOGICAL_CPU_COUNT, getNonNegativeIntEnv('FFMPEG_THREAD_CAP', DEFAULT_FFMPEG_THREAD_CAP)));
-const DEFAULT_FFMPEG_FILTER_THREAD_CAP = Math.max(1, Math.min(4, Math.ceil((FFMPEG_THREAD_CAP || LOGICAL_CPU_COUNT) / 3)));
+const DEFAULT_FFMPEG_FILTER_THREAD_CAP = Math.max(1, Math.min(2, Math.ceil((FFMPEG_THREAD_CAP || LOGICAL_CPU_COUNT) / 2)));
 const FFMPEG_FILTER_THREAD_CAP = Math.max(0, Math.min(LOGICAL_CPU_COUNT, getNonNegativeIntEnv('FFMPEG_FILTER_THREAD_CAP', DEFAULT_FFMPEG_FILTER_THREAD_CAP)));
-const FFMPEG_OUTPUT_FPS = Math.max(24, Math.min(60, Math.round(getPositiveNumberEnv('FFMPEG_OUTPUT_FPS', 30))));
-const FFMPEG_GIF_FPS = Math.max(6, Math.min(30, Math.round(getPositiveNumberEnv('FFMPEG_GIF_FPS', 15))));
-const DEFAULT_UPLOAD_VIDEO_PRESET = String(process.env.FFMPEG_UPLOAD_PRESET || 'faster').trim() || 'faster';
-const DEFAULT_DOWNLOAD_VIDEO_PRESET = String(process.env.FFMPEG_DOWNLOAD_PRESET || 'veryfast').trim() || 'veryfast';
+const FFMPEG_OUTPUT_FPS = Math.max(18, Math.min(60, Math.round(getPositiveNumberEnv('FFMPEG_OUTPUT_FPS', 24))));
+const FFMPEG_GIF_FPS = Math.max(6, Math.min(24, Math.round(getPositiveNumberEnv('FFMPEG_GIF_FPS', 10))));
+const FFMPEG_OUTPUT_WIDTH = Math.max(360, Math.min(1080, Math.round(getPositiveNumberEnv('FFMPEG_OUTPUT_WIDTH', 720))));
+const FFMPEG_OUTPUT_HEIGHT = Math.max(640, Math.min(1920, Math.round(getPositiveNumberEnv('FFMPEG_OUTPUT_HEIGHT', 1280))));
+const FFMPEG_SCALE_FLAGS = (() => {
+    const raw = String(process.env.FFMPEG_SCALE_FLAGS || 'bilinear').trim().toLowerCase();
+    return /^[a-z0-9_+]+$/.test(raw) ? raw : 'bilinear';
+})();
+const DEFAULT_UPLOAD_VIDEO_PRESET = String(process.env.FFMPEG_UPLOAD_PRESET || 'veryfast').trim() || 'veryfast';
+const DEFAULT_DOWNLOAD_VIDEO_PRESET = String(process.env.FFMPEG_DOWNLOAD_PRESET || 'superfast').trim() || 'superfast';
 const DEFAULT_UPLOAD_VIDEO_CRF = Math.max(17, Math.min(28, Math.round(getPositiveNumberEnv('FFMPEG_UPLOAD_CRF', 21))));
 const DEFAULT_DOWNLOAD_VIDEO_CRF = Math.max(17, Math.min(30, Math.round(getPositiveNumberEnv('FFMPEG_DOWNLOAD_CRF', 22))));
-const DEFAULT_MAX_CONCURRENT_RENDERS = Math.max(1, Math.min(4, Math.ceil(LOGICAL_CPU_COUNT / 4)));
+const DEFAULT_MAX_CONCURRENT_RENDERS = Math.max(1, Math.min(3, Math.ceil(LOGICAL_CPU_COUNT / 2)));
 const MAX_CONCURRENT_RENDERS = Math.max(1, Math.min(16, Math.floor(getPositiveNumberEnv('FFMPEG_MAX_CONCURRENT_RENDERS', DEFAULT_MAX_CONCURRENT_RENDERS))));
+const DEFAULT_MAX_CONCURRENT_SOURCE_DOWNLOADS = Math.max(1, Math.min(8, Math.max(2, Math.ceil(LOGICAL_CPU_COUNT / 2))));
+const MAX_CONCURRENT_SOURCE_DOWNLOADS = Math.max(1, Math.min(16, Math.floor(getPositiveNumberEnv('MAX_CONCURRENT_SOURCE_DOWNLOADS', DEFAULT_MAX_CONCURRENT_SOURCE_DOWNLOADS))));
+const MEDIA_PROBE_CACHE_TTL_MS = Math.max(30 * 1000, Math.min(60 * 60 * 1000, Math.floor(getPositiveNumberEnv('MEDIA_PROBE_CACHE_TTL_SECONDS', 900) * 1000)));
 const OVERLAY_MEDIA_RETENTION_DAYS = Math.max(1, Math.min(365, Math.floor(getPositiveNumberEnv('OVERLAY_MEDIA_RETENTION_DAYS', 30))));
 const OVERLAY_MEDIA_CLEANUP_INTERVAL_MINUTES = Math.max(10, Math.min(24 * 60, Math.floor(getPositiveNumberEnv('OVERLAY_MEDIA_CLEANUP_INTERVAL_MINUTES', 180))));
 const TWITCH_GQL_URL = 'https://gql.twitch.tv/gql';
 const CLIP_GQL_CACHE_TTL_MS = 10 * 60 * 1000;
 const LEGACY_STREAMER_IDS = getStreamerIdsFromEnv();
 const clipVideoUrlCache = new Map<string, { url: string; expiresAt: number }>();
+const mediaProbeCache = new Map<string, { durationSec: number | null; hasAudio: boolean; expiresAt: number }>();
 const previewBuildJobs = new Map<string, Promise<string>>();
 const activeDownloadJobs = new Set<string>();
 const pendingRenderResolvers: Array<() => void> = [];
+const pendingSourceDownloadResolvers: Array<() => void> = [];
 let activeRenderCount = 0;
+let activeSourceDownloadCount = 0;
 let overlayCleanupInFlight = false;
 const OVERLAY_MIME_TO_EXTENSION: Record<string, string> = {
     'image/png': 'png',
@@ -206,6 +221,16 @@ interface DbClipRow {
     clip_tags_json?: string | null;
     uploaded_to_tiktok?: number | null;
     uploaded_at?: string | null;
+}
+
+interface MediaInputSource {
+    source: string;
+    isRemote: boolean;
+}
+
+interface MediaProbeMetadata {
+    durationSec: number | null;
+    hasAudio: boolean;
 }
 
 interface ClipUploadResult {
@@ -2367,34 +2392,55 @@ function normalizeSplitDeletedSegments(indices: number[], maxSegments: number | 
     return [...out].sort((a, b) => a - b);
 }
 
-async function probeMediaDurationSeconds(inputPath: string): Promise<number | null> {
-    try {
-        const { stdout } = await runCommandCaptureOutput(FFPROBE_BIN, [
-            '-v', 'error',
-            '-show_entries', 'format=duration',
-            '-of', 'default=noprint_wrappers=1:nokey=1',
-            inputPath,
-        ]);
-        const d = Number(String(stdout || '').trim());
-        return Number.isFinite(d) && d > 0 ? d : null;
-    } catch {
-        return null;
-    }
+function appendNetworkInputOptions(args: string[], input: MediaInputSource): void {
+    if (!input.isRemote) return;
+    args.push(
+        '-user_agent', TWITCH_VIDEO_USER_AGENT,
+        '-headers', `Referer: ${TWITCH_VIDEO_REFERER}\r\n`
+    );
 }
 
-async function hasAudioStream(inputPath: string): Promise<boolean> {
-    try {
-        const { stdout } = await runCommandCaptureOutput(FFPROBE_BIN, [
-            '-v', 'error',
-            '-select_streams', 'a:0',
-            '-show_entries', 'stream=codec_type',
-            '-of', 'default=noprint_wrappers=1:nokey=1',
-            inputPath,
-        ]);
-        return String(stdout || '').trim().length > 0;
-    } catch {
-        return false;
+function getMediaProbeCacheKey(input: MediaInputSource): string {
+    return `${input.isRemote ? 'remote' : 'local'}:${input.source}`;
+}
+
+async function probeMediaMetadata(input: MediaInputSource): Promise<MediaProbeMetadata> {
+    const cacheKey = getMediaProbeCacheKey(input);
+    const cached = mediaProbeCache.get(cacheKey);
+    if (cached && cached.expiresAt > Date.now()) {
+        return { durationSec: cached.durationSec, hasAudio: cached.hasAudio };
     }
+
+    let metadata: MediaProbeMetadata = { durationSec: null, hasAudio: false };
+    try {
+        const ffprobeArgs = ['-v', 'error'];
+        appendNetworkInputOptions(ffprobeArgs, input);
+        ffprobeArgs.push(
+            '-print_format', 'json',
+            '-show_entries', 'format=duration:stream=codec_type',
+            input.source,
+        );
+        const { stdout } = await runCommandCaptureOutput(FFPROBE_BIN, ffprobeArgs);
+        const parsed = JSON.parse(String(stdout || '{}')) as {
+            format?: { duration?: string | number | null };
+            streams?: Array<{ codec_type?: string | null }>;
+        };
+        const rawDuration = Number(parsed?.format?.duration);
+        const durationSec = Number.isFinite(rawDuration) && rawDuration > 0 ? rawDuration : null;
+        const hasAudio = Array.isArray(parsed?.streams)
+            ? parsed.streams.some((stream) => String(stream?.codec_type || '').toLowerCase() === 'audio')
+            : false;
+        metadata = { durationSec, hasAudio };
+    } catch {
+        metadata = { durationSec: null, hasAudio: false };
+    }
+
+    mediaProbeCache.set(cacheKey, {
+        durationSec: metadata.durationSec,
+        hasAudio: metadata.hasAudio,
+        expiresAt: Date.now() + MEDIA_PROBE_CACHE_TTL_MS,
+    });
+    return metadata;
 }
 
 function buildKeptSplitRanges(points: number[], deletedSegments: number[]): Array<{ start: number; end: number | null }> {
@@ -2752,8 +2798,8 @@ async function isVideoUrlReachable(url: string): Promise<boolean> {
             timeout: 12000,
             headers: {
                 Range: 'bytes=0-2047',
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-                Referer: 'https://clips.twitch.tv/',
+                'User-Agent': TWITCH_VIDEO_USER_AGENT,
+                Referer: TWITCH_VIDEO_REFERER,
             },
             validateStatus: (status) => status === 200 || status === 206,
         });
@@ -2896,15 +2942,27 @@ async function resolveClipVideoViaGql(clipUrl: string): Promise<string | null> {
     }
 }
 
+function cacheResolvedClipVideoUrl(clipUrl: string, url: string): void {
+    const slug = extractClipSlugFromUrl(clipUrl);
+    if (!slug) return;
+    setCachedClipVideoUrl(slug, url);
+}
+
 async function resolveClipVideoUrl(clip: DbClipRow, forceFresh = false): Promise<string | null> {
     const thumbCandidates = buildClipVideoCandidates(clip.thumbnail_url);
     for (const candidate of thumbCandidates) {
-        if (await isVideoUrlReachable(candidate)) return candidate;
+        if (await isVideoUrlReachable(candidate)) {
+            cacheResolvedClipVideoUrl(clip.url, candidate);
+            return candidate;
+        }
     }
 
     const pageCandidates = await extractMp4CandidatesFromClipPage(clip.url);
     for (const candidate of pageCandidates) {
-        if (await isVideoUrlReachable(candidate)) return candidate;
+        if (await isVideoUrlReachable(candidate)) {
+            cacheResolvedClipVideoUrl(clip.url, candidate);
+            return candidate;
+        }
     }
 
     if (forceFresh) {
@@ -2931,15 +2989,17 @@ async function ensurePreviewFallbackFile(clip: DbClipRow): Promise<string> {
     if (inFlight) return inFlight;
 
     const build = (async () => {
-        await runCommand(YTDLP_BIN, [
-            '--no-progress',
-            '--no-warnings',
-            '-f',
-            'best[ext=mp4]/best',
-            '-o',
-            outPath,
-            clip.url,
-        ]);
+        await withSourceDownloadSlot(async () => {
+            await runCommand(YTDLP_BIN, [
+                '--no-progress',
+                '--no-warnings',
+                '-f',
+                'best[ext=mp4]/best',
+                '-o',
+                outPath,
+                clip.url,
+            ]);
+        });
 
         if (!(await fileExistsAndNonEmpty(outPath))) {
             throw new Error('yt-dlp fallback did not produce a playable preview file.');
@@ -3039,10 +3099,11 @@ async function streamLocalVideoWithRange(req: Request, res: Response, filePath: 
     });
 }
 
-async function downloadFile(url: string, destinationPath: string): Promise<void> {
+async function downloadFile(url: string, destinationPath: string, headers?: Record<string, string>): Promise<void> {
     const response = await axios.get(url, {
         responseType: 'stream',
         timeout: 60000,
+        headers,
         validateStatus: (status) => status >= 200 && status < 400,
     });
     await pipeline(response.data, fs.createWriteStream(destinationPath));
@@ -3097,6 +3158,25 @@ function runCommandCaptureOutput(command: string, args: string[]): Promise<{ std
     });
 }
 
+async function withSourceDownloadSlot<T>(job: () => Promise<T>): Promise<T> {
+    if (activeSourceDownloadCount >= MAX_CONCURRENT_SOURCE_DOWNLOADS) {
+        await new Promise<void>((resolve) => {
+            pendingSourceDownloadResolvers.push(resolve);
+        });
+    }
+    activeSourceDownloadCount += 1;
+    try {
+        return await job();
+    } finally {
+        activeSourceDownloadCount = Math.max(0, activeSourceDownloadCount - 1);
+        while (activeSourceDownloadCount < MAX_CONCURRENT_SOURCE_DOWNLOADS && pendingSourceDownloadResolvers.length > 0) {
+            const next = pendingSourceDownloadResolvers.shift();
+            if (!next) break;
+            next();
+        }
+    }
+}
+
 async function withRenderSlot<T>(job: () => Promise<T>): Promise<T> {
     if (activeRenderCount >= MAX_CONCURRENT_RENDERS) {
         await new Promise<void>((resolve) => {
@@ -3116,8 +3196,49 @@ async function withRenderSlot<T>(job: () => Promise<T>): Promise<T> {
     }
 }
 
+function getTwitchVideoRequestHeaders(): Record<string, string> {
+    return {
+        'User-Agent': TWITCH_VIDEO_USER_AGENT,
+        Referer: TWITCH_VIDEO_REFERER,
+    };
+}
+
+async function downloadClipSourceToPath(clip: DbClipRow, sourceUrl: string | null, destinationPath: string): Promise<void> {
+    const ensurePlayable = async (): Promise<void> => {
+        if (!(await fileExistsAndNonEmpty(destinationPath))) {
+            throw new Error('Resolved/downloaded source file is empty or missing.');
+        }
+    };
+
+    if (sourceUrl) {
+        try {
+            await withSourceDownloadSlot(async () => {
+                await downloadFile(sourceUrl, destinationPath, getTwitchVideoRequestHeaders());
+            });
+            await ensurePlayable();
+            return;
+        } catch {
+            // Fall through to yt-dlp fallback.
+            await fs.promises.rm(destinationPath, { force: true }).catch(() => {});
+        }
+    }
+
+    await withSourceDownloadSlot(async () => {
+        await runCommand(YTDLP_BIN, [
+            '--no-progress',
+            '--no-warnings',
+            '-f',
+            'best[ext=mp4]/best',
+            '-o',
+            destinationPath,
+            clip.url,
+        ]);
+    });
+    await ensurePlayable();
+}
+
 async function processClipToTikTokFormat(
-    inputPath: string,
+    input: MediaInputSource,
     outputPath: string,
     clip: DbClipRow,
     videoPreset = DEFAULT_UPLOAD_VIDEO_PRESET,
@@ -3126,12 +3247,13 @@ async function processClipToTikTokFormat(
     const { cam, gameplay, third, camEnabled, camOutput, gameplayOutput, thirdOutput, twitchName, overlay, split } = getCropOrDefault(clip);
     const n = (v: number) => v.toFixed(6);
     const ts = (v: number) => Math.max(0, v).toFixed(3);
-    const outputW = 1080;
-    const outputH = 1920;
-    const camOutputHeightPx = Math.max(2, Math.round(1920 * camOutput.h));
-    const camOutputYPx = Math.max(0, Math.round(1920 * camOutput.y));
-    const gameplayOutputHeightPx = Math.max(2, Math.round(1920 * gameplayOutput.h));
-    const gameplayOutputYPx = Math.max(0, Math.round(1920 * gameplayOutput.y));
+    const outputW = FFMPEG_OUTPUT_WIDTH;
+    const outputH = FFMPEG_OUTPUT_HEIGHT;
+    const scaleFlags = FFMPEG_SCALE_FLAGS;
+    const camOutputHeightPx = Math.max(2, Math.round(outputH * camOutput.h));
+    const camOutputYPx = Math.max(0, Math.round(outputH * camOutput.y));
+    const gameplayOutputHeightPx = Math.max(2, Math.round(outputH * gameplayOutput.h));
+    const gameplayOutputYPx = Math.max(0, Math.round(outputH * gameplayOutput.y));
     const thirdOutputWPx = Math.max(2, Math.round(outputW * thirdOutput.w));
     const thirdOutputHPx = Math.max(2, Math.round(outputH * thirdOutput.h));
     const thirdOutputXPx = Math.max(0, Math.round(outputW * thirdOutput.x));
@@ -3212,7 +3334,8 @@ async function processClipToTikTokFormat(
     }
     const badgeSourceDurationSec = 86400;
 
-    const sourceDurationSec = await probeMediaDurationSeconds(inputPath);
+    const sourceMetadata = await probeMediaMetadata(input);
+    const sourceDurationSec = sourceMetadata.durationSec;
     const splitPoints = normalizeSplitPoints(split.points, sourceDurationSec);
     const splitSegmentCount = splitPoints.length + 1;
     const splitDeletedSegments = normalizeSplitDeletedSegments(split.deletedSegments, splitSegmentCount);
@@ -3221,7 +3344,18 @@ async function processClipToTikTokFormat(
     const splitConfigured = splitPoints.length > 0 || splitDeletedSegments.length > 0 || splitZoomSegments.length > 0;
     const splitRanges = splitConfigured ? buildKeptSplitRanges(splitPoints, splitDeletedSegments) : [];
     const zoomLayoutGroups = buildOutputTimelineZoomLayoutGroups(splitPoints, splitDeletedSegments, splitZoomSegments, splitZoomLayouts);
-    const zoomRanges = zoomLayoutGroups.flatMap(group => group.ranges);
+    const zoomSegments = zoomLayoutGroups
+        .flatMap((group) => group.ranges.map((range) => ({
+            x: group.x,
+            y: group.y,
+            w: group.w,
+            h: group.h,
+            start: Math.max(0, Number(range.start) || 0),
+            end: range.end === null ? null : Math.max(0, Number(range.end) || 0),
+        })))
+        .filter((segment) => segment.end === null || (segment.end - segment.start) >= 0.03)
+        .sort((a, b) => a.start - b.start);
+    const zoomRanges = zoomSegments.map((segment) => ({ start: segment.start, end: segment.end }));
     const zoomExpr = buildFfmpegEnableExprFromRanges(zoomRanges);
     const notZoomExpr = zoomExpr ? `not(${zoomExpr})` : '1';
 
@@ -3242,9 +3376,7 @@ async function processClipToTikTokFormat(
         });
         return total > 0 ? total : null;
     })();
-
-
-    const hasAudio = await hasAudioStream(inputPath);
+    const hasAudio = sourceMetadata.hasAudio;
     const filterSteps: string[] = [];
     const sourceVideoLabel = splitEnabled ? 'vsrc' : '0:v';
     const sourceAudioLabel = splitEnabled ? (hasAudio ? 'asrc' : null) : null;
@@ -3287,58 +3419,59 @@ async function processClipToTikTokFormat(
     const sourceVideoFpsLabel = 'vsrc_fps';
     filterSteps.push(`[${sourceVideoLabel}]fps=${FFMPEG_OUTPUT_FPS}[${sourceVideoFpsLabel}]`);
 
-    const hasZoomEffect = zoomExpr.length > 0;
+    const hasZoomEffect = zoomSegments.length > 0;
     const shouldRenderCamLayer = camEnabled || hasZoomEffect || thirdOutput.enabled;
     if (shouldRenderCamLayer) {
         // Duplicate the source branch once before two crops; a single filter output label cannot be consumed safely twice.
         const gameplaySourceLabel = 'src_game';
         const camSourceLabel = 'src_cam';
         const camThirdSourceLabel = thirdOutput.enabled ? 'src_cam_third' : null;
-        const camZoomSourceLabels = zoomLayoutGroups.map((_, idx) => `src_cam_zoom_${idx}`);
+        const camZoomSourceLabels = zoomSegments.map((_, idx) => `src_cam_zoom_${idx}`);
         const splitTargets = [`[${gameplaySourceLabel}]`, `[${camSourceLabel}]`];
         if (camThirdSourceLabel) splitTargets.push(`[${camThirdSourceLabel}]`);
         splitTargets.push(...camZoomSourceLabels.map(label => `[${label}]`));
         filterSteps.push(`[${sourceVideoFpsLabel}]split=${splitTargets.length}${splitTargets.join('')}`);
-        filterSteps.push(`[${gameplaySourceLabel}]crop=iw*${n(gameplay.w)}:ih*${n(gameplay.h)}:iw*${n(gameplay.x)}:ih*${n(gameplay.y)},scale=${outputW}:${gameplayOutputHeightPx}:flags=bicubic:force_original_aspect_ratio=disable,setsar=1[game]`);
+        filterSteps.push(`[${gameplaySourceLabel}]crop=iw*${n(gameplay.w)}:ih*${n(gameplay.h)}:iw*${n(gameplay.x)}:ih*${n(gameplay.y)},scale=${outputW}:${gameplayOutputHeightPx}:flags=${scaleFlags}:force_original_aspect_ratio=disable,setsar=1[game]`);
         filterSteps.push(`color=c=black:s=${outputW}x${outputH}:d=${badgeSourceDurationSec}[layout_base]`);
         filterSteps.push(`[layout_base][game]overlay=0:${gameplayOutputYPx}:format=auto:shortest=1[bg]`);
-        filterSteps.push(`[${camSourceLabel}]crop=iw*${n(cam.w)}:ih*${n(cam.h)}:iw*${n(cam.x)}:ih*${n(cam.y)},scale=${outputW}:${camOutputHeightPx}:flags=bicubic:force_original_aspect_ratio=disable,setsar=1[cam]`);
+        filterSteps.push(`[${camSourceLabel}]crop=iw*${n(cam.w)}:ih*${n(cam.h)}:iw*${n(cam.x)}:ih*${n(cam.y)},scale=${outputW}:${camOutputHeightPx}:flags=${scaleFlags}:force_original_aspect_ratio=disable,setsar=1[cam]`);
         const normalCamEnable = camEnabled ? notZoomExpr : '0';
         filterSteps.push(`[bg][cam]overlay=0:${camOutputYPx}:format=auto:enable='${normalCamEnable}'[base_norm]`);
         let normalBaseLabel = 'base_norm';
         if (thirdOutput.enabled && camThirdSourceLabel) {
             const thirdOverlayX = `${thirdOutputXPx}+(${thirdOutputWPx}-overlay_w)/2`;
             const thirdOverlayY = `${thirdOutputYPx}+(${thirdOutputHPx}-overlay_h)/2`;
-            filterSteps.push(`[${camThirdSourceLabel}]crop=iw*${n(third.w)}:ih*${n(third.h)}:iw*${n(third.x)}:ih*${n(third.y)},scale=${thirdOutputWPx}:${thirdOutputHPx}:flags=bicubic:force_original_aspect_ratio=decrease,setsar=1[cam_third]`);
+            filterSteps.push(`[${camThirdSourceLabel}]crop=iw*${n(third.w)}:ih*${n(third.h)}:iw*${n(third.x)}:ih*${n(third.y)},scale=${thirdOutputWPx}:${thirdOutputHPx}:flags=${scaleFlags}:force_original_aspect_ratio=decrease,setsar=1[cam_third]`);
             filterSteps.push(`[base_norm][cam_third]overlay=${thirdOverlayX}:${thirdOverlayY}:format=auto:enable='${notZoomExpr}'[base_norm_third]`);
             normalBaseLabel = 'base_norm_third';
         }
         if (hasZoomEffect) {
             let zoomBaseLabel = normalBaseLabel;
-            zoomLayoutGroups.forEach((group, idx) => {
-                const zoomW = Math.max(2, Math.round(outputW * group.w));
-                const zoomH = Math.max(2, Math.round(outputH * group.h));
+            zoomSegments.forEach((segment, idx) => {
+                const zoomW = Math.max(2, Math.round(outputW * segment.w));
+                const zoomH = Math.max(2, Math.round(outputH * segment.h));
                 const minZoomX = zoomW > outputW ? (outputW - zoomW) : 0;
                 const maxZoomX = zoomW > outputW ? 0 : (outputW - zoomW);
                 const minZoomY = zoomH > outputH ? (outputH - zoomH) : 0;
                 const maxZoomY = zoomH > outputH ? 0 : (outputH - zoomH);
-                const zoomX = Math.max(minZoomX, Math.min(maxZoomX, Math.round(outputW * group.x)));
-                const zoomY = Math.max(minZoomY, Math.min(maxZoomY, Math.round(outputH * group.y)));
-                const zoomExprForGroup = buildFfmpegEnableExprFromRanges(group.ranges);
+                const zoomX = Math.max(minZoomX, Math.min(maxZoomX, Math.round(outputW * segment.x)));
+                const zoomY = Math.max(minZoomY, Math.min(maxZoomY, Math.round(outputH * segment.y)));
+                const trimEndOpt = segment.end === null ? '' : `:end=${ts(segment.end)}`;
+                const zoomStartTs = ts(segment.start);
                 const camZoomLabel = `cam_zoom_${idx}`;
-                const nextBaseLabel = idx === (zoomLayoutGroups.length - 1) ? 'base' : `base_zoom_${idx}`;
+                const nextBaseLabel = idx === (zoomSegments.length - 1) ? 'base' : `base_zoom_${idx}`;
                 const zoomOverlayX = `${zoomX}+(${zoomW}-overlay_w)/2`;
                 const zoomOverlayY = `${zoomY}+(${zoomH}-overlay_h)/2`;
-                // Keep background gameplay visible around zoom camera; avoid black letterbox padding.
-                filterSteps.push(`[${camZoomSourceLabels[idx]}]crop=iw*${n(cam.w)}:ih*${n(cam.h)}:iw*${n(cam.x)}:ih*${n(cam.y)},scale=${zoomW}:${zoomH}:flags=bicubic:force_original_aspect_ratio=decrease,setsar=1[${camZoomLabel}]`);
-                filterSteps.push(`[${zoomBaseLabel}][${camZoomLabel}]overlay=${zoomOverlayX}:${zoomOverlayY}:format=auto:enable='${zoomExprForGroup}',setsar=1[${nextBaseLabel}]`);
+                // Trim each zoom branch to the active time span so crop/scale only runs while visible.
+                filterSteps.push(`[${camZoomSourceLabels[idx]}]trim=start=${zoomStartTs}${trimEndOpt},setpts=PTS-STARTPTS+${zoomStartTs}/TB,crop=iw*${n(cam.w)}:ih*${n(cam.h)}:iw*${n(cam.x)}:ih*${n(cam.y)},scale=${zoomW}:${zoomH}:flags=${scaleFlags}:force_original_aspect_ratio=decrease,setsar=1[${camZoomLabel}]`);
+                filterSteps.push(`[${zoomBaseLabel}][${camZoomLabel}]overlay=${zoomOverlayX}:${zoomOverlayY}:format=auto:eof_action=pass,setsar=1[${nextBaseLabel}]`);
                 zoomBaseLabel = nextBaseLabel;
             });
         } else {
             filterSteps.push(`[${normalBaseLabel}]setsar=1[base]`);
         }
     } else {
-        filterSteps.push(`[${sourceVideoFpsLabel}]crop=iw*${n(gameplay.w)}:ih*${n(gameplay.h)}:iw*${n(gameplay.x)}:ih*${n(gameplay.y)},scale=${outputW}:${gameplayOutputHeightPx}:flags=bicubic:force_original_aspect_ratio=disable,setsar=1[game]`);
+        filterSteps.push(`[${sourceVideoFpsLabel}]crop=iw*${n(gameplay.w)}:ih*${n(gameplay.h)}:iw*${n(gameplay.x)}:ih*${n(gameplay.y)},scale=${outputW}:${gameplayOutputHeightPx}:flags=${scaleFlags}:force_original_aspect_ratio=disable,setsar=1[game]`);
         filterSteps.push(`color=c=black:s=${outputW}x${outputH}:d=${badgeSourceDurationSec}[layout_base]`);
         filterSteps.push(`[layout_base][game]overlay=0:${gameplayOutputYPx}:format=auto:shortest=1[base]`);
     }
@@ -3347,7 +3480,7 @@ async function processClipToTikTokFormat(
         const badgeEnableOpt = hasZoomEffect ? `:enable='${notZoomExpr}'` : '';
         let badgeOutLabel = 'base';
         if (logoPath) {
-            filterSteps.push(`[${logoInputIndex}:v]scale=${nameIconWPx}:${nameIconHPx}:flags=bicubic:force_original_aspect_ratio=decrease,format=rgba,colorchannelmixer=aa=${n(twitchNameOpacity)}[tw_logo]`);
+            filterSteps.push(`[${logoInputIndex}:v]scale=${nameIconWPx}:${nameIconHPx}:flags=${scaleFlags}:force_original_aspect_ratio=decrease,format=rgba,colorchannelmixer=aa=${n(twitchNameOpacity)}[tw_logo]`);
             // Do not shorten output to a single logo frame; keep base video timeline authoritative.
             filterSteps.push(`[base][tw_logo]overlay=${logoX}:${logoY}:format=auto:eof_action=repeat${badgeEnableOpt}[badge_logo]`);
             badgeOutLabel = 'badge_logo';
@@ -3391,12 +3524,21 @@ async function processClipToTikTokFormat(
         overlayItemsWithInput.forEach((item, idx) => {
             const overlayLabel = `clip_overlay_media_${idx}`;
             const nextBase = `v_overlay_${idx}`;
-            const enableExpr = `between(t\\,${ts(item.startSec)}\\,${ts(item.endSec)})`;
             const overlayXExpr = `${item.boxX}+(${item.boxW}-overlay_w)/2`;
             const overlayYExpr = `${item.boxY}+(${item.boxH}-overlay_h)/2`;
-            const gifFpsStep = item.mediaMime === 'image/gif' ? `fps=${FFMPEG_GIF_FPS},` : '';
-            filterSteps.push(`[${item.inputIndex}:v]${gifFpsStep}scale=${item.boxW}:${item.boxH}:flags=bicubic:force_original_aspect_ratio=decrease,setsar=1,format=rgba[${overlayLabel}]`);
-            filterSteps.push(`[${baseLabel}][${overlayLabel}]overlay=${overlayXExpr}:${overlayYExpr}:format=auto:eof_action=repeat:enable='${enableExpr}'[${nextBase}]`);
+            const isStaticImage = item.mediaMime.startsWith('image/') && item.mediaMime !== 'image/gif';
+            if (isStaticImage) {
+                const enableExpr = `between(t\\,${ts(item.startSec)}\\,${ts(item.endSec)})`;
+                filterSteps.push(`[${item.inputIndex}:v]scale=${item.boxW}:${item.boxH}:flags=${scaleFlags}:force_original_aspect_ratio=decrease,setsar=1,format=rgba[${overlayLabel}]`);
+                filterSteps.push(`[${baseLabel}][${overlayLabel}]overlay=${overlayXExpr}:${overlayYExpr}:format=auto:eof_action=repeat:enable='${enableExpr}'[${nextBase}]`);
+            } else {
+                const gifFpsStep = item.mediaMime === 'image/gif' ? `fps=${FFMPEG_GIF_FPS},` : '';
+                const overlayDurationSec = Math.max(0.05, item.endSec - item.startSec);
+                const overlayStartTs = ts(item.startSec);
+                const overlayDurationTs = ts(overlayDurationSec);
+                filterSteps.push(`[${item.inputIndex}:v]trim=start=0:end=${overlayDurationTs},setpts=PTS-STARTPTS+${overlayStartTs}/TB,${gifFpsStep}scale=${item.boxW}:${item.boxH}:flags=${scaleFlags}:force_original_aspect_ratio=decrease,setsar=1,format=rgba[${overlayLabel}]`);
+                filterSteps.push(`[${baseLabel}][${overlayLabel}]overlay=${overlayXExpr}:${overlayYExpr}:format=auto:eof_action=pass[${nextBase}]`);
+            }
             baseLabel = nextBase;
         });
         filterSteps.push(`[${baseLabel}]format=yuv420p[v]`);
@@ -3406,7 +3548,9 @@ async function processClipToTikTokFormat(
 
     const filter = filterSteps.join(';');
 
-    const args = ['-y', '-i', inputPath];
+    const args = ['-y'];
+    appendNetworkInputOptions(args, input);
+    args.push('-i', input.source);
     if (showNameBadge && logoPath) {
         args.push('-i', logoPath);
     }
@@ -3675,6 +3819,28 @@ async function ensureTikTokUploadReady(userId: number, uploadMode: TikTokUploadM
     assertTikTokUploadScope(account, uploadMode);
 }
 
+async function renderProcessedClip(
+    clip: DbClipRow,
+    inPath: string,
+    outPath: string,
+    videoPreset: string,
+    videoCrf: number
+): Promise<void> {
+    const sourceUrl = await resolveClipVideoUrl(clip);
+    if (sourceUrl && FFMPEG_DIRECT_SOURCE_INPUT) {
+        try {
+            await withRenderSlot(() => processClipToTikTokFormat({ source: sourceUrl, isRemote: true }, outPath, clip, videoPreset, videoCrf));
+            return;
+        } catch (err) {
+            const msg = err instanceof Error ? err.message : String(err);
+            console.warn(`[video] direct input render failed for clip ${clip.id}. Falling back to local source file.`, msg);
+        }
+    }
+
+    await downloadClipSourceToPath(clip, sourceUrl, inPath);
+    await withRenderSlot(() => processClipToTikTokFormat({ source: inPath, isRemote: false }, outPath, clip, videoPreset, videoCrf));
+}
+
 async function uploadSingleClipToTikTok(
     userId: number,
     clip: DbClipRow,
@@ -3687,33 +3853,8 @@ async function uploadSingleClipToTikTok(
     const outPath = path.join(VIDEO_WORK_DIR, `${clip.id}.tiktok.mp4`);
 
     try {
-        const sourceUrl = await resolveClipVideoUrl(clip);
-        if (sourceUrl) {
-            await downloadFile(sourceUrl, inPath);
-        } else {
-            // Fallback for clips where static thumbnail transformations do not expose a direct MP4 URL.
-            await runCommand(YTDLP_BIN, [
-                '--no-progress',
-                '--no-warnings',
-                '-f',
-                'best[ext=mp4]/best',
-                '-o',
-                inPath,
-                clip.url,
-            ]);
-
-            if (!(await fileExistsAndNonEmpty(inPath))) {
-                return {
-                    clipId: clip.id,
-                    title: clip.title,
-                    status: 'failed',
-                    details: 'Could not resolve/download clip video (direct URL failed and yt-dlp output missing).',
-                };
-            }
-        }
-
         // Keep upload quality defaults for TikTok pipeline.
-        await withRenderSlot(() => processClipToTikTokFormat(inPath, outPath, clip));
+        await renderProcessedClip(clip, inPath, outPath, DEFAULT_UPLOAD_VIDEO_PRESET, DEFAULT_UPLOAD_VIDEO_CRF);
 
         if (dryRun) {
             await ensureTikTokUploadReady(userId, uploadMode);
@@ -3757,27 +3898,8 @@ async function buildProcessedClipForDownload(clip: DbClipRow): Promise<string> {
     const outPath = path.join(VIDEO_WORK_DIR, `${clip.id}.${token}.tiktok.mp4`);
 
     try {
-        const sourceUrl = await resolveClipVideoUrl(clip);
-        if (sourceUrl) {
-            await downloadFile(sourceUrl, inPath);
-        } else {
-            await runCommand(YTDLP_BIN, [
-                '--no-progress',
-                '--no-warnings',
-                '-f',
-                'best[ext=mp4]/best',
-                '-o',
-                inPath,
-                clip.url,
-            ]);
-
-            if (!(await fileExistsAndNonEmpty(inPath))) {
-                throw new Error('Could not resolve/download clip video for export.');
-            }
-        }
-
         // Download path prioritizes faster turnaround over encode efficiency.
-        await withRenderSlot(() => processClipToTikTokFormat(inPath, outPath, clip, DEFAULT_DOWNLOAD_VIDEO_PRESET, DEFAULT_DOWNLOAD_VIDEO_CRF));
+        await renderProcessedClip(clip, inPath, outPath, DEFAULT_DOWNLOAD_VIDEO_PRESET, DEFAULT_DOWNLOAD_VIDEO_CRF);
         return outPath;
     } finally {
         await fs.promises.rm(inPath, { force: true }).catch(() => {});
@@ -5178,8 +5300,8 @@ app.get('/api/clips/:clipId/video', requireAuth, async (req: Request, res: Respo
             timeout: 20000,
             headers: {
                 ...(rangeHeader ? { Range: String(rangeHeader) } : {}),
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-                Referer: 'https://clips.twitch.tv/',
+                'User-Agent': TWITCH_VIDEO_USER_AGENT,
+                Referer: TWITCH_VIDEO_REFERER,
             },
             validateStatus: (status) => status === 200 || status === 206,
         });
@@ -6115,7 +6237,7 @@ app.listen(PORT, () => {
     console.log('👥  Multi-user mode enabled: each account manages its own streamer list.');
     console.log(`🧰  Twitch fetch config: lookback=${TWITCH_CLIPS_LOOKBACK_DAYS} days, max_pages=${TWITCH_CLIPS_MAX_PAGES}, page_size=${TWITCH_CLIPS_PAGE_SIZE}`);
     console.log(`🔎  Clip visibility filter: min_views=${MIN_CLIP_VIEWS}`);
-    console.log(`[ffmpeg] render tuning: fps=${FFMPEG_OUTPUT_FPS}, gif_fps=${FFMPEG_GIF_FPS}, threads=${FFMPEG_THREAD_CAP || 'auto'}, filter_threads=${FFMPEG_FILTER_THREAD_CAP || 'auto'}, max_concurrent_renders=${MAX_CONCURRENT_RENDERS}, upload_preset=${DEFAULT_UPLOAD_VIDEO_PRESET}, download_preset=${DEFAULT_DOWNLOAD_VIDEO_PRESET}, upload_crf=${DEFAULT_UPLOAD_VIDEO_CRF}, download_crf=${DEFAULT_DOWNLOAD_VIDEO_CRF}`);
+    console.log(`[ffmpeg] render tuning: size=${FFMPEG_OUTPUT_WIDTH}x${FFMPEG_OUTPUT_HEIGHT}, fps=${FFMPEG_OUTPUT_FPS}, gif_fps=${FFMPEG_GIF_FPS}, scale_flags=${FFMPEG_SCALE_FLAGS}, direct_input=${FFMPEG_DIRECT_SOURCE_INPUT ? 'on' : 'off'}, threads=${FFMPEG_THREAD_CAP || 'auto'}, filter_threads=${FFMPEG_FILTER_THREAD_CAP || 'auto'}, max_concurrent_renders=${MAX_CONCURRENT_RENDERS}, max_source_downloads=${MAX_CONCURRENT_SOURCE_DOWNLOADS}, upload_preset=${DEFAULT_UPLOAD_VIDEO_PRESET}, download_preset=${DEFAULT_DOWNLOAD_VIDEO_PRESET}, upload_crf=${DEFAULT_UPLOAD_VIDEO_CRF}, download_crf=${DEFAULT_DOWNLOAD_VIDEO_CRF}`);
     console.log(`[cleanup] overlay-media retention=${OVERLAY_MEDIA_RETENTION_DAYS}d, interval=${OVERLAY_MEDIA_CLEANUP_INTERVAL_MINUTES}m, dir=${OVERLAY_MEDIA_DIR}`);
     console.log(`🔐  Session mode: ${IS_PRODUCTION ? 'production secure cookies enabled' : 'development cookies (non-secure)'}`);
 });
