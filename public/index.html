@@ -7991,6 +7991,16 @@
     return card;
   }
 
+  function refreshClipCardInPlace(clipId) {
+    const id = String(clipId || '');
+    if (!id) return;
+    const clip = allClips.find((item) => String(item?.id || '') === id);
+    if (!clip) return;
+    const oldCard = document.getElementById(`card-${id}`);
+    if (!oldCard) return;
+    oldCard.replaceWith(buildCard(clip));
+  }
+
   function buildClipActionsHtml(clip, mode = 'card') {
     const isModal = mode === 'modal';
     const wrapperClass = mode === 'modal'
@@ -10607,7 +10617,10 @@
     cropLastSavedFingerprint = fingerprint;
     cropLastKnownFingerprint = fingerprint;
     Object.assign(activeCropClip, payload);
+    activeCropClip.clip_tags = normalizeClipTags(activeCropClip.clip_tags);
     writeCropDraft(activeCropClip.id, payload, fingerprint);
+    refreshClipCardInPlace(activeCropClip.id);
+    renderClipPlayerModal();
 
     if (options.fromAutosave) {
       setCropAutosaveStatus('saved');
