@@ -3118,20 +3118,29 @@ async function fileExistsAndNonEmpty(filePath: string): Promise<boolean> {
     }
 }
 
+function appendCappedLog(current: string, chunk: string, maxChars = 240000): string {
+    const next = `${current}${chunk}`;
+    if (next.length <= maxChars) return next;
+    return next.slice(next.length - maxChars);
+}
+
 function runCommand(command: string, args: string[]): Promise<void> {
     return new Promise((resolve, reject) => {
-        const child = spawn(command, args, { stdio: ['ignore', 'pipe', 'pipe'] });
+        const child = spawn(command, args, { stdio: ['ignore', 'ignore', 'pipe'] });
         let stderr = '';
         child.stderr.on('data', (chunk) => {
-            stderr += String(chunk);
+            stderr = appendCappedLog(stderr, String(chunk));
         });
         child.on('error', reject);
-        child.on('close', (code) => {
+        child.on('close', (code, signal) => {
             if (code === 0) {
                 resolve();
                 return;
             }
-            reject(new Error(`${command} exited with code ${code}. ${stderr}`));
+            const reason = code === null
+                ? `${command} terminated by signal ${signal || 'unknown'}`
+                : `${command} exited with code ${code}`;
+            reject(new Error(`${reason}. ${stderr}`));
         });
     });
 }
@@ -3142,18 +3151,21 @@ function runCommandCaptureOutput(command: string, args: string[]): Promise<{ std
         let stdout = '';
         let stderr = '';
         child.stdout.on('data', (chunk) => {
-            stdout += String(chunk);
+            stdout = appendCappedLog(stdout, String(chunk));
         });
         child.stderr.on('data', (chunk) => {
-            stderr += String(chunk);
+            stderr = appendCappedLog(stderr, String(chunk));
         });
         child.on('error', reject);
-        child.on('close', (code) => {
+        child.on('close', (code, signal) => {
             if (code === 0) {
                 resolve({ stdout, stderr });
                 return;
             }
-            reject(new Error(`${command} exited with code ${code}. ${stderr}`));
+            const reason = code === null
+                ? `${command} terminated by signal ${signal || 'unknown'}`
+                : `${command} exited with code ${code}`;
+            reject(new Error(`${reason}. ${stderr}`));
         });
     });
 }
@@ -3548,7 +3560,7 @@ async function processClipToTikTokFormat(
 
     const filter = filterSteps.join(';');
 
-    const args = ['-y'];
+    const args = ['-y', '-hide_banner', '-loglevel', 'error', '-nostats'];
     appendNetworkInputOptions(args, input);
     args.push('-i', input.source);
     if (showNameBadge && logoPath) {
