@@ -4099,6 +4099,14 @@ function parseTwitchNameText(value: unknown): string | null {
     return sanitized;
 }
 
+function parseClipTitleText(value: unknown): string | null {
+    if (value === undefined || value === null) return '';
+    if (typeof value !== 'string') return null;
+    const sanitized = value.slice(0, 64);
+    if (containsBlockedTwitchNameLanguage(sanitized)) return null;
+    return sanitized;
+}
+
 function parseTwitchNameScale(value: unknown): number | null {
     if (value === undefined || value === null || value === '') return 1;
     const n = Number(value);
@@ -5862,8 +5870,8 @@ app.get('/api/crop/:clipId', requireAuth, (req: Request, res: Response) => {
             twitch_name_x: row.twitch_name_x,
             twitch_name_y: row.twitch_name_y,
             twitch_name_text: row.twitch_name_text || row.broadcaster_name || '',
-            source_title: String(row.title || '').trim().slice(0, 64),
-            clip_title_text: String(row.clip_title_text || row.title || '').trim().slice(0, 64),
+            source_title: String(row.title || '').slice(0, 64),
+            clip_title_text: String(row.clip_title_text || row.title || '').slice(0, 64),
             twitch_name_scale: Number.isFinite(row.twitch_name_scale as number) ? Number(row.twitch_name_scale) : 1,
             twitch_name_opacity: Number.isFinite(row.twitch_name_opacity as number) ? Number(row.twitch_name_opacity) : 1,
             gameplay_x: row.gameplay_x,
@@ -6062,7 +6070,7 @@ app.post('/api/crop/:clipId', requireAuth, (req: Request, res: Response) => {
         res.status(400).json({ error: 'Invalid twitch_name_text value. Use a string up to 64 characters with no bad words.' });
         return;
     }
-    const parsedClipTitleText = parseTwitchNameText(clip_title_text);
+    const parsedClipTitleText = parseClipTitleText(clip_title_text);
     if (parsedClipTitleText === null) {
         res.status(400).json({ error: 'Invalid clip_title_text value. Use a string up to 64 characters with no bad words.' });
         return;

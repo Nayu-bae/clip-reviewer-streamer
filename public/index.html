@@ -5531,7 +5531,15 @@
   }
 
   function sanitizeClipTitleTextWithModeration(value, fallback = '') {
-    return sanitizeTwitchNameTextWithModeration(value, fallback);
+    const hasExplicitValue = value !== undefined && value !== null;
+    const primary = hasExplicitValue ? String(value).slice(0, 64) : '';
+    const backup = String(fallback ?? '').slice(0, 64);
+    const resolved = hasExplicitValue ? primary : backup;
+    if (!resolved) return { text: '', blockedLanguage: false };
+    if (!containsBlockedTwitchNameLanguage(resolved)) {
+      return { text: resolved, blockedLanguage: false };
+    }
+    return { text: '', blockedLanguage: true };
   }
 
   function sanitizeClipTitleText(value, fallback = '') {
@@ -8831,18 +8839,18 @@
   });
   cropTitleInput?.addEventListener('input', () => {
     if (!cropState) return;
-    applyCropTitleFromInput(cropTitleInput.value);
+    applyCropTitleFromInput(cropTitleInput.value, false);
   });
   cropTitleInput?.addEventListener('blur', () => {
     if (!cropState) return;
-    applyCropTitleFromInput(cropTitleInput.value);
+    applyCropTitleFromInput(cropTitleInput.value, true);
     cropTitleEditing = false;
     syncCropTitleHeaderUI();
   });
   cropTitleInput?.addEventListener('keydown', (e) => {
     if (e.key === 'Enter') {
       e.preventDefault();
-      applyCropTitleFromInput(cropTitleInput.value);
+      applyCropTitleFromInput(cropTitleInput.value, true);
       cropTitleEditing = false;
       syncCropTitleHeaderUI();
       cropTitleInput.blur();
@@ -8850,7 +8858,7 @@
     }
     if (e.key === 'Escape') {
       e.preventDefault();
-      applyCropTitleFromInput(cropTitleEditBefore);
+      applyCropTitleFromInput(cropTitleEditBefore, false);
       cropTitleEditing = false;
       syncCropTitleHeaderUI();
       cropTitleInput.blur();
@@ -10493,16 +10501,22 @@
     }
   }
 
-  function applyCropTitleFromInput(rawValue) {
+  function applyCropTitleFromInput(rawValue, commit = false) {
     if (!cropState) return;
     const raw = String(rawValue || '').slice(0, 64);
+    if (!commit) {
+      cropState.clipTitleText = raw;
+      syncCropTitleHeaderUI();
+      return;
+    }
     const sanitized = sanitizeClipTitleTextWithModeration(raw, getClipTitleFallback());
-    cropState.clipTitleText = sanitized.text;
-    if (cropTitleInput && cropTitleInput.value !== sanitized.text) {
-      cropTitleInput.value = sanitized.text;
+    const nextValue = sanitized.text;
+    cropState.clipTitleText = nextValue;
+    if (cropTitleInput && cropTitleInput.value !== nextValue) {
+      cropTitleInput.value = nextValue;
     }
     if (sanitized.blockedLanguage) maybeShowClipTitleFilterToast();
-    const effectiveTitle = getActiveClipTitleText() || getClipTitleFallback();
+    const effectiveTitle = sanitizeClipTitleText(nextValue, getClipTitleFallback()) || getClipTitleFallback();
     if (activeCropClip) activeCropClip.title = effectiveTitle;
     if (activeCropClip?.id) {
       refreshClipCardInPlace(activeCropClip.id);
