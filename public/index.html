@@ -2285,6 +2285,65 @@
       font-size: 1.4rem;
     }
 
+    .crop-title-heading {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .crop-title-display-btn {
+      appearance: none;
+      border: 1px dashed rgba(99, 102, 241, 0.55);
+      background: rgba(24, 34, 58, 0.8);
+      color: #eef2ff;
+      border-radius: 8px;
+      padding: 6px 10px;
+      font-size: 0.95rem;
+      font-weight: 700;
+      line-height: 1.15;
+      cursor: text;
+      max-width: min(60vw, 520px);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      transition: border-color 0.2s ease, background 0.2s ease;
+    }
+
+    .crop-title-display-btn:hover,
+    .crop-title-display-btn:focus-visible {
+      border-color: rgba(129, 140, 248, 0.95);
+      background: rgba(35, 49, 82, 0.88);
+      outline: none;
+    }
+
+    .crop-title-input {
+      display: none;
+      width: min(70vw, 560px);
+      max-width: 100%;
+      border: 1px solid rgba(129, 140, 248, 0.9);
+      background: rgba(18, 28, 50, 0.9);
+      color: #eef2ff;
+      border-radius: 8px;
+      padding: 6px 10px;
+      font-size: 0.95rem;
+      font-weight: 700;
+      line-height: 1.15;
+    }
+
+    .crop-title-input:focus {
+      outline: none;
+      box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.35);
+    }
+
+    #crop-title.editing .crop-title-display-btn {
+      display: none;
+    }
+
+    #crop-title.editing .crop-title-input {
+      display: inline-flex;
+    }
+
     .admin-close-btn {
       background: transparent;
       border: none;
@@ -4906,11 +4965,12 @@
 <div id="crop-modal">
   <div class="crop-modal-content">
     <div class="admin-modal-header" style="margin-bottom: 14px;">
-      <h2 id="crop-title" class="inline-flex items-center gap-2">
+      <h2 id="crop-title" class="crop-title-heading">
         <svg class="h-5 w-5 text-indigo-400" viewBox="0 0 20 20" fill="currentColor" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-          <path d="M4.25 4.25A.75.75 0 015 3.5h1.5a.75.75 0 010 1.5H5.75v.75a.75.75 0 01-1.5 0v-1.5zM13.5 3.5a.75.75 0 000 1.5h.75v.75a.75.75 0 001.5 0v-1.5a.75.75 0 00-.75-.75H13.5zM4.25 13.5a.75.75 0 011.5 0v.75h.75a.75.75 0 010 1.5H5a.75.75 0 01-.75-.75V13.5zM15 14.25h-1.5a.75.75 0 000 1.5H15a.75.75 0 00.75-.75v-1.5a.75.75 0 00-1.5 0v.75zM7.5 9a1.5 1.5 0 113 0v2.25a.75.75 0 001.5 0V9a3 3 0 10-6 0v2.25a.75.75 0 001.5 0V9z"/>
+          <path d="M13.62 3.2a2 2 0 012.83 0l.35.36a2 2 0 010 2.82l-7.8 7.8a2 2 0 01-.85.5l-3.1.86a.75.75 0 01-.92-.92l.86-3.1a2 2 0 01.5-.85l7.8-7.8zM12.56 5.32l2.12 2.12 1.06-1.06a.5.5 0 000-.7l-.35-.36a.5.5 0 00-.71 0l-1.06 1.06zM13.62 8.5L11.5 6.38 6.5 11.38a.5.5 0 00-.12.21l-.5 1.82 1.82-.5a.5.5 0 00.21-.12l5-5z"/>
         </svg>
-        Edit for Upload
+        <button id="crop-title-display-btn" class="crop-title-display-btn" type="button" aria-label="Edit clip title"></button>
+        <input id="crop-title-input" class="crop-title-input" type="text" maxlength="64" autocomplete="off" spellcheck="false" aria-label="Clip title input" />
       </h2>
       <button class="admin-close-btn" id="crop-close-btn">✕</button>
     </div>
@@ -5227,6 +5287,7 @@
   let currentFilter = 'all';
   const collapsedStreamers = new Set();
   let activeCropClip = null;
+  let activeCropSourceTitle = '';
   let cropState = null;
     let dragState = null;
     let outputCamDragState = null;
@@ -5298,6 +5359,8 @@
   let cropAutosaveTimer = null;
   let cropLastKnownFingerprint = '';
   let cropLastSavedFingerprint = '';
+  let cropTitleEditing = false;
+  let cropTitleEditBefore = '';
   let sessionProgressStartedAt = null;
   let sessionReviewedIds = new Set();
   let sessionApprovedIds = new Set();
@@ -5361,6 +5424,7 @@
     camEnabled: true,
     twitchNameEnabled: false,
     twitchNameText: '',
+    clipTitleText: '',
     twitchNameScale: 1,
     twitchNameOpacity: 1,
     previewBordersEnabled: true,
@@ -5464,6 +5528,25 @@
   function getActiveTwitchNameText() {
     const fallback = String(activeCropClip?.broadcaster_name || '').trim();
     return sanitizeTwitchNameText(cropState?.twitchNameText, fallback);
+  }
+
+  function sanitizeClipTitleTextWithModeration(value, fallback = '') {
+    return sanitizeTwitchNameTextWithModeration(value, fallback);
+  }
+
+  function sanitizeClipTitleText(value, fallback = '') {
+    return sanitizeClipTitleTextWithModeration(value, fallback).text;
+  }
+
+  function getClipTitleFallback() {
+    const fromSource = sanitizeClipTitleText(activeCropSourceTitle, activeCropClip?.id || 'clip');
+    if (fromSource) return fromSource;
+    const fromClip = sanitizeClipTitleText(activeCropClip?.title, activeCropClip?.id || 'clip');
+    return fromClip || String(activeCropClip?.id || 'clip').trim() || 'clip';
+  }
+
+  function getActiveClipTitleText() {
+    return sanitizeClipTitleText(cropState?.clipTitleText, getClipTitleFallback());
   }
 
   function formatDate(iso) {
@@ -7876,6 +7959,7 @@
   let toastTimer;
   let lastBuildBlockedToastAt = 0;
   let lastTwitchNameFilterToastAt = 0;
+  let lastClipTitleFilterToastAt = 0;
   function showToast(msg, type = 'success') {
     const el = document.getElementById('toast');
     el.textContent = msg;
@@ -7898,6 +7982,13 @@
     if ((now - lastTwitchNameFilterToastAt) < 1200) return;
     lastTwitchNameFilterToastAt = now;
     showToast('Display Name cannot include bad words.', 'error');
+  }
+
+  function maybeShowClipTitleFilterToast() {
+    const now = Date.now();
+    if ((now - lastClipTitleFilterToastAt) < 1200) return;
+    lastClipTitleFilterToastAt = now;
+    showToast('Clip title cannot include bad words.', 'error');
   }
 
   function setGlobalBuildLock(enabled) {
@@ -8561,6 +8652,9 @@
   const twitchNameInput = document.getElementById('twitch-name-input');
   const twitchNameOpacitySlider = document.getElementById('twitch-name-opacity-slider');
   const twitchNameOpacityValue = document.getElementById('twitch-name-opacity-value');
+  const cropTitleEl = document.getElementById('crop-title');
+  const cropTitleDisplayBtn = document.getElementById('crop-title-display-btn');
+  const cropTitleInput = document.getElementById('crop-title-input');
   const previewBordersToggleRow = document.getElementById('preview-borders-toggle-row');
   const previewBordersEnabledSlider = document.getElementById('preview-borders-enabled-slider');
   const thirdAreaToggleRow = document.getElementById('third-area-toggle-row');
@@ -8726,6 +8820,41 @@
     e.preventDefault();
     commitTwitchNameInput();
     twitchNameInput.blur();
+  });
+  cropTitleDisplayBtn?.addEventListener('click', () => {
+    if (!cropState || !cropTitleInput) return;
+    cropTitleEditBefore = getActiveClipTitleText() || getClipTitleFallback();
+    cropTitleEditing = true;
+    syncCropTitleHeaderUI();
+    cropTitleInput.focus();
+    cropTitleInput.select();
+  });
+  cropTitleInput?.addEventListener('input', () => {
+    if (!cropState) return;
+    applyCropTitleFromInput(cropTitleInput.value);
+  });
+  cropTitleInput?.addEventListener('blur', () => {
+    if (!cropState) return;
+    applyCropTitleFromInput(cropTitleInput.value);
+    cropTitleEditing = false;
+    syncCropTitleHeaderUI();
+  });
+  cropTitleInput?.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      applyCropTitleFromInput(cropTitleInput.value);
+      cropTitleEditing = false;
+      syncCropTitleHeaderUI();
+      cropTitleInput.blur();
+      return;
+    }
+    if (e.key === 'Escape') {
+      e.preventDefault();
+      applyCropTitleFromInput(cropTitleEditBefore);
+      cropTitleEditing = false;
+      syncCropTitleHeaderUI();
+      cropTitleInput.blur();
+    }
   });
   const commitTwitchNameOpacityFromSlider = () => {
     if (!cropState || !twitchNameOpacitySlider) return;
@@ -9006,6 +9135,8 @@
     outputNameBadgeEditing = false;
     outputNameBadgeEditBefore = '';
     outputNameBadgeCancelEdit = false;
+    cropTitleEditing = false;
+    cropTitleEditBefore = '';
     badgeEl?.classList.remove('editing');
     stopOutputNameBadgeDrag();
     stopCropDrag();
@@ -9022,7 +9153,9 @@
     if (overlayFileInput) overlayFileInput.value = '';
     cropFallbackImage = null;
     activeCropClip = null;
+    activeCropSourceTitle = '';
     cropState = null;
+    syncCropTitleHeaderUI();
     selectedSplitSegmentIndex = null;
     splitOverflowMenuOpen = false;
     cropModalPointerDownOnBackdrop = false;
@@ -10346,6 +10479,39 @@
     if (twitchNameOpacityValue) twitchNameOpacityValue.textContent = `${nextPercent}%`;
   }
 
+  function syncCropTitleHeaderUI() {
+    if (!cropTitleEl || !cropTitleDisplayBtn || !cropTitleInput) return;
+    const hasState = !!cropState;
+    const effectiveTitle = hasState ? (getActiveClipTitleText() || getClipTitleFallback()) : '';
+    cropTitleEl.classList.toggle('editing', hasState && cropTitleEditing);
+    cropTitleDisplayBtn.disabled = !hasState;
+    cropTitleInput.disabled = !hasState;
+    cropTitleDisplayBtn.textContent = effectiveTitle || 'clip';
+    cropTitleDisplayBtn.title = hasState ? 'Click to edit clip title' : 'Open a clip to edit title';
+    if (!cropTitleEditing && cropTitleInput.value !== effectiveTitle) {
+      cropTitleInput.value = effectiveTitle;
+    }
+  }
+
+  function applyCropTitleFromInput(rawValue) {
+    if (!cropState) return;
+    const raw = String(rawValue || '').slice(0, 64);
+    const sanitized = sanitizeClipTitleTextWithModeration(raw, getClipTitleFallback());
+    cropState.clipTitleText = sanitized.text;
+    if (cropTitleInput && cropTitleInput.value !== sanitized.text) {
+      cropTitleInput.value = sanitized.text;
+    }
+    if (sanitized.blockedLanguage) maybeShowClipTitleFilterToast();
+    const effectiveTitle = getActiveClipTitleText() || getClipTitleFallback();
+    if (activeCropClip) activeCropClip.title = effectiveTitle;
+    if (activeCropClip?.id) {
+      refreshClipCardInPlace(activeCropClip.id);
+      renderClipPlayerModal();
+    }
+    queueCropAutosave(true);
+    syncCropTitleHeaderUI();
+  }
+
   function syncPreviewBordersToggleUI() {
     const slider = document.getElementById('preview-borders-enabled-slider');
     const sliderFill = document.getElementById('preview-borders-enabled-slider-fill');
@@ -10532,6 +10698,7 @@
       twitch_name_x: cropState.twitchNamePos?.x ?? DEFAULT_CROP.twitchNamePos.x,
       twitch_name_y: cropState.twitchNamePos?.y ?? DEFAULT_CROP.twitchNamePos.y,
       twitch_name_text: getActiveTwitchNameText(),
+      clip_title_text: getActiveClipTitleText(),
       twitch_name_scale: clampTwitchNameScale(cropState.twitchNameScale, DEFAULT_CROP.twitchNameScale),
       twitch_name_opacity: clampTwitchNameOpacity(cropState.twitchNameOpacity, DEFAULT_CROP.twitchNameOpacity),
       gameplay_x: cropState.gameplay.x,
@@ -10601,6 +10768,10 @@
     cropState.twitchNameText = sanitizeTwitchNameText(
       payload.twitch_name_text,
       cropState.twitchNameText || activeCropClip?.broadcaster_name || ''
+    );
+    cropState.clipTitleText = sanitizeClipTitleText(
+      payload.clip_title_text,
+      cropState.clipTitleText || activeCropSourceTitle || activeCropClip?.id || 'clip'
     );
     cropState.twitchNameScale = clampTwitchNameScale(
       payload.twitch_name_scale,
@@ -10738,10 +10909,12 @@
     cropLastSavedFingerprint = fingerprint;
     cropLastKnownFingerprint = fingerprint;
     Object.assign(activeCropClip, payload);
+    activeCropClip.title = getActiveClipTitleText() || getClipTitleFallback();
     activeCropClip.clip_tags = normalizeClipTags(activeCropClip.clip_tags);
     writeCropDraft(activeCropClip.id, payload, fingerprint);
     refreshClipCardInPlace(activeCropClip.id);
     renderClipPlayerModal();
+    syncCropTitleHeaderUI();
 
     if (options.fromAutosave) {
       setCropAutosaveStatus('saved');
@@ -10764,14 +10937,11 @@
     closeClipPlayerModal();
     resetCropAutosaveState();
     markOnboardingStep('openedEdit', true);
+    cropTitleEditing = false;
+    cropTitleEditBefore = '';
 
     activeCropClip = clip;
-    document.getElementById('crop-title').innerHTML = `
-      <svg class="h-5 w-5 text-indigo-400" viewBox="0 0 20 20" fill="currentColor" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-        <path d="M4.25 4.25A.75.75 0 015 3.5h1.5a.75.75 0 010 1.5H5.75v.75a.75.75 0 01-1.5 0v-1.5zM13.5 3.5a.75.75 0 000 1.5h.75v.75a.75.75 0 001.5 0v-1.5a.75.75 0 00-.75-.75H13.5zM4.25 13.5a.75.75 0 011.5 0v.75h.75a.75.75 0 010 1.5H5a.75.75 0 01-.75-.75V13.5zM15 14.25h-1.5a.75.75 0 000 1.5H15a.75.75 0 00.75-.75v-1.5a.75.75 0 00-1.5 0v.75zM7.5 9a1.5 1.5 0 113 0v2.25a.75.75 0 001.5 0V9a3 3 0 10-6 0v2.25a.75.75 0 001.5 0V9z"/>
-      </svg>
-      Upload Edit - ${escHtml(clip.broadcaster_name)}
-    `;
+    activeCropSourceTitle = sanitizeClipTitleText(clip.title, clip.id || 'clip') || String(clip.id || 'clip');
 
     const video = document.getElementById('crop-preview-media');
     video.pause();
@@ -10801,6 +10971,7 @@
       camEnabled: clip.cam_enabled !== 0,
       twitchNameEnabled: clip.twitch_name_enabled === 1,
       twitchNameText: sanitizeTwitchNameText(clip.twitch_name_text, clip.broadcaster_name || ''),
+      clipTitleText: sanitizeClipTitleText(clip.clip_title_text, activeCropSourceTitle || clip.id || 'clip'),
       twitchNameScale: clampTwitchNameScale(clip.twitch_name_scale, DEFAULT_CROP.twitchNameScale),
       twitchNameOpacity: clampTwitchNameOpacity(clip.twitch_name_opacity, DEFAULT_CROP.twitchNameOpacity),
       previewBordersEnabled: true,
@@ -10842,10 +11013,12 @@
       const r = await fetch(`/api/crop/${clipKey}`);
       if (r.ok) {
         const data = await r.json();
+        activeCropSourceTitle = sanitizeClipTitleText(data?.crop?.source_title, activeCropSourceTitle || clip.id || 'clip') || activeCropSourceTitle || String(clip.id || 'clip');
         cropState = {
           camEnabled: data.crop.cam_enabled !== 0,
           twitchNameEnabled: data.crop.twitch_name_enabled === 1,
           twitchNameText: sanitizeTwitchNameText(data.crop.twitch_name_text, cropState.twitchNameText || clip.broadcaster_name || ''),
+          clipTitleText: sanitizeClipTitleText(data.crop.clip_title_text, cropState.clipTitleText || activeCropSourceTitle || clip.id || 'clip'),
           twitchNameScale: clampTwitchNameScale(data.crop.twitch_name_scale, cropState.twitchNameScale ?? DEFAULT_CROP.twitchNameScale),
           twitchNameOpacity: clampTwitchNameOpacity(data.crop.twitch_name_opacity, cropState.twitchNameOpacity ?? DEFAULT_CROP.twitchNameOpacity),
           previewBordersEnabled: cropState.previewBordersEnabled !== false,
@@ -10949,6 +11122,7 @@
     syncCamToggleUI();
     syncTwitchNameToggleUI();
     syncTwitchNameInputUI();
+    syncCropTitleHeaderUI();
     syncPreviewBordersToggleUI();
     syncThirdAreaToggleUI();
     syncClipTagButtonsUI();

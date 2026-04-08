@@ -185,6 +185,7 @@ interface DbClipRow {
     twitch_name_x: number | null;
     twitch_name_y: number | null;
     twitch_name_text: string | null;
+    clip_title_text?: string | null;
     twitch_name_scale: number | null;
     twitch_name_opacity: number | null;
     gameplay_x: number | null;
@@ -465,6 +466,7 @@ db.exec(`
         twitch_name_x REAL,
         twitch_name_y REAL,
         twitch_name_text TEXT,
+        clip_title_text TEXT,
         twitch_name_scale REAL,
         twitch_name_opacity REAL,
         gameplay_x    REAL,
@@ -548,6 +550,7 @@ addColumnIfMissing('ALTER TABLE user_clip_state ADD COLUMN twitch_name_enabled I
 addColumnIfMissing('ALTER TABLE user_clip_state ADD COLUMN twitch_name_x REAL');
 addColumnIfMissing('ALTER TABLE user_clip_state ADD COLUMN twitch_name_y REAL');
 addColumnIfMissing('ALTER TABLE user_clip_state ADD COLUMN twitch_name_text TEXT');
+addColumnIfMissing('ALTER TABLE user_clip_state ADD COLUMN clip_title_text TEXT');
 addColumnIfMissing('ALTER TABLE user_clip_state ADD COLUMN twitch_name_scale REAL');
 addColumnIfMissing('ALTER TABLE user_clip_state ADD COLUMN twitch_name_opacity REAL');
 addColumnIfMissing('ALTER TABLE user_clip_state ADD COLUMN split_points_json TEXT');
@@ -1535,7 +1538,7 @@ function getAllClips(userId: number): (Clip & {
         SELECT
             c.id,
             c.url,
-            c.title,
+            COALESCE(NULLIF(TRIM(s.clip_title_text), ''), c.title) AS title,
             c.view_count,
             c.created_at,
             c.thumbnail_url,
@@ -1552,6 +1555,7 @@ function getAllClips(userId: number): (Clip & {
             s.twitch_name_x,
             s.twitch_name_y,
             s.twitch_name_text,
+            s.clip_title_text,
             s.twitch_name_scale,
             s.twitch_name_opacity,
             s.gameplay_x,
@@ -1693,7 +1697,7 @@ function getApprovedClips(userId: number, limit: number): DbClipRow[] {
         SELECT
             c.id,
             c.url,
-            c.title,
+            COALESCE(NULLIF(TRIM(s.clip_title_text), ''), c.title) AS title,
             c.view_count,
             c.created_at,
             c.thumbnail_url,
@@ -1710,6 +1714,7 @@ function getApprovedClips(userId: number, limit: number): DbClipRow[] {
             s.twitch_name_x,
             s.twitch_name_y,
             s.twitch_name_text,
+            s.clip_title_text,
             s.twitch_name_scale,
             s.twitch_name_opacity,
             s.gameplay_x,
@@ -5493,7 +5498,7 @@ app.get('/api/clips/:clipId/download-cropped', requireAuth, async (req: Request,
             SELECT
                 c.id,
                 c.url,
-                c.title,
+                COALESCE(NULLIF(TRIM(s.clip_title_text), ''), c.title) AS title,
                 c.view_count,
                 c.created_at,
                 c.thumbnail_url,
@@ -5510,6 +5515,7 @@ app.get('/api/clips/:clipId/download-cropped', requireAuth, async (req: Request,
                 s.twitch_name_x,
                 s.twitch_name_y,
                 s.twitch_name_text,
+                s.clip_title_text,
                 s.twitch_name_scale,
                 s.twitch_name_opacity,
                 s.gameplay_x,
@@ -5807,7 +5813,7 @@ app.get('/api/crop/:clipId', requireAuth, (req: Request, res: Response) => {
     const { clipId } = req.params;
 
     const row = db.prepare(`
-        SELECT c.id, c.broadcaster_name, s.approved, s.cam_x, s.cam_y, s.cam_w, s.cam_h, s.cam_enabled, s.twitch_name_enabled, s.twitch_name_x, s.twitch_name_y, s.twitch_name_text, s.twitch_name_scale, s.twitch_name_opacity, s.gameplay_x, s.gameplay_y, s.gameplay_w, s.gameplay_h, s.third_x, s.third_y, s.third_w, s.third_h, s.cam_output_y, s.cam_output_h, s.gameplay_output_y, s.gameplay_output_h
+        SELECT c.id, c.title, c.broadcaster_name, s.approved, s.cam_x, s.cam_y, s.cam_w, s.cam_h, s.cam_enabled, s.twitch_name_enabled, s.twitch_name_x, s.twitch_name_y, s.twitch_name_text, s.clip_title_text, s.twitch_name_scale, s.twitch_name_opacity, s.gameplay_x, s.gameplay_y, s.gameplay_w, s.gameplay_h, s.third_x, s.third_y, s.third_w, s.third_h, s.cam_output_y, s.cam_output_h, s.gameplay_output_y, s.gameplay_output_h
              , s.third_area_enabled, s.third_output_x, s.third_output_y, s.third_output_w, s.third_output_h
              , s.split_points_json, s.split_deleted_segments_json, s.split_zoom_segments_json, s.split_zoom_layouts_json
              , s.overlay_items_json
@@ -5856,6 +5862,8 @@ app.get('/api/crop/:clipId', requireAuth, (req: Request, res: Response) => {
             twitch_name_x: row.twitch_name_x,
             twitch_name_y: row.twitch_name_y,
             twitch_name_text: row.twitch_name_text || row.broadcaster_name || '',
+            source_title: String(row.title || '').trim().slice(0, 64),
+            clip_title_text: String(row.clip_title_text || row.title || '').trim().slice(0, 64),
             twitch_name_scale: Number.isFinite(row.twitch_name_scale as number) ? Number(row.twitch_name_scale) : 1,
             twitch_name_opacity: Number.isFinite(row.twitch_name_opacity as number) ? Number(row.twitch_name_opacity) : 1,
             gameplay_x: row.gameplay_x,
@@ -6008,6 +6016,7 @@ app.post('/api/crop/:clipId', requireAuth, (req: Request, res: Response) => {
         twitch_name_x,
         twitch_name_y,
         twitch_name_text,
+        clip_title_text,
         twitch_name_scale,
         twitch_name_opacity,
         gameplay_x, gameplay_y, gameplay_w, gameplay_h,
@@ -6051,6 +6060,11 @@ app.post('/api/crop/:clipId', requireAuth, (req: Request, res: Response) => {
     const parsedTwitchNameText = parseTwitchNameText(twitch_name_text);
     if (parsedTwitchNameText === null) {
         res.status(400).json({ error: 'Invalid twitch_name_text value. Use a string up to 64 characters with no bad words.' });
+        return;
+    }
+    const parsedClipTitleText = parseTwitchNameText(clip_title_text);
+    if (parsedClipTitleText === null) {
+        res.status(400).json({ error: 'Invalid clip_title_text value. Use a string up to 64 characters with no bad words.' });
         return;
     }
 
@@ -6237,6 +6251,7 @@ app.post('/api/crop/:clipId', requireAuth, (req: Request, res: Response) => {
             twitch_name_x = $twitch_name_x,
             twitch_name_y = $twitch_name_y,
             twitch_name_text = $twitch_name_text,
+            clip_title_text = $clip_title_text,
             twitch_name_scale = $twitch_name_scale,
             twitch_name_opacity = $twitch_name_opacity,
             gameplay_x = $gameplay_x,
@@ -6284,6 +6299,7 @@ app.post('/api/crop/:clipId', requireAuth, (req: Request, res: Response) => {
         $twitch_name_x: twitch_name_x,
         $twitch_name_y: twitch_name_y,
         $twitch_name_text: parsedTwitchNameText,
+        $clip_title_text: parsedClipTitleText,
         $twitch_name_scale: parsedTwitchNameScale,
         $twitch_name_opacity: parsedTwitchNameOpacity,
         $gameplay_x: gameplay_x,
