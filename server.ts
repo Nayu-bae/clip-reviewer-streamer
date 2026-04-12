@@ -66,6 +66,7 @@ const ACCOUNT_MANAGE_LINK_TTL_MINUTES = Math.max(5, Math.floor(getPositiveNumber
 const PASSWORD_RESET_LINK_TTL_MINUTES = Math.max(5, Math.floor(getPositiveNumberEnv('PASSWORD_RESET_LINK_TTL_MINUTES', 30)));
 const VIDEO_WORK_DIR = path.join(__dirname, 'tmp', 'videos');
 const OVERLAY_MEDIA_DIR = path.join(__dirname, 'tmp', 'overlay-media');
+const EMOJI_WORK_DIR = path.join(__dirname, 'tmp', 'emojis');
 const OVERLAY_MEDIA_MAX_BYTES = 24 * 1024 * 1024;
 const TWITCH_LOGO_RELATIVE_PATH = path.join('pictures', 'twitchLogo.png');
 const TWITCH_VIDEO_USER_AGENT = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36';
@@ -98,6 +99,11 @@ const MAX_CONCURRENT_SOURCE_DOWNLOADS = Math.max(1, Math.min(16, Math.floor(getP
 const MEDIA_PROBE_CACHE_TTL_MS = Math.max(30 * 1000, Math.min(60 * 60 * 1000, Math.floor(getPositiveNumberEnv('MEDIA_PROBE_CACHE_TTL_SECONDS', 900) * 1000)));
 const OVERLAY_MEDIA_RETENTION_DAYS = Math.max(1, Math.min(365, Math.floor(getPositiveNumberEnv('OVERLAY_MEDIA_RETENTION_DAYS', 30))));
 const OVERLAY_MEDIA_CLEANUP_INTERVAL_MINUTES = Math.max(10, Math.min(24 * 60, Math.floor(getPositiveNumberEnv('OVERLAY_MEDIA_CLEANUP_INTERVAL_MINUTES', 180))));
+const EMOJI_PREVIEW_SESSION_TTL_MINUTES = Math.max(5, Math.min(180, Math.floor(getPositiveNumberEnv('EMOJI_PREVIEW_SESSION_TTL_MINUTES', 45))));
+const EMOJI_RENDER_RETENTION_MINUTES = Math.max(10, Math.min(24 * 60, Math.floor(getPositiveNumberEnv('EMOJI_RENDER_RETENTION_MINUTES', 360))));
+const EMOJI_CLEANUP_INTERVAL_MINUTES = Math.max(5, Math.min(12 * 60, Math.floor(getPositiveNumberEnv('EMOJI_CLEANUP_INTERVAL_MINUTES', 30))));
+const EMOJI_PREVIEW_SESSION_TTL_MS = EMOJI_PREVIEW_SESSION_TTL_MINUTES * 60 * 1000;
+const EMOJI_RENDER_RETENTION_MS = EMOJI_RENDER_RETENTION_MINUTES * 60 * 1000;
 const TWITCH_GQL_URL = 'https://gql.twitch.tv/gql';
 const CLIP_GQL_CACHE_TTL_MS = 10 * 60 * 1000;
 const LOGIN_RATE_LIMIT_WINDOW_MS = Math.max(10 * 1000, Math.floor(getPositiveNumberEnv('LOGIN_RATE_LIMIT_WINDOW_SECONDS', 10 * 60) * 1000));
@@ -108,12 +114,15 @@ const clipVideoUrlCache = new Map<string, { url: string; expiresAt: number }>();
 const mediaProbeCache = new Map<string, { durationSec: number | null; hasAudio: boolean; expiresAt: number }>();
 const previewBuildJobs = new Map<string, Promise<string>>();
 const activeDownloadJobs = new Set<string>();
+const emojiPreviewSessions = new Map<string, EmojiPreviewSession>();
+const emojiRenderJobs = new Map<string, EmojiRenderJob>();
 const pendingRenderResolvers: Array<() => void> = [];
 const pendingSourceDownloadResolvers: Array<() => void> = [];
 const loginRateLimitByKey = new Map<string, { attempts: number; windowStartedAt: number; blockedUntil: number; lastSeenAt: number }>();
 let activeRenderCount = 0;
 let activeSourceDownloadCount = 0;
 let overlayCleanupInFlight = false;
+let emojiCleanupInFlight = false;
 const OVERLAY_MIME_TO_EXTENSION: Record<string, string> = {
     'image/png': 'png',
     'image/jpeg': 'jpg',
@@ -141,6 +150,42 @@ interface OverlayItemConfig {
     y: number;
     w: number;
     h: number;
+}
+
+interface EmojiSelectionBox {
+    x: number;
+    y: number;
+    w: number;
+    h: number;
+}
+
+interface EmojiPreviewSession {
+    id: string;
+    ownerKey: string;
+    clipUrl: string;
+    resolvedVideoSource: string;
+    sourceIsRemote: boolean;
+    createdAt: number;
+    lastAccessAt: number;
+}
+
+interface EmojiRenderAsset {
+    name: string;
+    absolutePath: string;
+    mimeType: 'image/png' | 'image/gif';
+    width: number;
+    height: number;
+    bytes: number;
+}
+
+interface EmojiRenderJob {
+    id: string;
+    ownerKey: string;
+    mode: 'static' | 'animated';
+    baseDir: string;
+    createdAt: number;
+    lastAccessAt: number;
+    assets: EmojiRenderAsset[];
 }
 
 function getStreamerIdsFromEnv(): string[] {
@@ -2130,6 +2175,146 @@ function isValidCropNumber(value: unknown): value is number {
     return typeof value === 'number' && Number.isFinite(value) && value >= 0 && value <= 1;
 }
 
+function toSafeEmojiNumeric(value: unknown, fallback = 0): number {
+    const n = Number(value);
+    if (!Number.isFinite(n)) return fallback;
+    return n;
+}
+
+function sanitizeTwitchClipUrl(raw: unknown): string | null {
+    const input = String(raw || '').trim();
+    if (!input || input.length > 500) return null;
+    const slug = extractClipSlugFromUrl(input);
+    if (!slug) return null;
+    return `https://clips.twitch.tv/${slug}`;
+}
+
+function normalizeEmojiSelection(raw: unknown): EmojiSelectionBox | null {
+    if (!raw || typeof raw !== 'object') return null;
+    const value = raw as Record<string, unknown>;
+    const x = toSafeEmojiNumeric(value.x, NaN);
+    const y = toSafeEmojiNumeric(value.y, NaN);
+    const w = toSafeEmojiNumeric(value.w, NaN);
+    const h = toSafeEmojiNumeric(value.h, NaN);
+    if (![x, y, w, h].every(Number.isFinite)) return null;
+    if (x < 0 || y < 0 || w <= 0 || h <= 0 || x + w > 1 || y + h > 1) return null;
+    if (w < 0.04 || h < 0.04) return null;
+    return { x, y, w, h };
+}
+
+function normalizeEmojiMode(raw: unknown): 'static' | 'animated' | null {
+    const value = String(raw || '').trim().toLowerCase();
+    if (value === 'static' || value === 'animated') return value;
+    return null;
+}
+
+function formatFfmpegUnit(n: number): string {
+    return Number(n.toFixed(6)).toString();
+}
+
+function buildEmojiAssetUrl(jobId: string, assetName: string, cacheBuster = true): string {
+    const base = `/api/emoji/render/${encodeURIComponent(jobId)}/${encodeURIComponent(assetName)}`;
+    if (!cacheBuster) return base;
+    return `${base}?v=${Date.now()}`;
+}
+
+function getEmojiPreviewSessionForOwner(ownerKey: string, sessionId: unknown): EmojiPreviewSession | null {
+    const key = String(sessionId || '').trim();
+    if (!/^[a-f0-9-]{8,64}$/i.test(key)) return null;
+    const session = emojiPreviewSessions.get(key);
+    if (!session) return null;
+    if (session.ownerKey !== ownerKey) return null;
+    if ((Date.now() - session.lastAccessAt) > EMOJI_PREVIEW_SESSION_TTL_MS) {
+        emojiPreviewSessions.delete(key);
+        return null;
+    }
+    session.lastAccessAt = Date.now();
+    return session;
+}
+
+function getEmojiRenderJobForOwner(ownerKey: string, jobId: unknown): EmojiRenderJob | null {
+    const key = String(jobId || '').trim();
+    if (!/^[a-f0-9-]{8,64}$/i.test(key)) return null;
+    const job = emojiRenderJobs.get(key);
+    if (!job) return null;
+    if (job.ownerKey !== ownerKey) return null;
+    if ((Date.now() - job.lastAccessAt) > EMOJI_RENDER_RETENTION_MS) return null;
+    job.lastAccessAt = Date.now();
+    return job;
+}
+
+function buildEmojiCropAndFitFilter(selection: EmojiSelectionBox, sizePx: number): string {
+    const cropW = formatFfmpegUnit(selection.w);
+    const cropH = formatFfmpegUnit(selection.h);
+    const cropX = formatFfmpegUnit(selection.x);
+    const cropY = formatFfmpegUnit(selection.y);
+    const size = Math.max(1, Math.round(sizePx));
+    return [
+        `crop=iw*${cropW}:ih*${cropH}:iw*${cropX}:ih*${cropY}`,
+        `scale=${size}:${size}:flags=${FFMPEG_SCALE_FLAGS}:force_original_aspect_ratio=decrease`,
+        `pad=${size}:${size}:(ow-iw)/2:(oh-ih)/2:color=black@0`,
+    ].join(',');
+}
+
+function buildEmojiInputArgs(source: MediaInputSource): string[] {
+    if (source.isRemote) {
+        return [
+            '-user_agent',
+            TWITCH_VIDEO_USER_AGENT,
+            '-headers',
+            `Referer: ${TWITCH_VIDEO_REFERER}\r\n`,
+            '-i',
+            source.source,
+        ];
+    }
+    return ['-i', source.source];
+}
+
+function buildEmojiStaticArgs(source: MediaInputSource, selection: EmojiSelectionBox, timeSec: number, sizePx: number, outputPath: string): string[] {
+    return [
+        '-hide_banner',
+        '-y',
+        '-ss',
+        formatFfmpegUnit(Math.max(0, timeSec)),
+        ...buildEmojiInputArgs(source),
+        '-frames:v',
+        '1',
+        '-an',
+        '-vf',
+        `${buildEmojiCropAndFitFilter(selection, sizePx)},format=rgba`,
+        ...(FFMPEG_FILTER_THREAD_CAP > 0 ? ['-filter_threads', String(FFMPEG_FILTER_THREAD_CAP)] : []),
+        ...(FFMPEG_THREAD_CAP > 0 ? ['-threads', String(FFMPEG_THREAD_CAP)] : []),
+        outputPath,
+    ];
+}
+
+function buildEmojiAnimatedArgs(source: MediaInputSource, selection: EmojiSelectionBox, startSec: number, durationSec: number, sizePx: number, outputPath: string): string[] {
+    const filter = [
+        `[0:v]${buildEmojiCropAndFitFilter(selection, sizePx)},fps=${FFMPEG_GIF_FPS},split[v0][v1]`,
+        '[v0]palettegen=reserve_transparent=1[p]',
+        '[v1][p]paletteuse=new=1:dither=sierra2_4a[v]',
+    ].join(';');
+    return [
+        '-hide_banner',
+        '-y',
+        '-ss',
+        formatFfmpegUnit(Math.max(0, startSec)),
+        '-t',
+        formatFfmpegUnit(Math.max(0.35, durationSec)),
+        ...buildEmojiInputArgs(source),
+        '-an',
+        '-filter_complex',
+        filter,
+        '-map',
+        '[v]',
+        '-loop',
+        '0',
+        ...(FFMPEG_FILTER_THREAD_CAP > 0 ? ['-filter_threads', String(FFMPEG_FILTER_THREAD_CAP)] : []),
+        ...(FFMPEG_THREAD_CAP > 0 ? ['-threads', String(FFMPEG_THREAD_CAP)] : []),
+        outputPath,
+    ];
+}
+
 function normalizeOverlayMime(value: unknown): string | null {
     const normalized = String(value || '').trim().toLowerCase();
     if (!normalized) return null;
@@ -2399,6 +2584,58 @@ function scheduleOverlayMediaCleanup(): void {
     };
     run();
     const intervalMs = OVERLAY_MEDIA_CLEANUP_INTERVAL_MINUTES * 60 * 1000;
+    const timer = setInterval(run, intervalMs);
+    if (typeof timer.unref === 'function') timer.unref();
+}
+
+async function pruneEmojiWorkState(): Promise<{ removedJobs: number; removedSessions: number; errors: number }> {
+    if (emojiCleanupInFlight) {
+        return { removedJobs: 0, removedSessions: 0, errors: 0 };
+    }
+    emojiCleanupInFlight = true;
+    let removedJobs = 0;
+    let removedSessions = 0;
+    let errors = 0;
+
+    try {
+        await fs.promises.mkdir(EMOJI_WORK_DIR, { recursive: true });
+        const now = Date.now();
+
+        for (const [id, session] of emojiPreviewSessions.entries()) {
+            if ((now - session.lastAccessAt) > EMOJI_PREVIEW_SESSION_TTL_MS) {
+                emojiPreviewSessions.delete(id);
+                removedSessions += 1;
+            }
+        }
+
+        for (const [id, job] of emojiRenderJobs.entries()) {
+            if ((now - job.lastAccessAt) <= EMOJI_RENDER_RETENTION_MS) continue;
+            emojiRenderJobs.delete(id);
+            removedJobs += 1;
+            try {
+                await fs.promises.rm(job.baseDir, { recursive: true, force: true });
+            } catch {
+                errors += 1;
+            }
+        }
+    } finally {
+        emojiCleanupInFlight = false;
+    }
+
+    if (removedJobs > 0 || removedSessions > 0 || errors > 0) {
+        console.log(`[cleanup] emoji: removed_jobs=${removedJobs}, removed_sessions=${removedSessions}, errors=${errors}`);
+    }
+    return { removedJobs, removedSessions, errors };
+}
+
+function scheduleEmojiWorkCleanup(): void {
+    const run = (): void => {
+        void pruneEmojiWorkState().catch((err) => {
+            console.warn('[cleanup] emoji prune failed:', err instanceof Error ? err.message : err);
+        });
+    };
+    run();
+    const intervalMs = EMOJI_CLEANUP_INTERVAL_MINUTES * 60 * 1000;
     const timer = setInterval(run, intervalMs);
     if (typeof timer.unref === 'function') timer.unref();
 }
@@ -3310,6 +3547,54 @@ async function resolveClipVideoUrl(clip: DbClipRow, forceFresh = false): Promise
     if (gqlCandidate && await isVideoUrlReachable(gqlCandidate)) return gqlCandidate;
 
     return null;
+}
+
+async function resolveClipVideoUrlFromUrl(clipUrl: string, forceFresh = false): Promise<string | null> {
+    const normalized = sanitizeTwitchClipUrl(clipUrl);
+    if (!normalized) return null;
+    const slug = extractClipSlugFromUrl(normalized);
+    if (!slug) return null;
+
+    if (forceFresh) {
+        clipVideoUrlCache.delete(slug);
+    }
+
+    const cached = getCachedClipVideoUrl(slug);
+    if (cached && await isVideoUrlReachable(cached)) return cached;
+
+    const pageCandidates = await extractMp4CandidatesFromClipPage(normalized);
+    for (const candidate of pageCandidates) {
+        if (await isVideoUrlReachable(candidate)) {
+            setCachedClipVideoUrl(slug, candidate);
+            return candidate;
+        }
+    }
+
+    const gqlCandidate = await resolveClipVideoViaGql(normalized);
+    if (gqlCandidate && await isVideoUrlReachable(gqlCandidate)) {
+        setCachedClipVideoUrl(slug, gqlCandidate);
+        return gqlCandidate;
+    }
+
+    return null;
+}
+
+async function resolveClipVideoInputFromUrl(clipUrl: string, forceFresh = false): Promise<MediaInputSource | null> {
+    const remote = await resolveClipVideoUrlFromUrl(clipUrl, forceFresh);
+    if (remote) return { source: remote, isRemote: true };
+
+    const slug = extractClipSlugFromUrl(clipUrl) || randomUUID().replace(/-/g, '').slice(0, 16);
+    const fallbackClip = {
+        id: `emoji_${slug}`,
+        url: clipUrl,
+    } as DbClipRow;
+
+    try {
+        const localPath = await ensurePreviewFallbackFile(fallbackClip);
+        return { source: localPath, isRemote: false };
+    } catch {
+        return null;
+    }
 }
 
 function previewFallbackPath(clipId: string): string {
@@ -4596,6 +4881,7 @@ function resolvePublicDir(): string {
 const PUBLIC_DIR = resolvePublicDir();
 const HOME_PAGE_FILE = path.join(PUBLIC_DIR, 'home.html');
 const APP_LOGIN_FILE = path.join(PUBLIC_DIR, 'index.html');
+const EMOJI_PAGE_FILE = path.join(PUBLIC_DIR, 'emoji-maker.html');
 app.use(express.static(PUBLIC_DIR, { index: false }));
 
 app.get('/', (_req: Request, res: Response) => {
@@ -4622,6 +4908,10 @@ app.get('/app', (_req: Request, res: Response) => {
     res.sendFile(APP_LOGIN_FILE);
 });
 
+app.get('/emoji', (req: Request, res: Response) => {
+    res.sendFile(EMOJI_PAGE_FILE);
+});
+
 function requireAuth(req: Request, res: Response, next: NextFunction): void {
     if (req.session.authenticated && req.session.userId) {
         next();
@@ -4632,6 +4922,26 @@ function requireAuth(req: Request, res: Response, next: NextFunction): void {
 
 function getRequiredUserId(req: Request): number {
     return Number(req.session.userId);
+}
+
+function getEmojiOwnerKey(req: Request): string {
+    if (req.session.authenticated && req.session.userId) {
+        return `user_${Number(req.session.userId)}`;
+    }
+    (req.session as any).emojiGuestActive = true;
+    (req.session as any).emojiGuestLastSeenAt = Date.now();
+    return `guest_${String(req.sessionID || 'anon')}`;
+}
+
+function getEmojiOwnerDir(ownerKey: string): string {
+    const safe = String(ownerKey || '')
+        .trim()
+        .toLowerCase()
+        .replace(/[^a-z0-9_-]/g, '_')
+        .replace(/_+/g, '_')
+        .replace(/^_+|_+$/g, '')
+        .slice(0, 120);
+    return safe || 'guest';
 }
 
 // ── Auth routes ────────────────────────────────────────────────────────────
@@ -5777,6 +6087,292 @@ app.get('/api/clips/:clipId/video', requireAuth, async (req: Request, res: Respo
     }
 });
 
+app.post('/api/emoji/resolve', async (req: Request, res: Response) => {
+    const ownerKey = getEmojiOwnerKey(req);
+    const clipUrl = sanitizeTwitchClipUrl((req.body as Record<string, unknown>)?.clip_url);
+    if (!clipUrl) {
+        res.status(400).json({ error: 'Please provide a valid Twitch clip URL.' });
+        return;
+    }
+
+    try {
+        const resolvedInput = await resolveClipVideoInputFromUrl(clipUrl, false);
+        if (!resolvedInput) {
+            res.status(502).json({ error: 'Could not resolve a playable source for this Twitch clip.' });
+            return;
+        }
+
+        const now = Date.now();
+        const sessionId = randomUUID();
+        emojiPreviewSessions.set(sessionId, {
+            id: sessionId,
+            ownerKey,
+            clipUrl,
+            resolvedVideoSource: resolvedInput.source,
+            sourceIsRemote: resolvedInput.isRemote,
+            createdAt: now,
+            lastAccessAt: now,
+        });
+
+        void pruneEmojiWorkState();
+
+        res.json({
+            success: true,
+            session_id: sessionId,
+            clip_url: clipUrl,
+            video_url: `/api/emoji/preview/${encodeURIComponent(sessionId)}/video`,
+        });
+    } catch (err) {
+        console.error('Emoji resolve error:', err);
+        res.status(500).json({ error: 'Failed to resolve this clip right now. Please try again.' });
+    }
+});
+
+app.get('/api/emoji/preview/:sessionId/video', async (req: Request, res: Response) => {
+    const ownerKey = getEmojiOwnerKey(req);
+    const { sessionId } = req.params;
+    const session = getEmojiPreviewSessionForOwner(ownerKey, sessionId);
+    if (!session) {
+        res.status(404).json({ error: 'Emoji preview session not found.' });
+        return;
+    }
+
+    const streamFromRemoteUrl = async (videoUrl: string): Promise<void> => {
+        const rangeHeader = req.headers.range;
+        const upstream = await axios.get(videoUrl, {
+            responseType: 'stream',
+            timeout: 20000,
+            headers: {
+                ...(rangeHeader ? { Range: String(rangeHeader) } : {}),
+                'User-Agent': TWITCH_VIDEO_USER_AGENT,
+                Referer: TWITCH_VIDEO_REFERER,
+            },
+            validateStatus: (status) => status === 200 || status === 206,
+        });
+
+        const contentType = String(upstream.headers['content-type'] || '').toLowerCase();
+        const genericBinary = contentType.includes('application/octet-stream') || contentType.includes('binary/octet-stream');
+        const isMp4LikeUrl = /\.mp4(?:$|\?)/i.test(videoUrl);
+        if (!(contentType.startsWith('video/') || (genericBinary && isMp4LikeUrl))) {
+            upstream.data.destroy();
+            throw new Error(`Resolved media is not video (${contentType || 'unknown'})`);
+        }
+
+        res.status(upstream.status);
+        res.setHeader('Content-Type', contentType.startsWith('video/') ? upstream.headers['content-type'] : 'video/mp4');
+        if (upstream.headers['content-length']) res.setHeader('Content-Length', upstream.headers['content-length']);
+        if (upstream.headers['content-range']) res.setHeader('Content-Range', upstream.headers['content-range']);
+        if (upstream.headers['accept-ranges']) {
+            res.setHeader('Accept-Ranges', upstream.headers['accept-ranges']);
+        } else {
+            res.setHeader('Accept-Ranges', 'bytes');
+        }
+        res.setHeader('Cache-Control', 'private, max-age=180');
+        await pipeline(upstream.data, res);
+    };
+
+    try {
+        if (session.sourceIsRemote) {
+            await streamFromRemoteUrl(session.resolvedVideoSource);
+        } else {
+            await streamLocalVideoWithRange(req, res, session.resolvedVideoSource);
+        }
+        return;
+    } catch {
+        if (res.headersSent || res.writableEnded) {
+            if (!res.writableEnded) res.destroy();
+            return;
+        }
+        try {
+            const freshInput = await resolveClipVideoInputFromUrl(session.clipUrl, true);
+            if (!freshInput) throw new Error('Could not resolve fresh clip source');
+            session.resolvedVideoSource = freshInput.source;
+            session.sourceIsRemote = freshInput.isRemote;
+            session.lastAccessAt = Date.now();
+            if (session.sourceIsRemote) {
+                await streamFromRemoteUrl(session.resolvedVideoSource);
+            } else {
+                await streamLocalVideoWithRange(req, res, session.resolvedVideoSource);
+            }
+            return;
+        } catch (err) {
+            if (res.headersSent || res.writableEnded) {
+                if (!res.writableEnded) res.destroy();
+                return;
+            }
+            const message = err instanceof Error ? err.message : 'Failed to stream emoji preview video.';
+            res.status(502).json({ error: message });
+            return;
+        }
+    }
+});
+
+app.post('/api/emoji/render', async (req: Request, res: Response) => {
+    const ownerKey = getEmojiOwnerKey(req);
+    const body = req.body as Record<string, unknown>;
+    const session = getEmojiPreviewSessionForOwner(ownerKey, body.session_id);
+    if (!session) {
+        res.status(404).json({ error: 'Emoji preview session not found. Load the clip again and retry.' });
+        return;
+    }
+
+    const mode = normalizeEmojiMode(body.mode);
+    if (!mode) {
+        res.status(400).json({ error: 'Invalid mode. Use "static" or "animated".' });
+        return;
+    }
+    const selection = normalizeEmojiSelection(body.crop);
+    if (!selection) {
+        res.status(400).json({ error: 'Invalid crop selection.' });
+        return;
+    }
+
+    let sourceInput: MediaInputSource = {
+        source: session.resolvedVideoSource,
+        isRemote: session.sourceIsRemote,
+    };
+    if (sourceInput.isRemote && !(await isVideoUrlReachable(sourceInput.source))) {
+        const freshInput = await resolveClipVideoInputFromUrl(session.clipUrl, true);
+        if (!freshInput) {
+            res.status(502).json({ error: 'Could not refresh clip source URL. Please reload the clip URL.' });
+            return;
+        }
+        session.resolvedVideoSource = freshInput.source;
+        session.sourceIsRemote = freshInput.isRemote;
+        session.lastAccessAt = Date.now();
+        sourceInput = freshInput;
+    }
+
+    const jobId = randomUUID();
+    const jobDir = path.join(EMOJI_WORK_DIR, getEmojiOwnerDir(ownerKey), jobId);
+    await fs.promises.mkdir(jobDir, { recursive: true });
+
+    const ext = mode === 'animated' ? 'gif' : 'png';
+    const out112 = path.join(jobDir, `emoji_112.${ext}`);
+    const out56 = path.join(jobDir, `emoji_56.${ext}`);
+    const out28 = path.join(jobDir, `emoji_28.${ext}`);
+
+    try {
+        if (mode === 'animated') {
+            const requestedStart = toSafeEmojiNumeric(body.start_sec, 0);
+            const requestedEnd = toSafeEmojiNumeric(body.end_sec, requestedStart + 1.6);
+            const startSec = Math.max(0, requestedStart);
+            const durationSec = Math.max(0.35, Math.min(10, requestedEnd - startSec));
+            await withRenderSlot(() => runCommand(FFMPEG_BIN, buildEmojiAnimatedArgs(sourceInput, selection, startSec, durationSec, 112, out112)));
+            await withRenderSlot(() => runCommand(FFMPEG_BIN, ['-hide_banner', '-y', '-i', out112, '-vf', 'scale=56:56:flags=lanczos', '-loop', '0', out56]));
+            await withRenderSlot(() => runCommand(FFMPEG_BIN, ['-hide_banner', '-y', '-i', out112, '-vf', 'scale=28:28:flags=lanczos', '-loop', '0', out28]));
+        } else {
+            const requestedTime = toSafeEmojiNumeric(body.time_sec, 0);
+            const timeSec = Math.max(0, requestedTime);
+            await withRenderSlot(() => runCommand(FFMPEG_BIN, buildEmojiStaticArgs(sourceInput, selection, timeSec, 112, out112)));
+            await withRenderSlot(() => runCommand(FFMPEG_BIN, ['-hide_banner', '-y', '-i', out112, '-frames:v', '1', '-vf', 'scale=56:56:flags=lanczos,format=rgba', out56]));
+            await withRenderSlot(() => runCommand(FFMPEG_BIN, ['-hide_banner', '-y', '-i', out112, '-frames:v', '1', '-vf', 'scale=28:28:flags=lanczos,format=rgba', out28]));
+        }
+
+        const fileRows: Array<{ name: string; filePath: string; size: number }> = [];
+        for (const [name, filePath] of [['emoji_112', out112], ['emoji_56', out56], ['emoji_28', out28]] as Array<[string, string]>) {
+            const stat = await fs.promises.stat(filePath);
+            if (!stat.isFile() || stat.size <= 0) throw new Error(`Render output missing: ${name}`);
+            fileRows.push({ name, filePath, size: Number(stat.size) });
+        }
+
+        const assetMimeType: 'image/png' | 'image/gif' = mode === 'animated' ? 'image/gif' : 'image/png';
+        const assets: EmojiRenderAsset[] = [
+            { name: `emoji_112.${ext}`, absolutePath: out112, mimeType: assetMimeType, width: 112, height: 112, bytes: fileRows[0].size },
+            { name: `emoji_56.${ext}`, absolutePath: out56, mimeType: assetMimeType, width: 56, height: 56, bytes: fileRows[1].size },
+            { name: `emoji_28.${ext}`, absolutePath: out28, mimeType: assetMimeType, width: 28, height: 28, bytes: fileRows[2].size },
+        ];
+
+        const now = Date.now();
+        emojiRenderJobs.set(jobId, {
+            id: jobId,
+            ownerKey,
+            mode,
+            baseDir: jobDir,
+            createdAt: now,
+            lastAccessAt: now,
+            assets,
+        });
+
+        const warnings: string[] = [];
+        const staticMaxBytes = 1024 * 1024;
+        for (const asset of assets) {
+            if (asset.bytes > staticMaxBytes) {
+                warnings.push(`${asset.name} is ${Math.round(asset.bytes / 1024)} KB. Twitch may require smaller files.`);
+            }
+        }
+
+        void pruneEmojiWorkState();
+
+        res.json({
+            success: true,
+            job_id: jobId,
+            mode,
+            specs: {
+                sizes: [112, 56, 28],
+                format: mode === 'animated' ? 'GIF' : 'PNG',
+                background: 'Transparent',
+            },
+            warnings,
+            assets: assets.map((asset) => ({
+                name: asset.name,
+                width: asset.width,
+                height: asset.height,
+                bytes: asset.bytes,
+                mime_type: asset.mimeType,
+                url: buildEmojiAssetUrl(jobId, asset.name),
+            })),
+        });
+    } catch (err) {
+        await fs.promises.rm(jobDir, { recursive: true, force: true }).catch(() => {});
+        console.error('Emoji render error:', err);
+        res.status(500).json({ error: 'Failed to render emoji output for this clip.' });
+    }
+});
+
+app.get('/api/emoji/render/:jobId/:assetName', async (req: Request, res: Response) => {
+    const ownerKey = getEmojiOwnerKey(req);
+    const { jobId, assetName } = req.params;
+    const job = getEmojiRenderJobForOwner(ownerKey, jobId);
+    if (!job) {
+        res.status(404).json({ error: 'Emoji output not found.' });
+        return;
+    }
+
+    const safeAssetName = String(assetName || '').trim();
+    if (!/^[a-z0-9_.-]{1,80}$/i.test(safeAssetName)) {
+        res.status(404).json({ error: 'Emoji output not found.' });
+        return;
+    }
+
+    const asset = job.assets.find((item) => item.name === safeAssetName);
+    if (!asset) {
+        res.status(404).json({ error: 'Emoji output not found.' });
+        return;
+    }
+
+    const resolvedAssetPath = path.resolve(asset.absolutePath);
+    const resolvedJobRoot = path.resolve(job.baseDir);
+    if (!(resolvedAssetPath === resolvedJobRoot || resolvedAssetPath.startsWith(`${resolvedJobRoot}${path.sep}`))) {
+        res.status(404).json({ error: 'Emoji output not found.' });
+        return;
+    }
+
+    try {
+        const stat = await fs.promises.stat(resolvedAssetPath);
+        if (!stat.isFile() || stat.size <= 0) {
+            res.status(404).json({ error: 'Emoji output not found.' });
+            return;
+        }
+        res.setHeader('Cache-Control', 'private, max-age=600');
+        res.setHeader('Content-Type', asset.mimeType);
+        res.setHeader('Content-Length', String(stat.size));
+        res.sendFile(resolvedAssetPath);
+    } catch {
+        res.status(404).json({ error: 'Emoji output not found.' });
+    }
+});
+
 app.get('/api/clips/:clipId/download-cropped', requireAuth, async (req: Request, res: Response) => {
     const userId = getRequiredUserId(req);
     const { clipId } = req.params;
@@ -6670,6 +7266,7 @@ app.post('/api/crop/:clipId', requireAuth, (req: Request, res: Response) => {
 app.listen(PORT, () => {
     validateEnvironment();
     scheduleOverlayMediaCleanup();
+    scheduleEmojiWorkCleanup();
     console.log(`✅  Server running at http://localhost:${PORT}`);
     console.log(`🗄️  Database: ${DB_PATH}`);
     console.log(`🧩  Public assets: ${PUBLIC_DIR}`);
@@ -6678,5 +7275,6 @@ app.listen(PORT, () => {
     console.log(`🔎  Clip visibility filter: min_views=${MIN_CLIP_VIEWS}`);
     console.log(`[ffmpeg] render tuning: size=${FFMPEG_OUTPUT_WIDTH}x${FFMPEG_OUTPUT_HEIGHT}, fps=${FFMPEG_OUTPUT_FPS}, gif_fps=${FFMPEG_GIF_FPS}, scale_flags=${FFMPEG_SCALE_FLAGS}, direct_input=${FFMPEG_DIRECT_SOURCE_INPUT ? 'on' : 'off'}, threads=${FFMPEG_THREAD_CAP || 'auto'}, filter_threads=${FFMPEG_FILTER_THREAD_CAP || 'auto'}, max_concurrent_renders=${MAX_CONCURRENT_RENDERS}, max_source_downloads=${MAX_CONCURRENT_SOURCE_DOWNLOADS}, upload_preset=${DEFAULT_UPLOAD_VIDEO_PRESET}, download_preset=${DEFAULT_DOWNLOAD_VIDEO_PRESET}, upload_crf=${DEFAULT_UPLOAD_VIDEO_CRF}, download_crf=${DEFAULT_DOWNLOAD_VIDEO_CRF}`);
     console.log(`[cleanup] overlay-media retention=${OVERLAY_MEDIA_RETENTION_DAYS}d, interval=${OVERLAY_MEDIA_CLEANUP_INTERVAL_MINUTES}m, dir=${OVERLAY_MEDIA_DIR}`);
+    console.log(`[cleanup] emoji retention=${EMOJI_RENDER_RETENTION_MINUTES}m, preview_ttl=${EMOJI_PREVIEW_SESSION_TTL_MINUTES}m, interval=${EMOJI_CLEANUP_INTERVAL_MINUTES}m, dir=${EMOJI_WORK_DIR}`);
     console.log(`🔐  Session mode: ${IS_PRODUCTION ? 'production secure cookies enabled' : 'development cookies (non-secure)'}`);
 });

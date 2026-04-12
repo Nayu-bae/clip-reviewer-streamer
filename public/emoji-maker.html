@@ -1,0 +1,143 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Emote Maker - Clip Reviewer</title>
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+  <link rel="stylesheet" href="/emoji-maker.css" />
+</head>
+<body class="emoji-shell emoji-landing">
+  <header class="emoji-header">
+    <h1>Clip Emote Maker</h1>
+    <a class="emoji-back-link" href="/">
+      <svg class="emoji-back-link-icon" viewBox="0 0 20 20" fill="currentColor" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+        <path fill-rule="evenodd" d="M11.78 4.22a.75.75 0 010 1.06L7.06 10l4.72 4.72a.75.75 0 11-1.06 1.06l-5.25-5.25a.75.75 0 010-1.06l5.25-5.25a.75.75 0 011.06 0z" clip-rule="evenodd"/>
+        <path fill-rule="evenodd" d="M6 10a.75.75 0 01.75-.75h8.5a.75.75 0 010 1.5h-8.5A.75.75 0 016 10z" clip-rule="evenodd"/>
+      </svg>
+      <span>Back to Homepage</span>
+    </a>
+  </header>
+
+  <main class="emoji-main">
+    <section id="emoji-intro" class="emoji-intro">
+      <a class="emoji-landing-back-link" href="/">
+        <svg class="emoji-landing-back-icon" viewBox="0 0 20 20" fill="currentColor" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+          <path fill-rule="evenodd" d="M11.78 4.22a.75.75 0 010 1.06L7.06 10l4.72 4.72a.75.75 0 11-1.06 1.06l-5.25-5.25a.75.75 0 010-1.06l5.25-5.25a.75.75 0 011.06 0z" clip-rule="evenodd"/>
+          <path fill-rule="evenodd" d="M6 10a.75.75 0 01.75-.75h8.5a.75.75 0 010 1.5h-8.5A.75.75 0 016 10z" clip-rule="evenodd"/>
+        </svg>
+        <span>Back to Homepage</span>
+      </a>
+      <h2 class="emoji-intro-title">Ready when you are.</h2>
+      <form id="emoji-clip-form" class="emoji-clip-form" autocomplete="off">
+        <input
+          id="emoji-clip-url"
+          type="url"
+          inputmode="url"
+          placeholder="Paste a Twitch clip link..."
+          aria-label="Twitch clip URL"
+          required
+        />
+        <button id="emoji-load-btn" class="emoji-btn emoji-btn-primary" type="submit">Load Clip</button>
+      </form>
+      <div id="emoji-status" class="emoji-status" data-tone="neutral" hidden></div>
+    </section>
+
+    <section id="emoji-reload" class="emoji-reload" hidden>
+      <form id="emoji-reload-form" class="emoji-reload-form" autocomplete="off">
+        <input
+          id="emoji-reload-url"
+          type="url"
+          inputmode="url"
+          placeholder="Paste another Twitch clip link..."
+          aria-label="Load another Twitch clip URL"
+          required
+        />
+        <button id="emoji-reload-btn" class="emoji-btn emoji-btn-secondary" type="submit">Load Another Clip</button>
+      </form>
+      <div id="emoji-workspace-status" class="emoji-status emoji-status-inline" data-tone="neutral" hidden></div>
+    </section>
+
+    <section id="emoji-workspace" class="emoji-workspace" hidden>
+      <article class="emoji-card">
+        <h2>Clip + Selection</h2>
+        <p class="emoji-card-help">Scrub through the clip and move the selection box to choose your emote region.</p>
+        <div id="emoji-video-stage" class="emoji-video-stage">
+          <video id="emoji-video" playsinline preload="metadata"></video>
+          <div id="emoji-selection" class="emoji-selection" role="region" aria-label="Emote selection area">
+            <button class="emoji-selection-handle" data-handle="nw" type="button" aria-label="Resize from top left"></button>
+            <button class="emoji-selection-handle" data-handle="n" type="button" aria-label="Resize from top"></button>
+            <button class="emoji-selection-handle" data-handle="ne" type="button" aria-label="Resize from top right"></button>
+            <button class="emoji-selection-handle" data-handle="e" type="button" aria-label="Resize from right"></button>
+            <button class="emoji-selection-handle" data-handle="se" type="button" aria-label="Resize from bottom right"></button>
+            <button class="emoji-selection-handle" data-handle="s" type="button" aria-label="Resize from bottom"></button>
+            <button class="emoji-selection-handle" data-handle="sw" type="button" aria-label="Resize from bottom left"></button>
+            <button class="emoji-selection-handle" data-handle="w" type="button" aria-label="Resize from left"></button>
+          </div>
+        </div>
+        <div class="emoji-timeline" aria-label="Clip timeline controls">
+          <button id="emoji-play-toggle" class="emoji-btn emoji-btn-secondary emoji-play-toggle" type="button">Play</button>
+          <input id="emoji-seek" type="range" min="0" max="1000" value="0" step="1" aria-label="Clip time slider" />
+          <label class="emoji-volume-wrap" for="emoji-volume">
+            <span>Vol</span>
+            <input id="emoji-volume" type="range" min="0" max="100" value="100" step="1" aria-label="Clip volume" />
+          </label>
+          <span id="emoji-time-readout" class="emoji-time-readout">0:00 / 0:00</span>
+        </div>
+        <div class="emoji-time-row">
+          <button id="emoji-mark-start" class="emoji-btn emoji-btn-secondary emoji-gif-only" type="button" hidden>Set First Point</button>
+          <button id="emoji-mark-end" class="emoji-btn emoji-btn-secondary emoji-gif-only" type="button" hidden>Set Second Point</button>
+        </div>
+      </article>
+
+      <article class="emoji-card">
+        <h2>Twitch Output Preview</h2>
+        <p class="emoji-card-help">Live preview in 112 / 56 / 28 formats, then render downloadable emote files.</p>
+        <div class="emoji-preview-grid">
+          <div class="emoji-preview-card is-selected" data-preview-size="112" role="button" tabindex="0" aria-label="Select 112 size crop preset" aria-pressed="true">
+            <div class="emoji-preview-title">112 x 112</div>
+            <canvas id="emoji-preview-112" width="112" height="112"></canvas>
+          </div>
+          <div class="emoji-preview-card" data-preview-size="56" role="button" tabindex="0" aria-label="Select 56 size crop preset" aria-pressed="false">
+            <div class="emoji-preview-title">56 x 56</div>
+            <canvas id="emoji-preview-56" width="56" height="56"></canvas>
+          </div>
+          <div class="emoji-preview-card" data-preview-size="28" role="button" tabindex="0" aria-label="Select 28 size crop preset" aria-pressed="false">
+            <div class="emoji-preview-title">28 x 28</div>
+            <canvas id="emoji-preview-28" width="28" height="28"></canvas>
+          </div>
+        </div>
+
+        <div class="emoji-controls">
+          <div id="emoji-mode-switch" tabindex="0" role="group" aria-label="Emote output mode" class="emoji-mode-switch">
+            <div id="emoji-mode-slider" class="emoji-mode-slider"></div>
+            <div class="emoji-mode-options">
+              <button id="emoji-mode-static" class="emoji-mode-option is-active" type="button">Static PNG</button>
+              <button id="emoji-mode-animated" class="emoji-mode-option" type="button">Animated GIF</button>
+            </div>
+          </div>
+
+          <div class="emoji-render-controls">
+            <label for="emoji-emote-name">Emote name</label>
+            <input id="emoji-emote-name" type="text" maxlength="40" placeholder="myEmote" autocomplete="off" />
+          </div>
+
+          <div id="emoji-animated-controls" class="emoji-render-controls emoji-gif-only" hidden>
+            <label for="emoji-start-sec">Start (seconds)</label>
+            <input id="emoji-start-sec" type="number" min="0" step="0.1" value="0" />
+            <label for="emoji-end-sec">End (seconds)</label>
+            <input id="emoji-end-sec" type="number" min="0.2" step="0.1" value="1.6" />
+          </div>
+
+          <button id="emoji-render-btn" class="emoji-btn emoji-btn-primary" type="button">Render Emote</button>
+        </div>
+
+        <div id="emoji-spec-note" class="emoji-spec-note">Target emote sizes: 112x112, 56x56, 28x28.</div>
+        <div id="emoji-results" class="emoji-results"></div>
+      </article>
+    </section>
+  </main>
+
+  <script src="/emoji-maker.js"></script>
+</body>
+</html>

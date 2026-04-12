@@ -47,6 +47,12 @@
         icon: '<svg viewBox="0 0 24 24"><path d="M12 4v10"/><path d="M8 10l4 4 4-4"/><rect x="4" y="16" width="16" height="4" rx="1"/></svg>',
       },
       {
+        href: '/tools/emote-generator.html',
+        title: 'Emote Generator',
+        desc: 'Build Twitch-ready emotes from clip moments.',
+        icon: '<svg viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="3"/><circle cx="10" cy="11" r="1"/><circle cx="14" cy="11" r="1"/><path d="M9 15c1 .9 2 .9 3 .9s2 0 3-.9"/></svg>',
+      },
+      {
         href: '/tools/admin-streamer-management.html',
         title: 'Admin + Streamers',
         desc: 'Manage streamers and admin controls in one place.',

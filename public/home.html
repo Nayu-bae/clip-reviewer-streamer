@@ -105,6 +105,26 @@
       box-shadow: var(--cta-bright-shadow-hover);
     }
 
+    .home-emote-link {
+      color: #b6c0db;
+      font-size: 0.84rem;
+      font-weight: 700;
+      letter-spacing: 0.01em;
+      text-decoration-line: underline;
+      text-decoration-thickness: 1px;
+      text-underline-offset: 4px;
+      text-decoration-color: rgba(148, 163, 255, 0.48);
+      transition: color 0.2s ease, text-decoration-color 0.2s ease, transform 0.2s ease;
+    }
+
+    .home-emote-link:hover,
+    .home-emote-link:focus-visible {
+      color: #dfe6ff;
+      text-decoration-color: rgba(170, 182, 255, 0.82);
+      transform: translateY(-1px);
+      outline: none;
+    }
+
     .home-tools-dropdown {
       position: relative;
       flex: 0 0 auto;
@@ -370,6 +390,7 @@
         Clip-Reviewer
       </a>
       <div class="flex items-center gap-2 sm:gap-3">
+        <a href="/emoji" class="home-emote-link inline-flex items-center px-2 py-2">Try Emote Generator</a>
         <div id="tools-dropdown" class="home-tools-dropdown">
           <button id="tools-toggle" type="button" aria-expanded="false" aria-controls="tools-menu" class="inline-flex items-center gap-2 rounded-full border border-white/15 bg-clip-panel2/80 px-4 py-2 text-sm font-semibold text-zinc-100 transition hover:border-twitch-600/70 hover:text-indigo-200">
             Tools
@@ -429,6 +450,15 @@
                 <span class="home-tools-item-copy">
                   <span class="home-tools-item-title">Bulk Upload Queue</span>
                   <span class="home-tools-item-desc">Batch upload clips with robust pause, resume, and cancel controls.</span>
+                </span>
+              </a>
+              <a class="home-tools-item" href="/tools/emote-generator.html">
+                <span class="home-tools-item-icon" aria-hidden="true">
+                  <svg viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="3"/><circle cx="10" cy="11" r="1"/><circle cx="14" cy="11" r="1"/><path d="M9 15c1 .9 2 .9 3 .9s2 0 3-.9"/></svg>
+                </span>
+                <span class="home-tools-item-copy">
+                  <span class="home-tools-item-title">Emote Generator</span>
+                  <span class="home-tools-item-desc">Turn Twitch clips into Twitch-ready 112/56/28 emotes in seconds.</span>
                 </span>
               </a>
               <a class="home-tools-item" href="/tools/admin-streamer-management.html">
@@ -512,7 +542,8 @@
       <article class="rounded-2xl border border-white/10 bg-clip-panel/80 p-6 shadow-lg"><h3 class="text-lg font-bold">Split + Zoom Timeline</h3><p class="mt-2 text-sm text-clip-muted">Cut dead time and emphasize key moments.</p><a href="/tools/split-zoom-timeline.html" class="mt-4 inline-flex text-sm font-semibold text-indigo-300 hover:text-indigo-200">Learn more →</a></article>
       <article class="rounded-2xl border border-white/10 bg-clip-panel/80 p-6 shadow-lg"><h3 class="text-lg font-bold">TikTok Output Preview</h3><p class="mt-2 text-sm text-clip-muted">Validate the vertical result before export.</p><a href="/tools/tiktok-output-preview.html" class="mt-4 inline-flex text-sm font-semibold text-indigo-300 hover:text-indigo-200">Learn more →</a></article>
       <article class="rounded-2xl border border-white/10 bg-clip-panel/80 p-6 shadow-lg"><h3 class="text-lg font-bold">Bulk Upload Queue</h3><p class="mt-2 text-sm text-clip-muted">Batch upload with pause, resume, and cancel.</p><a href="/tools/bulk-upload-queue.html" class="mt-4 inline-flex text-sm font-semibold text-indigo-300 hover:text-indigo-200">Learn more →</a></article>
-      <article class="rounded-2xl border border-white/10 bg-clip-panel/80 p-6 shadow-lg md:col-span-2"><h3 class="text-lg font-bold">Admin + Streamer Management</h3><p class="mt-2 text-sm text-clip-muted">Maintain streamer mappings and inspect system state.</p><a href="/tools/admin-streamer-management.html" class="mt-4 inline-flex text-sm font-semibold text-indigo-300 hover:text-indigo-200">Learn more →</a></article>
+      <article class="rounded-2xl border border-white/10 bg-clip-panel/80 p-6 shadow-lg"><h3 class="text-lg font-bold">Emote Generator</h3><p class="mt-2 text-sm text-clip-muted">Create Twitch-ready emotes from clips with live crop and size previews.</p><a href="/tools/emote-generator.html" class="mt-4 inline-flex text-sm font-semibold text-indigo-300 hover:text-indigo-200">Learn more →</a></article>
+      <article class="rounded-2xl border border-white/10 bg-clip-panel/80 p-6 shadow-lg"><h3 class="text-lg font-bold">Admin + Streamer Management</h3><p class="mt-2 text-sm text-clip-muted">Maintain streamer mappings and inspect system state.</p><a href="/tools/admin-streamer-management.html" class="mt-4 inline-flex text-sm font-semibold text-indigo-300 hover:text-indigo-200">Learn more →</a></article>
     </section>
   </main>
 

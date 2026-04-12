@@ -1,0 +1,53 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="720" viewBox="0 0 1280 720" fill="none">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1280" y2="720" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#0B1222"/>
+      <stop offset="1" stop-color="#101726"/>
+    </linearGradient>
+    <linearGradient id="accent" x1="0" y1="0" x2="1" y2="0">
+      <stop stop-color="#3F51FF"/>
+      <stop offset="1" stop-color="#5E72FF"/>
+    </linearGradient>
+  </defs>
+
+  <rect width="1280" height="720" fill="url(#bg)"/>
+  <rect x="64" y="62" width="1152" height="596" rx="28" fill="#121A2B" stroke="#2D3A56"/>
+
+  <text x="104" y="116" fill="#E8EDFF" font-family="Segoe UI, Arial" font-size="34" font-weight="700">Emote Generator</text>
+  <text x="104" y="146" fill="#9FB0D9" font-family="Segoe UI, Arial" font-size="18">Paste Twitch clip - crop - preview 112 / 56 / 28 - render</text>
+
+  <rect x="102" y="172" width="848" height="72" rx="24" fill="#1A2438" stroke="#2C3956"/>
+  <rect x="124" y="188" width="636" height="40" rx="16" fill="#202A3F"/>
+  <text x="144" y="214" fill="#8EA0C9" font-family="Segoe UI, Arial" font-size="22">https://clips.twitch.tv/...</text>
+  <rect x="778" y="184" width="154" height="48" rx="22" fill="url(#accent)" stroke="#7C90FF"/>
+  <text x="815" y="214" fill="#F4F7FF" font-family="Segoe UI, Arial" font-size="20" font-weight="700">Load Clip</text>
+
+  <rect x="102" y="270" width="848" height="348" rx="20" fill="#0F1626" stroke="#26334E"/>
+  <rect x="136" y="304" width="680" height="232" rx="16" fill="#17233A"/>
+  <rect x="212" y="362" width="280" height="158" rx="8" fill="none" stroke="#4ED8FF" stroke-width="4"/>
+  <rect x="490" y="516" width="16" height="16" rx="4" fill="#4ED8FF"/>
+  <text x="226" y="392" fill="#4ED8FF" font-family="Segoe UI, Arial" font-size="20" font-weight="700">Crop Area</text>
+
+  <rect x="136" y="552" width="680" height="30" rx="14" fill="#1A2438"/>
+  <rect x="304" y="562" width="334" height="10" rx="5" fill="#E0E7FF"/>
+  <circle cx="486" cy="567" r="12" fill="#4A5FFF"/>
+  <text x="654" y="572" fill="#9FB0D9" font-family="Segoe UI, Arial" font-size="18">00:08 / 00:21</text>
+
+  <rect x="974" y="172" width="202" height="446" rx="20" fill="#0F1626" stroke="#26334E"/>
+  <text x="996" y="206" fill="#E8EDFF" font-family="Segoe UI, Arial" font-size="24" font-weight="700">Output Preview</text>
+
+  <rect x="994" y="230" width="76" height="90" rx="10" fill="#1A2438" stroke="#4A5FFF"/>
+  <rect x="1078" y="230" width="76" height="90" rx="10" fill="#1A2438" stroke="#2F3D5A"/>
+  <rect x="1036" y="328" width="76" height="90" rx="10" fill="#1A2438" stroke="#2F3D5A"/>
+  <text x="1012" y="255" fill="#AFC0E8" font-family="Segoe UI, Arial" font-size="14">112</text>
+  <text x="1097" y="255" fill="#AFC0E8" font-family="Segoe UI, Arial" font-size="14">56</text>
+  <text x="1060" y="353" fill="#AFC0E8" font-family="Segoe UI, Arial" font-size="14">28</text>
+
+  <rect x="994" y="438" width="160" height="44" rx="20" fill="url(#accent)" stroke="#7C90FF"/>
+  <text x="1024" y="466" fill="#F4F7FF" font-family="Segoe UI, Arial" font-size="20" font-weight="700">Render Emote</text>
+  <text x="1000" y="520" fill="#9FB0D9" font-family="Segoe UI, Arial" font-size="16">myEmote_112.png</text>
+  <text x="1000" y="544" fill="#9FB0D9" font-family="Segoe UI, Arial" font-size="16">myEmote_56.png</text>
+  <text x="1000" y="568" fill="#9FB0D9" font-family="Segoe UI, Arial" font-size="16">myEmote_28.png</text>
+
+  <text x="64" y="44" fill="#C7D2FE" font-family="Segoe UI, Arial" font-size="26" font-weight="700">Tool Preview</text>
+</svg>
