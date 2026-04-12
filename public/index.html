@@ -4690,7 +4690,7 @@
               <button type="button" id="sidebar-refresh-btn" class="status-chip sidebar-sync-btn" data-state="idle" title="Refresh clips from Twitch">
                 <span class="sidebar-sync-main">
                   <span class="sidebar-sync-dot" aria-hidden="true"></span>
-                  <span id="sidebar-sync-label">Last sync</span>
+                  <span id="sidebar-sync-label">Last refresh</span>
                 </span>
                 <strong id="status-last-sync">Never</strong>
               </button>
@@ -5348,7 +5348,7 @@
   let uploadPollTimer = null;
   let refreshAbortController = null;
   let managedStreamerCount = 0;
-  let lastClipSyncAt = null;
+  let lastClipRefreshAt = null;
   const downloadInProgressIds = new Set();
   let actionProgressFlash = null;
   let actionProgressFlashTimer = null;
@@ -5374,6 +5374,7 @@
   const ADMIN_PREFS_KEY = 'clipReviewer.adminPrefs.v1';
   const SIDEBAR_COLLAPSE_KEY = 'clipReviewer.sidebarCollapsed.v1';
   const SESSION_PROGRESS_KEY_PREFIX = 'clipReviewer.sessionProgress.v1.user.';
+  const LAST_CLIP_REFRESH_KEY_PREFIX = 'clipReviewer.lastClipRefreshAt.v1.user.';
   const BADGE_CENTER_SNAP_THRESHOLD = 0.015;
   const OUTPUT_BADGE_MAX_WIDTH_RATIO = 0.98;
   const OUTPUT_BADGE_MAX_HEIGHT_RATIO = 0.18;
@@ -5708,6 +5709,40 @@
     }
 
     updateTikTokModeSwitchUI();
+  }
+
+  function getLastClipRefreshStorageKey(username = currentUsername) {
+    const userKey = String(username || '').trim().toLowerCase();
+    if (!userKey) return '';
+    return `${LAST_CLIP_REFRESH_KEY_PREFIX}${userKey}`;
+  }
+
+  function loadLastClipRefreshAt(username = currentUsername) {
+    const key = getLastClipRefreshStorageKey(username);
+    if (!key) return null;
+    try {
+      const raw = String(localStorage.getItem(key) || '').trim();
+      if (!raw) return null;
+      const parsed = new Date(raw);
+      if (Number.isNaN(parsed.getTime())) return null;
+      return parsed.toISOString();
+    } catch {
+      return null;
+    }
+  }
+
+  function saveLastClipRefreshAt(iso, username = currentUsername) {
+    const key = getLastClipRefreshStorageKey(username);
+    if (!key) return;
+    try {
+      if (!iso) {
+        localStorage.removeItem(key);
+        return;
+      }
+      const parsed = new Date(iso);
+      if (Number.isNaN(parsed.getTime())) return;
+      localStorage.setItem(key, parsed.toISOString());
+    } catch {}
   }
 
   function applyTikTokAccountState(rawTikTok) {
@@ -6118,7 +6153,7 @@
     const syncEl = document.getElementById('status-last-sync');
     if (userEl) userEl.textContent = currentUsername ? `@${currentUsername}` : '@-';
     if (streamerEl) streamerEl.textContent = String(Math.max(0, Number(managedStreamerCount) || 0));
-    if (syncEl) syncEl.textContent = formatRelativeSyncLabel(lastClipSyncAt);
+    if (syncEl) syncEl.textContent = formatRelativeSyncLabel(lastClipRefreshAt);
     updateSidebarProfileCard();
     updateSessionProgressCard();
     updateActionProgressChip();
@@ -7080,6 +7115,7 @@
     setSidebarProfileMenu(false);
     clearDashboardState();
     resetSetupGuideHydration();
+    lastClipRefreshAt = loadLastClipRefreshAt(currentUsername);
     updateDashboardStatusRow();
     void refreshSidebarProfileDetails();
     consumeTikTokOAuthFeedbackFromUrl();
@@ -7661,7 +7697,6 @@
     }
 
     if (loadedOk) {
-      lastClipSyncAt = new Date().toISOString();
       if (allClips.length === 0) {
         showDashboardState('noClips');
       } else {
@@ -7707,6 +7742,11 @@
         }
         throw new Error(data.error || 'Refresh failed');
       }
+      const parsedRefreshAt = new Date(String(data.refreshedAt || '').trim());
+      lastClipRefreshAt = Number.isNaN(parsedRefreshAt.getTime())
+        ? new Date().toISOString()
+        : parsedRefreshAt.toISOString();
+      saveLastClipRefreshAt(lastClipRefreshAt);
       showToast(`Refresh done: ${data.fetched || 0} clips fetched.`);
       setActionProgressFlash('done', `Refresh completed: ${data.fetched || 0} clip${(data.fetched || 0) === 1 ? '' : 's'} fetched.`);
       await loadClips();
@@ -8049,8 +8089,8 @@
     if (!refreshBtn || !labelEl || !syncValueEl) return;
 
     let state = 'idle';
-    let label = 'Last sync';
-    let value = formatRelativeSyncLabel(lastClipSyncAt);
+    let label = 'Last refresh';
+    let value = formatRelativeSyncLabel(lastClipRefreshAt);
 
     if (refreshAbortController) {
       state = 'running';
@@ -8143,7 +8183,7 @@
     loadOnboardingProgressForUser('', { allowLegacyMigration: false });
     resetSetupGuideHydration();
     managedStreamerCount = 0;
-    lastClipSyncAt = null;
+    lastClipRefreshAt = null;
     sidebarProfileEmailMasked = '';
     applySessionProgressState(buildDefaultSessionProgressState());
     updateSessionProgressCard();

@@ -5359,12 +5359,14 @@ app.post('/api/clips/refresh', requireAuth, async (req: Request, res: Response) 
         const twitchClips = await fetchClipsForAllStreamers(accessToken, streamerIDs);
         upsertClips(twitchClips);
         linkClipsToUser(userId, twitchClips);
+        const refreshedAt = new Date().toISOString();
 
         console.log(`🔄  User ${userId}: upserted ${twitchClips.length} clips from ${streamerIDs.length} streamer ID(s)`);
         res.json({
             success: true,
             fetched: twitchClips.length,
             streamerCount: streamerIDs.length,
+            refreshedAt,
         });
     } catch (err) {
         console.error(err);
