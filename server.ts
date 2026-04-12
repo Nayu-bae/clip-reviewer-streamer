@@ -7,7 +7,7 @@ import * as os from 'os';
 import * as path from 'path';
 import { spawn } from 'child_process';
 import { randomUUID } from 'crypto';
-import { createHash, randomBytes, randomInt, scryptSync, timingSafeEqual } from 'crypto';
+import { createHash, randomBytes, randomInt, scrypt, scryptSync, timingSafeEqual } from 'crypto';
 import { pipeline } from 'stream/promises';
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const { DatabaseSync } = require('node:sqlite');
@@ -19,6 +19,8 @@ const PORT = process.env.PORT || 3000;
 const NODE_ENV = process.env.NODE_ENV || 'development';
 const IS_PRODUCTION = NODE_ENV === 'production';
 const SESSION_SECRET = process.env.SESSION_SECRET || 'twitch-clips-secret-2026';
+const SESSION_MAX_AGE_MS = 24 * 60 * 60 * 1000;
+const SESSION_CLEANUP_INTERVAL_MINUTES = Math.max(5, Math.floor(getPositiveNumberEnv('SESSION_CLEANUP_INTERVAL_MINUTES', 30)));
 const LEGACY_SITE_USERNAME = process.env.SITE_USERNAME || 'admin';
 const LEGACY_SITE_PASSWORD = process.env.SITE_PASSWORD || 'admin';
 const DB_PATH = path.join(__dirname, 'clips.db');
@@ -98,6 +100,9 @@ const OVERLAY_MEDIA_RETENTION_DAYS = Math.max(1, Math.min(365, Math.floor(getPos
 const OVERLAY_MEDIA_CLEANUP_INTERVAL_MINUTES = Math.max(10, Math.min(24 * 60, Math.floor(getPositiveNumberEnv('OVERLAY_MEDIA_CLEANUP_INTERVAL_MINUTES', 180))));
 const TWITCH_GQL_URL = 'https://gql.twitch.tv/gql';
 const CLIP_GQL_CACHE_TTL_MS = 10 * 60 * 1000;
+const LOGIN_RATE_LIMIT_WINDOW_MS = Math.max(10 * 1000, Math.floor(getPositiveNumberEnv('LOGIN_RATE_LIMIT_WINDOW_SECONDS', 10 * 60) * 1000));
+const LOGIN_RATE_LIMIT_BLOCK_MS = Math.max(10 * 1000, Math.floor(getPositiveNumberEnv('LOGIN_RATE_LIMIT_BLOCK_SECONDS', 15 * 60) * 1000));
+const LOGIN_RATE_LIMIT_MAX_ATTEMPTS = Math.max(3, Math.floor(getPositiveNumberEnv('LOGIN_RATE_LIMIT_MAX_ATTEMPTS', 12)));
 const LEGACY_STREAMER_IDS = getStreamerIdsFromEnv();
 const clipVideoUrlCache = new Map<string, { url: string; expiresAt: number }>();
 const mediaProbeCache = new Map<string, { durationSec: number | null; hasAudio: boolean; expiresAt: number }>();
@@ -105,6 +110,7 @@ const previewBuildJobs = new Map<string, Promise<string>>();
 const activeDownloadJobs = new Set<string>();
 const pendingRenderResolvers: Array<() => void> = [];
 const pendingSourceDownloadResolvers: Array<() => void> = [];
+const loginRateLimitByKey = new Map<string, { attempts: number; windowStartedAt: number; blockedUntil: number; lastSeenAt: number }>();
 let activeRenderCount = 0;
 let activeSourceDownloadCount = 0;
 let overlayCleanupInFlight = false;
@@ -591,6 +597,129 @@ db.exec('CREATE INDEX IF NOT EXISTS email_verification_codes_expires_idx ON emai
 db.exec('CREATE INDEX IF NOT EXISTS account_action_tokens_expires_idx ON account_action_tokens(expires_at)');
 db.exec('CREATE INDEX IF NOT EXISTS account_action_tokens_user_idx ON account_action_tokens(user_id)');
 db.exec('CREATE UNIQUE INDEX IF NOT EXISTS user_tiktok_accounts_open_id_unique ON user_tiktok_accounts(open_id) WHERE open_id IS NOT NULL AND open_id <> \'\'');
+db.exec(`
+    CREATE TABLE IF NOT EXISTS user_sessions (
+        sid         TEXT PRIMARY KEY,
+        sess        TEXT NOT NULL,
+        expires_at  INTEGER NOT NULL,
+        updated_at  INTEGER NOT NULL
+    )
+`);
+db.exec('CREATE INDEX IF NOT EXISTS user_sessions_expires_idx ON user_sessions(expires_at)');
+
+class SQLiteSessionStore extends session.Store {
+    private readonly defaultTtlMs: number;
+
+    constructor(cleanupIntervalMs = SESSION_CLEANUP_INTERVAL_MINUTES * 60 * 1000, defaultTtlMs = SESSION_MAX_AGE_MS) {
+        super();
+        this.defaultTtlMs = Math.max(60 * 1000, Number(defaultTtlMs) || SESSION_MAX_AGE_MS);
+        const intervalMs = Math.max(60 * 1000, Number(cleanupIntervalMs) || (SESSION_CLEANUP_INTERVAL_MINUTES * 60 * 1000));
+        const timer = setInterval(() => {
+            this.pruneExpiredSessions();
+        }, intervalMs);
+        if (typeof timer.unref === 'function') timer.unref();
+    }
+
+    private resolveTtlMs(sessionData: session.SessionData): number {
+        const expiresRaw = sessionData?.cookie?.expires;
+        if (expiresRaw) {
+            const expiresAt = Date.parse(String(expiresRaw));
+            if (Number.isFinite(expiresAt)) {
+                const remaining = expiresAt - Date.now();
+                if (remaining > 0) return remaining;
+            }
+        }
+        const maxAge = Number(sessionData?.cookie?.maxAge);
+        if (Number.isFinite(maxAge) && maxAge > 0) return maxAge;
+        return this.defaultTtlMs;
+    }
+
+    private pruneExpiredSessions(): void {
+        try {
+            db.prepare('DELETE FROM user_sessions WHERE expires_at <= $now').run({ $now: Date.now() });
+        } catch (err) {
+            console.warn('[session] Failed to prune expired sessions:', err instanceof Error ? err.message : err);
+        }
+    }
+
+    override get(sid: string, callback: (err: unknown, sessionData?: session.SessionData | null) => void): void {
+        try {
+            const row = db.prepare(`
+                SELECT sess, expires_at
+                FROM user_sessions
+                WHERE sid = $sid
+                LIMIT 1
+            `).get({ $sid: sid }) as { sess: string; expires_at: number } | undefined;
+            if (!row) {
+                callback(null, null);
+                return;
+            }
+            if (Number(row.expires_at || 0) <= Date.now()) {
+                db.prepare('DELETE FROM user_sessions WHERE sid = $sid').run({ $sid: sid });
+                callback(null, null);
+                return;
+            }
+            const parsed = JSON.parse(String(row.sess || '{}')) as session.SessionData;
+            callback(null, parsed);
+        } catch (err) {
+            callback(err, null);
+        }
+    }
+
+    override set(sid: string, sessionData: session.SessionData, callback?: (err?: unknown) => void): void {
+        try {
+            const now = Date.now();
+            const expiresAt = now + this.resolveTtlMs(sessionData);
+            db.prepare(`
+                INSERT INTO user_sessions (sid, sess, expires_at, updated_at)
+                VALUES ($sid, $sess, $expires_at, $updated_at)
+                ON CONFLICT(sid) DO UPDATE SET
+                    sess = excluded.sess,
+                    expires_at = excluded.expires_at,
+                    updated_at = excluded.updated_at
+            `).run({
+                $sid: sid,
+                $sess: JSON.stringify(sessionData),
+                $expires_at: expiresAt,
+                $updated_at: now,
+            });
+            if (callback) callback();
+        } catch (err) {
+            if (callback) callback(err);
+        }
+    }
+
+    override touch(sid: string, sessionData: session.SessionData, callback?: (err?: unknown) => void): void {
+        try {
+            const now = Date.now();
+            const expiresAt = now + this.resolveTtlMs(sessionData);
+            db.prepare(`
+                UPDATE user_sessions
+                SET sess = $sess,
+                    expires_at = $expires_at,
+                    updated_at = $updated_at
+                WHERE sid = $sid
+            `).run({
+                $sid: sid,
+                $sess: JSON.stringify(sessionData),
+                $expires_at: expiresAt,
+                $updated_at: now,
+            });
+            if (callback) callback();
+        } catch (err) {
+            if (callback) callback(err);
+        }
+    }
+
+    override destroy(sid: string, callback?: (err?: unknown) => void): void {
+        try {
+            db.prepare('DELETE FROM user_sessions WHERE sid = $sid').run({ $sid: sid });
+            if (callback) callback();
+        } catch (err) {
+            if (callback) callback(err);
+        }
+    }
+}
 
 function hashPassword(plain: string): string {
     const salt = randomBytes(16).toString('hex');
@@ -605,6 +734,113 @@ function verifyPassword(plain: string, stored: string): boolean {
     const actual = scryptSync(plain, salt, 64);
     const expected = Buffer.from(expectedHex, 'hex');
     return expected.length === actual.length && timingSafeEqual(expected, actual);
+}
+
+function derivePasswordKeyAsync(plain: string, salt: string): Promise<Buffer> {
+    return new Promise((resolve, reject) => {
+        scrypt(plain, salt, 64, (err, derivedKey) => {
+            if (err) {
+                reject(err);
+                return;
+            }
+            const value = Buffer.isBuffer(derivedKey) ? derivedKey : Buffer.from(derivedKey);
+            resolve(value);
+        });
+    });
+}
+
+async function verifyPasswordAsync(plain: string, stored: string): Promise<boolean> {
+    const parts = String(stored || '').split('$');
+    if (parts.length !== 3 || parts[0] !== 'scrypt') return false;
+    const [, salt, expectedHex] = parts;
+    const expected = Buffer.from(expectedHex, 'hex');
+    if (expected.length === 0) return false;
+    try {
+        const actual = await derivePasswordKeyAsync(plain, salt);
+        return expected.length === actual.length && timingSafeEqual(expected, actual);
+    } catch {
+        return false;
+    }
+}
+
+function getClientIpAddress(req: Request): string {
+    const forwarded = String(req.headers['x-forwarded-for'] || '').split(',')[0]?.trim();
+    const reqIp = String(req.ip || '').trim();
+    const socketIp = String(req.socket?.remoteAddress || '').trim();
+    return forwarded || reqIp || socketIp || 'unknown';
+}
+
+function getLoginRateLimitKeys(req: Request, identifier: string): string[] {
+    const ip = getClientIpAddress(req);
+    const keys = [`login-ip:${ip}`];
+    if (identifier) keys.push(`login-ip-ident:${ip}:${identifier}`);
+    return keys;
+}
+
+function pruneLoginRateLimitState(now = Date.now()): void {
+    const keepForMs = Math.max(LOGIN_RATE_LIMIT_WINDOW_MS, LOGIN_RATE_LIMIT_BLOCK_MS) * 2;
+    for (const [key, state] of loginRateLimitByKey.entries()) {
+        if ((state.blockedUntil <= now) && ((now - state.lastSeenAt) > keepForMs)) {
+            loginRateLimitByKey.delete(key);
+        }
+    }
+}
+
+function getLoginRateLimitRetryAfterSeconds(req: Request, identifier: string): number {
+    const now = Date.now();
+    pruneLoginRateLimitState(now);
+    let retryAfterMs = 0;
+    for (const key of getLoginRateLimitKeys(req, identifier)) {
+        const state = loginRateLimitByKey.get(key);
+        if (!state) continue;
+        if (state.blockedUntil > now) {
+            retryAfterMs = Math.max(retryAfterMs, state.blockedUntil - now);
+        }
+    }
+    return retryAfterMs > 0 ? Math.ceil(retryAfterMs / 1000) : 0;
+}
+
+function recordFailedLoginAttempt(req: Request, identifier: string): number {
+    const now = Date.now();
+    pruneLoginRateLimitState(now);
+    let retryAfterMs = 0;
+    for (const key of getLoginRateLimitKeys(req, identifier)) {
+        const existing = loginRateLimitByKey.get(key);
+        const next = existing
+            ? { ...existing }
+            : { attempts: 0, windowStartedAt: now, blockedUntil: 0, lastSeenAt: now };
+
+        if (next.blockedUntil > now) {
+            next.lastSeenAt = now;
+            retryAfterMs = Math.max(retryAfterMs, next.blockedUntil - now);
+            loginRateLimitByKey.set(key, next);
+            continue;
+        }
+
+        if ((now - next.windowStartedAt) >= LOGIN_RATE_LIMIT_WINDOW_MS) {
+            next.attempts = 0;
+            next.windowStartedAt = now;
+        }
+
+        next.attempts += 1;
+        next.lastSeenAt = now;
+
+        if (next.attempts >= LOGIN_RATE_LIMIT_MAX_ATTEMPTS) {
+            next.attempts = 0;
+            next.windowStartedAt = now;
+            next.blockedUntil = now + LOGIN_RATE_LIMIT_BLOCK_MS;
+            retryAfterMs = Math.max(retryAfterMs, LOGIN_RATE_LIMIT_BLOCK_MS);
+        }
+
+        loginRateLimitByKey.set(key, next);
+    }
+    return retryAfterMs > 0 ? Math.ceil(retryAfterMs / 1000) : 0;
+}
+
+function clearLoginRateLimitState(req: Request, identifier: string): void {
+    for (const key of getLoginRateLimitKeys(req, identifier)) {
+        loginRateLimitByKey.delete(key);
+    }
 }
 
 function normalizeEmail(email: string): string {
@@ -967,6 +1203,27 @@ function setPendingVerificationSession(req: Request, user: UserRow): void {
     req.session.pendingVerificationUserId = user.id;
     req.session.pendingVerificationEmail = user.email || '';
     req.session.pendingVerificationUsername = user.username;
+}
+
+function regenerateSession(req: Request): Promise<void> {
+    return new Promise((resolve, reject) => {
+        req.session.regenerate((err) => {
+            if (err) {
+                reject(err);
+                return;
+            }
+            resolve();
+        });
+    });
+}
+
+async function establishAuthenticatedSession(req: Request, user: UserRow): Promise<void> {
+    await regenerateSession(req);
+    req.session.authenticated = true;
+    req.session.userId = user.id;
+    req.session.username = user.username;
+    clearPendingVerificationSession(req);
+    clearTikTokOAuthSessionState(req);
 }
 
 function markEmailVerified(userId: number): void {
@@ -4314,8 +4571,10 @@ async function fetchClipsForAllStreamers(accessToken: string, streamerIDs: strin
 
 app.use(express.json({ limit: '40mb' }));
 app.use(express.urlencoded({ extended: true }));
+const sessionStore = new SQLiteSessionStore();
 app.use(
     session({
+        store: sessionStore,
         secret: SESSION_SECRET,
         resave: false,
         saveUninitialized: false,
@@ -4323,7 +4582,7 @@ app.use(
             secure: IS_PRODUCTION,
             httpOnly: true,
             sameSite: 'lax',
-            maxAge: 24 * 60 * 60 * 1000,
+            maxAge: SESSION_MAX_AGE_MS,
         },
     })
 );
@@ -4381,11 +4640,31 @@ app.post('/api/login', async (req: Request, res: Response) => {
     const { identifier, username, password } = req.body as { identifier?: string; username?: string; password?: string };
     const normalizedIdentifier = normalizeAuthIdentifier(String(identifier || username || ''));
     const pw = String(password || '');
+    const loginRetryAfter = getLoginRateLimitRetryAfterSeconds(req, normalizedIdentifier);
+    if (loginRetryAfter > 0) {
+        res.status(429).json({
+            error: 'Too many login attempts. Please try again shortly.',
+            retryAfter: loginRetryAfter,
+        });
+        return;
+    }
+
     const user = normalizedIdentifier ? getUserByIdentifier(normalizedIdentifier) : undefined;
-    if (!user || !verifyPassword(pw, user.password_hash)) {
+    const passwordValid = user ? await verifyPasswordAsync(pw, user.password_hash) : false;
+    if (!user || !passwordValid) {
+        const retryAfter = recordFailedLoginAttempt(req, normalizedIdentifier);
+        if (retryAfter > 0) {
+            res.status(429).json({
+                error: 'Too many login attempts. Please try again shortly.',
+                retryAfter,
+            });
+            return;
+        }
         res.status(401).json({ error: 'Invalid credentials' });
         return;
     }
+
+    clearLoginRateLimitState(req, normalizedIdentifier);
 
     if (!isEmailVerified(user)) {
         setPendingVerificationSession(req, user);
@@ -4413,10 +4692,13 @@ app.post('/api/login', async (req: Request, res: Response) => {
         return;
     }
 
-    req.session.authenticated = true;
-    req.session.userId = user.id;
-    req.session.username = user.username;
-    clearPendingVerificationSession(req);
+    try {
+        await establishAuthenticatedSession(req, user);
+    } catch (err) {
+        console.error('Failed to establish authenticated session during login:', err);
+        res.status(500).json({ error: 'Could not start authenticated session. Please try again.' });
+        return;
+    }
     const hasStreamers = listUserStreamerIds(user.id).length > 0;
     res.json({ success: true, username: user.username, needsStreamerSetup: !hasStreamers });
 });
@@ -4485,7 +4767,7 @@ app.post('/api/register', async (req: Request, res: Response) => {
     }
 });
 
-app.post('/api/verify-email', (req: Request, res: Response) => {
+app.post('/api/verify-email', async (req: Request, res: Response) => {
     const pendingUserId = Number(req.session.pendingVerificationUserId || 0);
     if (!pendingUserId) {
         res.status(401).json({ error: 'No pending verification found. Please sign in again.' });
@@ -4506,10 +4788,13 @@ app.post('/api/verify-email', (req: Request, res: Response) => {
         return;
     }
     if (isEmailVerified(user)) {
-        req.session.authenticated = true;
-        req.session.userId = user.id;
-        req.session.username = user.username;
-        clearPendingVerificationSession(req);
+        try {
+            await establishAuthenticatedSession(req, user);
+        } catch (err) {
+            console.error('Failed to establish authenticated session after email verification:', err);
+            res.status(500).json({ error: 'Could not start authenticated session. Please sign in again.' });
+            return;
+        }
         clearVerificationCode(user.id);
         const hasStreamers = listUserStreamerIds(user.id).length > 0;
         res.json({ success: true, username: user.username, needsStreamerSetup: !hasStreamers });
@@ -4559,10 +4844,13 @@ app.post('/api/verify-email', (req: Request, res: Response) => {
 
     markEmailVerified(user.id);
     clearVerificationCode(user.id);
-    req.session.authenticated = true;
-    req.session.userId = user.id;
-    req.session.username = user.username;
-    clearPendingVerificationSession(req);
+    try {
+        await establishAuthenticatedSession(req, user);
+    } catch (err) {
+        console.error('Failed to establish authenticated session after verification code:', err);
+        res.status(500).json({ error: 'Could not start authenticated session. Please sign in again.' });
+        return;
+    }
     const hasStreamers = listUserStreamerIds(user.id).length > 0;
     res.json({ success: true, username: user.username, needsStreamerSetup: !hasStreamers });
 });
@@ -5452,22 +5740,34 @@ app.get('/api/clips/:clipId/video', requireAuth, async (req: Request, res: Respo
             res.setHeader('Accept-Ranges', 'bytes');
         }
         res.setHeader('Cache-Control', 'private, max-age=300');
-        upstream.data.pipe(res);
+        await pipeline(upstream.data, res);
     };
 
     try {
         await attemptStream(false);
         return;
     } catch (err) {
+        if (res.headersSent || res.writableEnded) {
+            if (!res.writableEnded) res.destroy();
+            return;
+        }
         try {
             await attemptStream(true);
             return;
         } catch {
+            if (res.headersSent || res.writableEnded) {
+                if (!res.writableEnded) res.destroy();
+                return;
+            }
             try {
                 const fallbackPath = await ensurePreviewFallbackFile(row);
                 await streamLocalVideoWithRange(req, res, fallbackPath);
                 return;
             } catch (fallbackErr) {
+                if (res.headersSent || res.writableEnded) {
+                    if (!res.writableEnded) res.destroy();
+                    return;
+                }
                 const baseError = err instanceof Error ? err.message : 'Failed to stream clip preview video';
                 const fallbackMessage = fallbackErr instanceof Error ? fallbackErr.message : 'yt-dlp fallback failed';
                 res.status(502).json({ error: `${baseError}; fallback: ${fallbackMessage}` });

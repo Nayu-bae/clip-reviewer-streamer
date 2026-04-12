@@ -8222,11 +8222,12 @@
     const thumb = thumbnailSrc(clip.thumbnail_url);
     const scoreMeta = getClipScoreMeta(clip);
     const tagPillsHtml = buildClipTagPillsHtml(clip.clip_tags);
+    const encodedClipId = encodeClipIdForAttr(clip.id);
 
     card.innerHTML = `
       ${clip.approved ? '<div class="approved-badge absolute top-3 left-3 z-10 rounded-full bg-emerald-500/90 text-white text-xs font-semibold px-3 py-1">Approved</div>' : ''}
       ${scoreMeta.hot ? `<div class="hot-score-badge" title="${escHtml(scoreMeta.reason)}">🔥 ${scoreMeta.score}</div>` : ''}
-      <button type="button" class="thumbnail-trigger" onclick="openClipPlayerModal('${clip.id}')">
+      <button type="button" class="thumbnail-trigger" onclick="openClipPlayerModalByEncoded('${encodedClipId}')">
         <div class="thumbnail-wrap relative aspect-video bg-zinc-900">
           <img class="h-full w-full object-cover" src="${thumb}" alt="${escHtml(clip.title)}" loading="lazy" />
           <div class="play-overlay absolute inset-0 flex items-center justify-center opacity-0 hover:opacity-100 transition bg-black/25">
@@ -8269,6 +8270,8 @@
     const downloadBusy = downloadInProgressIds.has(clip.id);
     const downloadBtnText = downloadBusy ? 'Preparing...' : 'Download';
     const downloadBtnDisabled = downloadBusy ? 'disabled' : '';
+    const encodedClipId = encodeClipIdForAttr(clip.id);
+    const safeClipIdAttr = escHtml(String(clip.id || ''));
 
     if (isModal) {
       const approveBtnClass = `btn-approve clip-modal-btn ${clip.approved ? 'is-approved' : ''}`.trim();
@@ -8277,14 +8280,14 @@
 
       return `
         <div class="${wrapperClass}">
-          <button class="${approveBtnClass}" onclick="toggleApprove('${clip.id}', ${clip.approved})">
+          <button class="${approveBtnClass}" onclick="toggleApproveByEncoded('${encodedClipId}', ${clip.approved})">
             ${clip.approved ? 'Approved - Undo' : 'Approve'}
           </button>
-          ${!clip.approved ? `<button class="${sortBtnClass}" onclick="toggleSortOut('${clip.id}', ${clip.sorted_out})">
+          ${!clip.approved ? `<button class="${sortBtnClass}" onclick="toggleSortOutByEncoded('${encodedClipId}', ${clip.sorted_out})">
             ${clip.sorted_out ? 'Sorted - Undo' : 'Sort Out'}
           </button>` : ''}
-          ${clip.approved ? `<button class="btn-upload clip-modal-btn" onclick="openCropModal('${clip.id}')">Edit</button>` : ''}
-          ${clip.approved ? `<button class="${downloadBtnClass}" data-download-clip-id="${clip.id}" ${downloadBtnDisabled} onclick="downloadCroppedVideo('${clip.id}', this)">${downloadBtnText}</button>` : ''}
+          ${clip.approved ? `<button class="btn-upload clip-modal-btn" onclick="openCropModalByEncoded('${encodedClipId}')">Edit</button>` : ''}
+          ${clip.approved ? `<button class="${downloadBtnClass}" data-download-clip-id="${safeClipIdAttr}" ${downloadBtnDisabled} onclick="downloadCroppedVideoByEncoded('${encodedClipId}', this)">${downloadBtnText}</button>` : ''}
         </div>
       `;
     }
@@ -8294,15 +8297,15 @@
     return `
       <div class="${wrapperClass}">
         <button class="btn-approve ${clip.approved ? 'approved bg-zinc-800 text-zinc-200 border border-zinc-700 hover:border-red-500 hover:text-red-400' : 'unapproved bg-emerald-600 text-white hover:bg-emerald-500'} rounded-lg px-3 py-2 text-xs font-semibold transition"
-                onclick="toggleApprove('${clip.id}', ${clip.approved})">
+                onclick="toggleApproveByEncoded('${encodedClipId}', ${clip.approved})">
           ${clip.approved ? 'Approved - Undo' : 'Approve'}
         </button>
         ${!clip.approved ? `<button class="btn-sortout ${clip.sorted_out ? 'sorted bg-amber-950 border-amber-500 text-amber-400 hover:text-red-400 hover:border-red-500' : 'bg-transparent border-zinc-700 text-zinc-300 hover:border-amber-500 hover:text-amber-400'} border rounded-lg px-3 py-2 text-xs font-semibold transition"
-                onclick="toggleSortOut('${clip.id}', ${clip.sorted_out})">
+                onclick="toggleSortOutByEncoded('${encodedClipId}', ${clip.sorted_out})">
           ${clip.sorted_out ? 'Sorted - Undo' : 'Sort Out'}
         </button>` : ''}
-        ${clip.approved ? `<button class="btn-upload rounded-lg px-3 py-2 text-xs font-semibold border border-amber-500 text-amber-400 bg-amber-950/40 hover:text-amber-300 hover:border-amber-300 transition" onclick="openCropModal('${clip.id}')">Edit</button>` : ''}
-        ${clip.approved ? `<button class="${downloadBtnClass}" data-download-clip-id="${clip.id}" ${downloadBtnDisabled} onclick="downloadCroppedVideo('${clip.id}', this)">${downloadBtnText}</button>` : ''}
+        ${clip.approved ? `<button class="btn-upload rounded-lg px-3 py-2 text-xs font-semibold border border-amber-500 text-amber-400 bg-amber-950/40 hover:text-amber-300 hover:border-amber-300 transition" onclick="openCropModalByEncoded('${encodedClipId}')">Edit</button>` : ''}
+        ${clip.approved ? `<button class="${downloadBtnClass}" data-download-clip-id="${safeClipIdAttr}" ${downloadBtnDisabled} onclick="downloadCroppedVideoByEncoded('${encodedClipId}', this)">${downloadBtnText}</button>` : ''}
       </div>
     `;
   }
@@ -8487,6 +8490,38 @@
   function escHtml(str) {
     const safe = String(str ?? '');
     return safe.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+
+  function encodeClipIdForAttr(clipId) {
+    return encodeURIComponent(String(clipId ?? ''));
+  }
+
+  function decodeClipIdFromAttr(encodedClipId) {
+    try {
+      return decodeURIComponent(String(encodedClipId ?? ''));
+    } catch {
+      return String(encodedClipId ?? '');
+    }
+  }
+
+  function openClipPlayerModalByEncoded(encodedClipId) {
+    return openClipPlayerModal(decodeClipIdFromAttr(encodedClipId));
+  }
+
+  function toggleApproveByEncoded(encodedClipId, currentlyApproved) {
+    return toggleApprove(decodeClipIdFromAttr(encodedClipId), currentlyApproved);
+  }
+
+  function toggleSortOutByEncoded(encodedClipId, currentlySortedOut) {
+    return toggleSortOut(decodeClipIdFromAttr(encodedClipId), currentlySortedOut);
+  }
+
+  function openCropModalByEncoded(encodedClipId) {
+    return openCropModal(decodeClipIdFromAttr(encodedClipId));
+  }
+
+  function downloadCroppedVideoByEncoded(encodedClipId, buttonEl = null) {
+    return downloadCroppedVideo(decodeClipIdFromAttr(encodedClipId), buttonEl);
   }
 
   function setDownloadButtonState(buttonEl, isLoading) {
@@ -12261,6 +12296,10 @@
     await openAdminModal(); // Refresh modal data while keeping search/tab state
   }
 
+  function adminUndoApproveByEncoded(encodedClipId) {
+    return adminUndoApprove(decodeClipIdFromAttr(encodedClipId));
+  }
+
   function getFilteredAdminClips() {
     if (!adminData?.clips) return [];
     const q = adminSearchQuery.trim().toLowerCase();
@@ -12320,7 +12359,7 @@
       if (!clip.approved && !clip.sorted_out) statusBadges.push('<span class="badge" style="background: rgba(173,173,184,0.2); color: var(--muted);">Pending</span>');
 
       const actions = [];
-      if (clip.approved) actions.push(`<button onclick="adminUndoApprove('${clip.id}')" style="background: #ff6b6b; color: white; border: none; padding: 4px 8px; border-radius: 4px; cursor: pointer; font-size: 0.75rem; margin-right: 4px;">Undo Approve</button>`);
+      if (clip.approved) actions.push(`<button onclick="adminUndoApproveByEncoded('${encodeClipIdForAttr(clip.id)}')" style="background: #ff6b6b; color: white; border: none; padding: 4px 8px; border-radius: 4px; cursor: pointer; font-size: 0.75rem; margin-right: 4px;">Undo Approve</button>`);
 
       tableRows += `
         <tr>
