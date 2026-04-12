@@ -15,6 +15,11 @@ Primary goals for agents:
 - Start app (dev-style): `npm start`
 - Smoke upload helper: `npm run upload:smoke`
 
+## Tooling Note (Codex Sandbox)
+- In this environment, `rg` (ripgrep) may fail in sandboxed runs with `Access is denied`.
+- If that happens, rerun `rg` with escalated permissions instead of assuming ripgrep is missing.
+- Fallback only if escalation is unavailable: PowerShell `Select-String` or `Get-ChildItem`.
+
 ## Project Map
 - `server.ts`: Main backend (Express routes, auth, DB access, Twitch/TikTok integrations, ffmpeg pipeline).
 - `public/index.html`: Main frontend SPA and UI logic.
